@@ -2,7 +2,7 @@ import { useState } from "react";
 import BottomTabNavigation from "../BottomTabNavigation";
 
 export default function BottomTabNavigationExample() {
-  const [activeTab, setActiveTab] = useState<"idea-lab" | "launch-pad" | "multiplier">("idea-lab");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "idea-lab" | "launch-pad" | "multiplier">("dashboard");
 
   return (
     <div className="min-h-screen bg-background relative">
