@@ -1,0 +1,74 @@
+Excellent pivot. Combining these into a single, mobile-first utility app is a much stronger product strategy. Here is the 1% PRD for that unified app.
+
+Product Name: CreatorKit AI
+
+Version: 0.1
+
+Status: Draft
+
+Date: 24 September 2025
+
+Author: Gemini
+
+1. Overview / The Big Picture
+CreatorKit AI is the essential mobile co-pilot for the modern creator. It’s a single, intelligent utility app that streamlines the entire content lifecycle for TikTok and YouTube, from initial idea to multi-platform distribution. We combine a trend-aware idea generator, a pre-publication optimization engine, and an automated content repurposing tool into one seamless, mobile-first experience.
+
+2. Problem Statement
+Target Persona: The "Prosumer Creator." They are serious about growing on TikTok and YouTube but are constantly bogged down by a fragmented and inefficient workflow, using multiple apps for research, editing, and planning.
+
+The Problem: The modern creator's workflow is a chaotic juggle between inspiration, creation, and optimization. They struggle with (1) discovering relevant trends quickly, (2) knowing if their video's packaging will perform well, and (3) finding the time to repurpose content across platforms. This disjointed process leads to burnout, inconsistent output, and missed growth opportunities.
+
+Why it Matters: In the hyper-competitive creator economy, speed and relevance are everything. A clunky workflow is a direct barrier to growth. Creators need a tool that works as fast as they do, right from their phone.
+
+3. Proposed Solution
+Our Vision: To become the indispensable "first app open" for every creator, consolidating the most critical AI-powered tasks into a single, intuitive toolkit that accelerates their entire creative process.
+
+Core App Modules: The app will be built around three simple, powerful tabs.
+
+💡 Idea Lab (TrendScript): A vertical, scrollable feed—much like TikTok—that presents personalized, actionable content ideas. Each "card" in the feed will feature a trending sound, topic, or format, along with a concrete suggestion for how the creator can adapt it to their niche.
+
+🚀 Launch Pad (CTR Maximizer): A diagnostic tool for pre-publication checks. The user uploads a thumbnail from their camera roll and inputs a title. The AI provides an instant "Clickability Score" with simple, actionable feedback (e.g., "Text is hard to read on mobile," "Face lacks emotion").
+
+🎬 Multiplier (Viral Clipper): A straightforward utility where the user pastes a YouTube link. The AI processes it in the background and sends a push notification when a collection of ready-to-post, vertically-clipped videos (for TikTok/Shorts) are available to save directly to their camera roll.
+
+4. Goals & Success Metrics
+User Goal: To ideate, optimize, and repurpose content faster and more effectively, all from one mobile app.
+
+Business Goal: Achieve high daily user engagement and become the category-leading AI utility for creators, driving a subscription-based revenue model.
+
+North Star Metric: Content Velocity. We will measure the number of content pieces per user that are successfully ideated, optimized, or multiplied through the app each week.
+
+Key Metrics (KPIs):
+
+DAU/MAU Ratio: Target > 50%, indicating the app is a daily habit.
+
+Module Engagement: % of weekly active users who engage with at least two of the three core modules.
+
+Time-to-Value: Average time for a new user to save their first idea, analyze their first thumbnail, or generate their first clip.
+
+Subscription Conversion Rate: % of users who convert to a paid tier after their trial.
+
+5. Core User Stories (P0 - Critical for MVP)
+As a Creator, I want to open the app and immediately see a feed of trending ideas I can act on today, so that I can beat creator's block and stay relevant.
+
+As a Creator, I want to upload a thumbnail from my camera roll and get a simple "good/bad" analysis with one key suggestion for improvement, so that I can make quick, data-informed decisions before posting.
+
+As a Creator, I want to paste a YouTube link, close the app, and get a notification later that my clips are ready to download, so that I can repurpose content without waiting or draining my battery.
+
+6. Out of Scope (For MVP v1.0)
+A full-featured video editor (cropping, filters, text overlays, etc.).
+
+Direct scheduling or posting to social media platforms.
+
+Team collaboration, analytics dashboards, or comment management.
+
+Desktop or web application. We are strictly mobile-first.
+
+7. Assumptions & Risks
+Assumption: Creators desire an all-in-one utility over specialized, single-purpose apps.
+
+Risk: The app could feel unfocused or "bloated" if the three modules are not perfectly integrated and intuitively designed. The user experience must be exceptionally simple.
+
+Risk: The background processing for video clipping on a mobile-centric platform could present technical challenges regarding server costs, processing times, and delivering a smooth user experience.
+
+Risk: Competing platforms (including TikTok and YouTube themselves) are rapidly integrating similar AI features, making differentiation and speed-to-market critical.
