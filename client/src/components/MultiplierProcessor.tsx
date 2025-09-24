@@ -30,6 +30,8 @@ interface ProcessingJob {
 export default function MultiplierProcessor() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [jobs, setJobs] = useState<ProcessingJob[]>([]);
+  const [targetPlatform, setTargetPlatform] = useState("tiktok"); // Default to TikTok
+  const [clipDuration, setClipDuration] = useState(15); // Default 15s for TikTok
 
   const isValidYouTubeUrl = (url: string) => {
     const regex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/;
@@ -84,16 +86,16 @@ export default function MultiplierProcessor() {
       updateProgress(step.progress, step.time);
     }
 
-    // Mock completed clips - todo: remove mock functionality
+    // TikTok-optimized mock clips - todo: replace with real API
     const mockClips: ProcessedClip[] = [
       {
         id: "clip-1",
         title: "Hook: The Secret Everyone Gets Wrong",
-        duration: "0:58",
-        size: "2.3 MB",
+        duration: "0:15",
+        size: "800 KB",
         hookSuggestions: [
           "You're doing this completely wrong...",
-          "This 60-second clip will change everything",
+          "This 15-second clip will change everything",
           "Nobody talks about this, but..."
         ],
         preview: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjM1NiIgdmlld0JveD0iMCAwIDIwMCAzNTYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMzU2IiBmaWxsPSIjMUYyOTM3Ii8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTc4IiBmaWxsPSIjRkZGRkZGIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5WaWRlbyBQcmV2aWV3PC90ZXh0Pgo8L3N2Zz4K",
@@ -102,8 +104,8 @@ export default function MultiplierProcessor() {
       {
         id: "clip-2", 
         title: "Main Content: Step-by-Step Guide",
-        duration: "0:47",
-        size: "1.9 MB",
+        duration: "0:15",
+        size: "750 KB",
         hookSuggestions: [
           "Here's exactly how to do it:",
           "Follow these 3 simple steps",
@@ -115,8 +117,8 @@ export default function MultiplierProcessor() {
       {
         id: "clip-3",
         title: "Result: Mind-Blowing Outcome",
-        duration: "0:35",
-        size: "1.4 MB", 
+        duration: "0:12",
+        size: "650 KB", 
         hookSuggestions: [
           "The results will shock you",
           "This is what happened next...",
@@ -159,6 +161,17 @@ export default function MultiplierProcessor() {
         <Card className="p-4 space-y-4">
           <h2 className="font-semibold text-foreground">YouTube Video to Process</h2>
           
+          {/* TikTok Optimization Guide */}
+          <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-3 h-3 bg-primary rounded-full animate-pulse"></div>
+              <span className="font-medium text-sm">TikTok Optimization (15s clips)</span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              AI will extract the most viral moments • Vertical format optimized • Hook-heavy content
+            </p>
+          </div>
+          
           <div className="space-y-2">
             <Label htmlFor="youtube-url">YouTube URL</Label>
             <div className="flex gap-2">
@@ -184,7 +197,7 @@ export default function MultiplierProcessor() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              AI will automatically extract viral moments and create vertical clips
+              AI will automatically extract viral moments and create 15-second TikTok-ready clips
             </p>
           </div>
         </Card>

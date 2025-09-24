@@ -11,12 +11,15 @@ interface TrendCardProps {
     title: string;
     description: string;
     category: string;
+    platform?: string;
     hotness: "hot" | "rising" | "relevant";
     engagement: number;
     timeAgo: string;
     suggestion: string;
     hashtags: string[];
     sound?: string;
+    soundUrl?: string;
+    duration?: string;
   };
   onSave?: (id: string) => void;
   onRemix?: (id: string) => void;
@@ -116,6 +119,11 @@ export default function TrendCard({ trend, onSave, onRemix }: TrendCardProps) {
               <div className="w-1 h-1 bg-primary rounded-full animate-pulse" style={{ animationDelay: "300ms" }} />
             </div>
             <span className="text-muted-foreground font-medium text-sm">{trend.sound}</span>
+            {trend.duration && (
+              <Badge variant="outline" className="text-xs ml-auto">
+                {trend.duration}
+              </Badge>
+            )}
           </div>
         )}
 

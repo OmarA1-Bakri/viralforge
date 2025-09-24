@@ -4,55 +4,67 @@ import ProcessingIndicator from "./ProcessingIndicator";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Sparkles } from "lucide-react";
 
-// Mock data - todo: remove mock functionality
+// TikTok-first mock data - todo: replace with real API
 const mockTrends = [
   {
     id: "trend-1",
     title: "React to viral TikTok dances with your dog",
     description: "Pet + dance content is exploding! Perfect for pet accounts looking to trend.",
     category: "Pets & Animals",
+    platform: "tiktok",
     hotness: "hot" as const,
     engagement: 24,
     timeAgo: "2h ago",
     suggestion: "Film your dog 'reacting' to dance trends. Show their confused expressions and add funny captions like 'When humans do the thing again...'",
-    hashtags: ["dogsoftiktok", "petreacts", "dancechallenge", "viral"],
-    sound: "Oh No (Dance Trend Mix)"
+    hashtags: ["#dogsoftiktok", "#petreacts", "#dancechallenge", "#viral"],
+    sound: "Oh No (Dance Trend Mix)",
+    soundUrl: "trending-dance-mix-1",
+    duration: "15s"
   },
   {
     id: "trend-2",
-    title: "POV: You're explaining complex topics in 60 seconds",
+    title: "POV: You're explaining complex topics in 15 seconds",
     description: "Educational micro-content is having a massive moment. Perfect for knowledge creators.",
     category: "Education",
+    platform: "tiktok",
     hotness: "rising" as const,
     engagement: 18,
     timeAgo: "4h ago",
     suggestion: "Pick a complex topic in your niche. Break it down into 3 simple points with visual aids. Use the hook: 'You think you understand [topic], but you don't...'",
-    hashtags: ["learnontiktok", "education", "explained", "mindblown"],
-    sound: "Aesthetic Study Vibes"
+    hashtags: ["#learnontiktok", "#education", "#explained", "#mindblown"],
+    sound: "Aesthetic Study Vibes",
+    soundUrl: "study-vibes-beat",
+    duration: "15s"
   },
   {
     id: "trend-3",
     title: "Day in my life as a [your profession]",
     description: "Behind-the-scenes content builds authentic connections with audiences.",
     category: "Lifestyle",
+    platform: "tiktok",
     hotness: "relevant" as const,
     engagement: 12,
     timeAgo: "6h ago",
     suggestion: "Show your actual daily routine with honest moments. Include the struggles, not just highlights. Use trending audio with quick cuts.",
-    hashtags: ["dayinmylife", "authentic", "workflow", "creator"],
-    sound: "That Girl Energy (Aesthetic)"
+    hashtags: ["#dayinmylife", "#authentic", "#workflow", "#creator"],
+    sound: "That Girl Energy (Aesthetic)",
+    soundUrl: "that-girl-energy",
+    duration: "30s"
   },
   {
     id: "trend-4",
     title: "Rating viral life hacks from 1-10",
     description: "Review and rating content gets huge engagement. Easy to batch create.",
     category: "Reviews",
+    platform: "tiktok",
     hotness: "hot" as const,
     engagement: 31,
     timeAgo: "1h ago",
     suggestion: "Test 5 viral life hacks. Rate each honestly with quick explanations. End with your own hack that actually works.",
-    hashtags: ["lifehacks", "rating", "viral", "tested"],
-    sound: "Rating Things (Viral Mix)"
+    hashtags: ["#lifehacks", "#rating", "#viral", "#tested"],
+    sound: "Rating Things (Viral Mix)",
+    soundUrl: "rating-viral-mix",
+    duration: "15s"
   }
 ];
 
@@ -113,7 +125,7 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix }: IdeaLabFeedPr
             </div>
             <div>
               <h1 className="text-xl font-bold">Trending Ideas</h1>
-              <p className="text-sm text-muted-foreground">AI-powered content discovery</p>
+              <p className="text-sm text-muted-foreground">AI-powered TikTok content discovery</p>
             </div>
           </div>
           
