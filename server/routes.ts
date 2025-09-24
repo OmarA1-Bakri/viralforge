@@ -249,6 +249,174 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Multiplier Routes - Video Processing & Clip Generation
+  
+  // Process video and generate clips
+  app.post('/api/videos/process', async (req, res) => {
+    try {
+      const { videoUrl, title, description, platform, videoDuration } = req.body;
+      
+      if (!videoUrl) {
+        return res.status(400).json({ error: 'Video URL is required' });
+      }
+
+      console.log(`🎬 Processing video for ${platform || 'general'} clips...`);
+      
+      // Create user content record for the video
+      const videoContent = await storage.createUserContent({
+        userId: 'demo-user', // TODO: Get from auth
+        platform: platform || 'youtube',
+        title: title || null,
+        description: description || null,
+        videoUrl,
+        status: 'processing'
+      });
+
+      // Generate clip suggestions using AI
+      const clipSuggestions = await openRouterService.generateVideoClips(
+        description || title || 'Video content',
+        videoDuration || 300, // Default 5 minutes
+        platform || 'youtube'
+      );
+
+      // Store clip suggestions in database
+      const storedClips = [];
+      for (const clipData of clipSuggestions) {
+        try {
+          const clip = await storage.createVideoClip({
+            contentId: videoContent.id,
+            title: clipData.title,
+            description: clipData.description,
+            startTime: clipData.startTime,
+            endTime: clipData.endTime,
+            viralScore: clipData.viralScore,
+            status: 'ready'
+          });
+          storedClips.push(clip);
+        } catch (error) {
+          console.warn("Failed to store clip:", error);
+        }
+      }
+
+      // Update video status to completed
+      const updatedContent = await storage.updateUserContent(videoContent.id, {
+        status: 'completed'
+      });
+
+      console.log(`✅ Generated ${storedClips.length} clips from video`);
+
+      res.json({
+        videoId: videoContent.id,
+        video: updatedContent,
+        clips: storedClips,
+        totalClips: storedClips.length
+      });
+    } catch (error) {
+      console.error('Error processing video:', error);
+      res.status(500).json({ error: 'Failed to process video' });
+    }
+  });
+
+  // Get clips for a specific video
+  app.get('/api/videos/:id/clips', async (req, res) => {
+    try {
+      const videoId = parseInt(req.params.id);
+      const clips = await storage.getVideoClips(videoId);
+      
+      const video = await storage.getContentById(videoId);
+      if (!video) {
+        return res.status(404).json({ error: 'Video not found' });
+      }
+
+      res.json({
+        video,
+        clips,
+        totalClips: clips.length
+      });
+    } catch (error) {
+      console.error('Error fetching clips:', error);
+      res.status(500).json({ error: 'Failed to fetch clips' });
+    }
+  });
+
+  // Get specific clip details
+  app.get('/api/clips/:id', async (req, res) => {
+    try {
+      const clipId = parseInt(req.params.id);
+      const clip = await storage.getClipById(clipId);
+      
+      if (!clip) {
+        return res.status(404).json({ error: 'Clip not found' });
+      }
+
+      const video = await storage.getContentById(clip.contentId);
+
+      res.json({
+        clip,
+        video
+      });
+    } catch (error) {
+      console.error('Error fetching clip:', error);
+      res.status(500).json({ error: 'Failed to fetch clip' });
+    }
+  });
+
+  // Update clip details (title, viral score, etc.)
+  app.put('/api/clips/:id', async (req, res) => {
+    try {
+      const clipId = parseInt(req.params.id);
+      const { title, description, viralScore, status } = req.body;
+      
+      const updatedClip = await storage.updateVideoClip(clipId, {
+        title,
+        description,
+        viralScore,
+        status
+      });
+      
+      if (!updatedClip) {
+        return res.status(404).json({ error: 'Clip not found' });
+      }
+
+      console.log(`✅ Updated clip ${clipId} details`);
+
+      res.json({
+        clip: updatedClip,
+        message: 'Clip updated successfully'
+      });
+    } catch (error) {
+      console.error('Error updating clip:', error);
+      res.status(500).json({ error: 'Failed to update clip' });
+    }
+  });
+
+  // Get user's video processing history
+  app.get('/api/videos/history', async (req, res) => {
+    try {
+      const userId = 'demo-user'; // TODO: Get from auth
+      const videos = await storage.getUserContent(userId);
+      
+      // Filter to only video content and add clip counts
+      const videosWithClips = [];
+      for (const video of videos.filter(v => v.videoUrl)) {
+        const clips = await storage.getVideoClips(video.id);
+        videosWithClips.push({
+          ...video,
+          clipCount: clips.length,
+          totalViralScore: clips.reduce((sum, clip) => sum + (clip.viralScore || 0), 0)
+        });
+      }
+
+      res.json({ 
+        videos: videosWithClips,
+        totalVideos: videosWithClips.length
+      });
+    } catch (error) {
+      console.error('Error fetching video history:', error);
+      res.status(500).json({ error: 'Failed to fetch video history' });
+    }
+  });
+
   // Health check endpoint
   app.get("/api/health", (req, res) => {
     res.json({ 

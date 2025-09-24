@@ -233,6 +233,29 @@ export class MemStorage implements IStorage {
       .sort((a, b) => a.startTime - b.startTime);
   }
 
+  async getClipById(id: number): Promise<VideoClip | undefined> {
+    return this.videoClips.get(id);
+  }
+
+  async updateVideoClip(id: number, updates: Partial<InsertVideoClip>): Promise<VideoClip | undefined> {
+    const existingClip = this.videoClips.get(id);
+    if (!existingClip) {
+      return undefined;
+    }
+
+    const updatedClip: VideoClip = {
+      ...existingClip,
+      ...updates,
+      clipUrl: updates.clipUrl !== undefined ? updates.clipUrl : existingClip.clipUrl,
+      thumbnailUrl: updates.thumbnailUrl !== undefined ? updates.thumbnailUrl : existingClip.thumbnailUrl,
+      viralScore: updates.viralScore !== undefined ? updates.viralScore : existingClip.viralScore,
+      description: updates.description !== undefined ? updates.description : existingClip.description,
+    };
+
+    this.videoClips.set(id, updatedClip);
+    return updatedClip;
+  }
+
   // Processing jobs
   async createProcessingJob(insertJob: InsertProcessingJob): Promise<ProcessingJob> {
     const id = this.nextJobId++;

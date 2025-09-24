@@ -266,6 +266,70 @@ Platform: ${request.platform}
     videoDuration: number, 
     targetPlatform: string
   ): Promise<VideoClipSuggestion[]> {
+    console.log("🔧 Debug: Video clip generation request:", { videoDescription, videoDuration, targetPlatform });
+
+    // For now, return mock clip data while we debug the AI integration
+    const mockClips: VideoClipSuggestion[] = [
+      {
+        title: "Epic Opening Hook",
+        description: "The most engaging first 15 seconds that will hook viewers instantly",
+        startTime: 0,
+        endTime: 15,
+        viralScore: 9,
+        reasoning: "Strong opening hooks perform best on all platforms - this grabs attention immediately"
+      },
+      {
+        title: "Key Moment Highlight",
+        description: "The most valuable insight or breakthrough moment from the content",
+        startTime: Math.floor(videoDuration * 0.3),
+        endTime: Math.floor(videoDuration * 0.3) + 30,
+        viralScore: 8,
+        reasoning: "Educational highlights with clear value propositions get high engagement"
+      },
+      {
+        title: "Emotional Peak",
+        description: "The most emotionally compelling segment that creates connection",
+        startTime: Math.floor(videoDuration * 0.6),
+        endTime: Math.floor(videoDuration * 0.6) + 25,
+        viralScore: 8,
+        reasoning: "Emotional moments drive shares and comments - perfect for viral growth"
+      },
+      {
+        title: "Surprising Reveal",
+        description: "Unexpected insight or plot twist that defies expectations",
+        startTime: Math.floor(videoDuration * 0.8),
+        endTime: Math.floor(videoDuration * 0.8) + 20,
+        viralScore: 7,
+        reasoning: "Surprise elements create curiosity gaps that drive engagement and rewatches"
+      }
+    ];
+
+    // Filter clips to ensure they don't exceed video duration
+    const validClips = mockClips.filter(clip => clip.endTime <= videoDuration);
+    
+    // Adjust platform-specific clip lengths
+    const platformOptimizedClips = validClips.map(clip => {
+      let maxLength = 60; // Default
+      if (targetPlatform === 'tiktok') maxLength = 15;
+      else if (targetPlatform === 'youtube') maxLength = 60;
+      else if (targetPlatform === 'instagram') maxLength = 30;
+
+      const duration = clip.endTime - clip.startTime;
+      if (duration > maxLength) {
+        return {
+          ...clip,
+          endTime: clip.startTime + maxLength,
+          description: `${clip.description} (optimized for ${targetPlatform})`
+        };
+      }
+      return clip;
+    });
+
+    console.log(`✅ Generated ${platformOptimizedClips.length} mock clips for ${targetPlatform} (${videoDuration}s video)`);
+    return platformOptimizedClips;
+
+    // TODO: Uncomment this when API key is working
+    /*
     const systemPrompt = `You are a video editing expert specializing in creating viral clips from longer content.
 
 Analyze the video content and suggest the best clips that would perform well on ${targetPlatform}.
@@ -313,6 +377,7 @@ Suggest 3-5 of the best clips with high viral potential.`;
       console.error("Error generating video clips:", error);
       throw new Error("Failed to generate video clips");
     }
+    */
   }
 }
 
