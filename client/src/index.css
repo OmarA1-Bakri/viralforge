@@ -14,17 +14,17 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  --background: 0 0% 98%;
+  --background: 0 0% 6%;
 
-  --foreground: 0 0% 10%;
+  --foreground: 0 0% 100%;
 
-  --border: 0 0% 88%;
+  --border: 0 0% 16%;
 
-  --card: 0 0% 95%;
+  --card: 0 0% 10%;
 
-  --card-foreground: 0 0% 10%;
+  --card-foreground: 0 0% 100%;
 
-  --card-border: 0 0% 92%;
+  --card-border: 0 0% 16%;
 
   --sidebar: 0 0% 93%;
 
@@ -48,21 +48,21 @@
 
   --popover-border: 0 0% 87%;
 
-  --primary: 320 100% 65%;
+  --primary: 181 96% 61%;
 
   --primary-foreground: 0 0% 98%;
 
-  --secondary: 0 0% 87%;
+  --secondary: 0 0% 18%;
 
-  --secondary-foreground: 0 0% 15%;
+  --secondary-foreground: 0 0% 100%;
 
-  --muted: 0 0% 89%;
+  --muted: 0 0% 16%;
 
-  --muted-foreground: 0 0% 45%;
+  --muted-foreground: 0 0% 63%;
 
-  --accent: 180 100% 85%;
+  --accent: 321 100% 68%;
 
-  --accent-foreground: 0 0% 15%;
+  --accent-foreground: 0 0% 100%;
 
   --destructive: 0 84% 60%;
 
@@ -79,7 +79,7 @@
   --font-sans: Open Sans, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
-  --radius: .5rem; /* 8px */
+  --radius: .75rem; /* 12px */
   --shadow-2xs: 0px 2px 0px 0px hsl(0 0% 80% / 0.15);
   --shadow-xs: 0px 2px 0px 0px hsl(0 0% 80% / 0.15);
   --shadow-sm: 0px 2px 0px 0px hsl(0 0% 80% / 0.15), 0px 1px 2px -1px hsl(0 0% 80% / 0.15);
@@ -132,17 +132,17 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 0 0% 3%;
+  --background: 0 0% 6%;
 
   --foreground: 0 0% 98%;
 
-  --border: 17 8% 15%;
+  --border: 0 0% 16%;
 
-  --card: 0 0% 8%;
+  --card: 0 0% 10%;
 
   --card-foreground: 0 0% 98%;
 
-  --card-border: 17 8% 18%;
+  --card-border: 0 0% 16%;
 
   --sidebar: 17 8% 6%;
 
@@ -166,19 +166,19 @@
 
   --popover-border: 17 8% 20%;
 
-  --primary: 180 100% 60%;
+  --primary: 181 96% 61%;
 
   --primary-foreground: 0 0% 98%;
 
-  --secondary: 17 8% 12%;
+  --secondary: 0 0% 18%;
 
   --secondary-foreground: 0 0% 90%;
 
-  --muted: 17 8% 9%;
+  --muted: 0 0% 16%;
 
-  --muted-foreground: 0 0% 70%;
+  --muted-foreground: 0 0% 63%;
 
-  --accent: 320 80% 30%;
+  --accent: 321 100% 68%;
 
   --accent-foreground: 0 0% 90%;
 

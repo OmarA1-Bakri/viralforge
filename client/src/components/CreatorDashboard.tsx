@@ -339,7 +339,7 @@ export default function CreatorDashboard() {
         {/* Performance Insights */}
         <Card className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Target className="w-5 h-5 text-green-400" />
+            <Target className="w-5 h-5 text-primary" />
             <h2 className="font-semibold">Performance Insights</h2>
           </div>
 
@@ -400,7 +400,7 @@ export default function CreatorDashboard() {
         <Card className="p-4">
           <h2 className="font-semibold mb-3">Quick Actions</h2>
           <div className="grid grid-cols-2 gap-2">
-            <Button className="gap-2 bg-gradient-to-r from-primary to-accent" data-testid="quick-analyze">
+            <Button className="gap-2 bg-gradient-to-r from-primary to-accent hover:shadow-lg hover:shadow-primary/20" data-testid="quick-analyze">
               <Rocket className="w-4 h-4" />
               Analyze New
             </Button>
