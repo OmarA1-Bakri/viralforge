@@ -60,7 +60,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <div className="font-sans antialiased">
+        <div className="font-sans antialiased dark">
           <Router />
         </div>
         <Toaster />

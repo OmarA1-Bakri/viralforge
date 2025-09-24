@@ -43,9 +43,9 @@ export default function TrendCard({ trend, onSave, onRemix }: TrendCardProps) {
   };
 
   const hotnessConfig = {
-    hot: { label: "🔥 Hot", className: "bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg" },
-    rising: { label: "📈 Rising", className: "bg-gradient-to-r from-orange-500 to-yellow-500 text-white shadow-lg" },
-    relevant: { label: "✨ For You", className: "bg-gradient-to-r from-primary to-purple-400 text-white shadow-lg" }
+    hot: { label: "🔥 Hot", className: "bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-lg shadow-pink-500/30" },
+    rising: { label: "📈 Rising", className: "bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-lg shadow-orange-500/30" },
+    relevant: { label: "✨ For You", className: "bg-gradient-to-r from-primary to-pink-500 text-white shadow-lg shadow-primary/30" }
   };
 
   return (
@@ -87,7 +87,7 @@ export default function TrendCard({ trend, onSave, onRemix }: TrendCardProps) {
         </div>
 
         {/* AI Suggestion */}
-        <div className="bg-gradient-to-r from-primary/20 to-purple-500/20 rounded-md p-3 border border-primary/30">
+        <div className="bg-gradient-to-r from-primary/20 to-pink-500/20 rounded-md p-3 border border-primary/30">
           <div className="flex items-start gap-2">
             <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0 animate-pulse shadow-md shadow-primary/50" />
             <div>
