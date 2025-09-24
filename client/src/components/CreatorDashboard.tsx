@@ -21,6 +21,22 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Mock data and formatNumber function are not provided in the original code,
+// assuming they are either defined elsewhere or should be removed if not used.
+// For this fix, we will assume 'stats' and 'activities' are available from useQuery.
+
+// Placeholder for VideoIcon and Scissors if they are used in the changes snippet
+const VideoIcon = Video; 
+const Scissors = Zap; // Using Zap as a placeholder for Scissors
+
+
+const formatNumber = (num: number): string => {
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+  return num.toString();
+};
+
+
 interface DashboardStats {
   totalViews: number;
   totalLikes: number;
@@ -53,7 +69,7 @@ const formatTimeAgo = (dateString: string): string => {
   const date = new Date(dateString);
   const now = new Date();
   const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-  
+
   if (diffInMinutes < 60) {
     return `${diffInMinutes}m ago`;
   } else if (diffInMinutes < 1440) {
@@ -170,7 +186,7 @@ export default function CreatorDashboard() {
         <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", config.color)}>
           <Icon className="w-5 h-5" />
         </div>
-        
+
         <div className="flex-1 min-w-0">
           <h4 className="font-medium text-sm text-foreground truncate">{item.title}</h4>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -190,7 +206,7 @@ export default function CreatorDashboard() {
             )}
           </div>
         </div>
-        
+
         <Badge variant="outline" className="text-xs">
           {item.status}
         </Badge>
@@ -207,7 +223,7 @@ export default function CreatorDashboard() {
             <BarChart3 className="w-5 h-5 text-primary" />
             <h1 className="text-lg font-bold">Dashboard</h1>
           </div>
-          
+
           {/* Time Filter */}
           <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
             {(["week", "month", "year"] as const).map((period) => (
@@ -284,7 +300,7 @@ export default function CreatorDashboard() {
               <Zap className="w-5 h-5 text-primary" />
               <h2 className="font-semibold text-primary">AI Automation Impact</h2>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Time Saved</p>
@@ -295,7 +311,7 @@ export default function CreatorDashboard() {
                 <p className="text-xl font-bold text-primary">{stats.trendsUsed}</p>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4 mt-4">
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Viral Score</p>
@@ -306,7 +322,7 @@ export default function CreatorDashboard() {
                 <p className="text-xl font-bold text-primary">{stats.totalClips}</p>
               </div>
             </div>
-            
+
             <div className="mt-3 space-y-2">
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">AI Effectiveness</span>
@@ -326,18 +342,18 @@ export default function CreatorDashboard() {
             <Target className="w-5 h-5 text-green-400" />
             <h2 className="font-semibold">Performance Insights</h2>
           </div>
-          
+
           <div className="space-y-3">
             <div className="flex items-center justify-between p-2 bg-green-500/10 rounded-md border border-green-500/20">
               <span className="text-sm text-foreground">Best performing content type</span>
               <Badge className="bg-green-500 text-white">Pet + Dance</Badge>
             </div>
-            
+
             <div className="flex items-center justify-between p-2 bg-blue-500/10 rounded-md border border-blue-500/20">
               <span className="text-sm text-foreground">Optimal posting time</span>
               <Badge className="bg-blue-500 text-white">6-8 PM</Badge>
             </div>
-            
+
             <div className="flex items-center justify-between p-2 bg-purple-500/10 rounded-md border border-purple-500/20">
               <span className="text-sm text-foreground">Top trending hashtag</span>
               <Badge className="bg-purple-500 text-white">#viral</Badge>
@@ -356,7 +372,7 @@ export default function CreatorDashboard() {
               View All
             </Button>
           </div>
-          
+
           <div className="space-y-2">
             {activityLoading ? (
               <div className="flex items-center justify-center py-4">
