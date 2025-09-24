@@ -49,96 +49,101 @@ export default function TrendCard({ trend, onSave, onRemix }: TrendCardProps) {
   };
 
   return (
-    <Card className="relative overflow-hidden bg-gradient-to-br from-card to-card/90 border-card-border hover-elevate active-elevate-2 transition-all duration-200">
+    <Card className="relative overflow-hidden hover-elevate transition-all duration-300 group">
       {/* Hotness indicator */}
-      <div className="absolute top-3 right-3 z-10">
-        <Badge className={cn("text-xs", hotnessConfig[trend.hotness].className)}>
+      <div className="absolute top-4 right-4 z-10">
+        <Badge className={cn("text-xs font-medium", hotnessConfig[trend.hotness].className)}>
           <TrendingUp className="w-3 h-3 mr-1" />
           {hotnessConfig[trend.hotness].label}
         </Badge>
       </div>
 
-      <div className="p-4 space-y-4">
-        {/* Header */}
-        <div className="space-y-2">
-          <div className="flex items-start gap-2">
-            <Sparkles className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-            <div className="flex-1">
-              <h3 className="font-semibold text-foreground leading-tight" data-testid={`trend-title-${trend.id}`}>
-                {trend.title}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-1">{trend.description}</p>
-            </div>
-          </div>
+      <div className="p-5">
+        {/* Header - Clean & Focused */}
+        <div className="mb-4 pr-20">
+          <h3 className="font-bold text-lg leading-tight mb-2" data-testid={`trend-title-${trend.id}`}>
+            {trend.title}
+          </h3>
+          <p className="text-muted-foreground text-sm leading-relaxed">{trend.description}</p>
         </div>
 
-        {/* Category and stats */}
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
+        {/* Key Info Row */}
+        <div className="flex items-center gap-4 mb-4 text-xs text-muted-foreground">
           <Badge variant="outline" className="text-xs">
             {trend.category}
           </Badge>
-          <div className="flex items-center gap-3">
-            <span className="flex items-center gap-1">
-              <Heart className="w-3 h-3" />
-              {trend.engagement}K
-            </span>
-            <span>{trend.timeAgo}</span>
+          <div className="flex items-center gap-1">
+            <Heart className="w-3 h-3" />
+            <span className="font-medium">{trend.engagement}K</span>
           </div>
+          <span>{trend.timeAgo}</span>
         </div>
 
-        {/* AI Suggestion */}
-        <div className="bg-gradient-to-r from-primary/20 to-cyan-500/20 rounded-md p-3 border border-primary/30">
-          <div className="flex items-start gap-2">
-            <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0 animate-pulse shadow-md shadow-primary/50" />
-            <div>
-              <p className="text-sm font-medium text-primary">AI Suggestion</p>
-              <p className="text-sm text-foreground mt-1">{trend.suggestion}</p>
+        {/* AI Suggestion - Cleaner Design */}
+        <div className="bg-gradient-to-br from-primary/8 to-cyan-400/8 rounded-lg p-4 mb-4 border border-primary/20">
+          <div className="flex items-start gap-3">
+            <div className="p-1.5 bg-primary/20 rounded-full mt-0.5">
+              <Sparkles className="w-3 h-3 text-primary" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-primary mb-1">AI Strategy</p>
+              <p className="text-sm text-foreground leading-relaxed">{trend.suggestion}</p>
             </div>
           </div>
         </div>
 
-        {/* Sound/Audio */}
-        {trend.sound && (
-          <div className="flex items-center gap-2 text-xs bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-md p-2 border border-green-500/30">
-            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-md shadow-green-400/50" />
-            <span className="text-green-400 font-medium">{trend.sound}</span>
-          </div>
-        )}
-
-        {/* Hashtags */}
-        <div className="flex flex-wrap gap-1">
-          {trend.hashtags.map((tag, index) => (
-            <span key={index} className="text-xs text-primary font-medium">
+        {/* Hashtags - Prettier Display */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {trend.hashtags.slice(0, 3).map((tag, index) => (
+            <span key={index} className="inline-flex items-center px-2 py-1 bg-purple-500/10 text-purple-500 rounded-md text-xs font-medium border border-purple-500/20">
               #{tag}
             </span>
           ))}
+          {trend.hashtags.length > 3 && (
+            <span className="text-xs text-muted-foreground px-2 py-1">
+              +{trend.hashtags.length - 3} more
+            </span>
+          )}
         </div>
 
-        {/* Action buttons */}
-        <div className="flex items-center justify-between pt-2">
-          <div className="flex items-center gap-2">
+        {/* Sound Track */}
+        {trend.sound && (
+          <div className="flex items-center gap-2 bg-green-500/10 rounded-lg p-3 mb-4 border border-green-500/20">
+            <div className="flex gap-0.5">
+              <div className="w-1 h-3 bg-green-500 rounded-full animate-pulse" />
+              <div className="w-1 h-2 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: "100ms" }} />
+              <div className="w-1 h-4 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: "200ms" }} />
+              <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: "300ms" }} />
+            </div>
+            <span className="text-green-700 dark:text-green-400 font-medium text-sm">{trend.sound}</span>
+          </div>
+        )}
+
+        {/* Action Buttons - Clean Layout */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
             <Button
               size="sm"
               variant="ghost"
               onClick={handleLike}
               className={cn(
-                "gap-1 text-xs",
+                "gap-1.5 text-xs h-8",
                 isLiked && "text-red-500"
               )}
               data-testid={`button-like-${trend.id}`}
             >
-              <Heart className={cn("w-3 h-3", isLiked && "fill-current")} />
-              {isLiked ? "Liked" : "Like"}
+              <Heart className={cn("w-3.5 h-3.5", isLiked && "fill-current")} />
+              {trend.engagement}K
             </Button>
             
             <Button
               size="sm"
               variant="ghost"
-              className="gap-1 text-xs"
+              className="gap-1.5 text-xs h-8"
               onClick={() => console.log("Share trend")}
               data-testid={`button-share-${trend.id}`}
             >
-              <Share className="w-3 h-3" />
+              <Share className="w-3.5 h-3.5" />
               Share
             </Button>
           </div>
@@ -149,24 +154,23 @@ export default function TrendCard({ trend, onSave, onRemix }: TrendCardProps) {
               variant="outline"
               onClick={handleSave}
               className={cn(
-                "gap-1 text-xs",
-                isSaved && "bg-primary text-primary-foreground"
+                "gap-1.5 text-xs h-8",
+                isSaved && "bg-primary text-primary-foreground border-primary"
               )}
               data-testid={`button-save-${trend.id}`}
             >
-              <Bookmark className={cn("w-3 h-3", isSaved && "fill-current")} />
+              <Bookmark className={cn("w-3.5 h-3.5", isSaved && "fill-current")} />
               {isSaved ? "Saved" : "Save"}
             </Button>
             
             <Button
               size="sm"
-              variant="default"
               onClick={handleRemix}
-              className="gap-1 text-xs"
+              className="gap-1.5 text-xs h-8 bg-gradient-to-r from-primary to-cyan-400"
               data-testid={`button-remix-${trend.id}`}
             >
-              <Shuffle className="w-3 h-3" />
-              Remix
+              <Shuffle className="w-3.5 h-3.5" />
+              Use This
             </Button>
           </div>
         </div>

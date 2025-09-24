@@ -64,19 +64,20 @@ interface IdeaLabFeedProps {
 export default function IdeaLabFeed({ onTrendSave, onTrendRemix }: IdeaLabFeedProps) {
   const [trends, setTrends] = useState(mockTrends);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
-  // Simulate auto-refresh of trends
-  useEffect(() => {
-    if (!autoRefreshEnabled) return;
-
-    const interval = setInterval(() => {
-      // Simulate new trends arriving
-      console.log("Auto-refreshing trends...");
-    }, 30000); // 30 seconds
-
-    return () => clearInterval(interval);
-  }, [autoRefreshEnabled]);
+  // Format time ago
+  const getTimeAgo = (date: Date): string => {
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return "Just now";
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    const hours = Math.floor(diffInMinutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -87,6 +88,7 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix }: IdeaLabFeedPr
     
     // Shuffle trends to simulate new content
     setTrends(prev => [...prev].sort(() => Math.random() - 0.5));
+    setLastUpdated(new Date());
     setIsRefreshing(false);
   };
 
@@ -101,66 +103,54 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix }: IdeaLabFeedPr
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      {/* Header */}
-      <div className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" />
-            <h1 className="text-lg font-bold">Idea Lab</h1>
+    <div className="min-h-screen bg-background">
+      {/* Clean Header */}
+      <div className="bg-gradient-to-br from-primary/5 to-cyan-400/5 px-4 py-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Sparkles className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold">Trending Ideas</h1>
+              <p className="text-sm text-muted-foreground">AI-powered content discovery</p>
+            </div>
           </div>
           
           <Button
-            size="sm"
-            variant="outline"
+            variant="default"
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="gap-2"
+            className="gap-2 bg-gradient-to-r from-primary to-cyan-400"
             data-testid="button-refresh-trends"
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
-            Refresh
+            {isRefreshing ? "Finding..." : "Refresh"}
           </Button>
         </div>
         
-        {/* AI Status */}
-        <div className="mt-2">
-          <ProcessingIndicator
-            status={isRefreshing ? "processing" : autoRefreshEnabled ? "processing" : "idle"}
-            message={
-              isRefreshing ? "Finding fresh trends..." :
-              autoRefreshEnabled ? "AI monitoring trends in real-time" :
-              "Trend monitoring paused"
-            }
-            progress={isRefreshing ? 75 : undefined}
-          />
+        {/* Stats Row */}
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <span className="text-sm text-muted-foreground">Live trending</span>
+          </div>
+          <div className="text-sm text-muted-foreground">
+            {trends.length} fresh ideas
+          </div>
+          <div className="text-sm text-muted-foreground">
+            Updated {getTimeAgo(lastUpdated)}
+          </div>
         </div>
       </div>
 
-      {/* Feed */}
-      <div className="px-4 pt-4 space-y-4">
-        {/* Auto-refresh toggle */}
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">
-            {trends.length} trending ideas for you
-          </span>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
-            className="text-xs"
-            data-testid="button-toggle-auto-refresh"
-          >
-            Auto-refresh: {autoRefreshEnabled ? "ON" : "OFF"}
-          </Button>
-        </div>
-
-        {/* Trend Cards */}
+      {/* Trend Feed */}
+      <div className="px-4 pt-6 pb-28 space-y-4">
         {trends.map((trend, index) => (
           <div 
             key={trend.id} 
-            className="animate-in slide-in-from-bottom-4 duration-300"
-            style={{ animationDelay: `${index * 100}ms` }}
+            className="animate-in slide-in-from-bottom-2 duration-300"
+            style={{ animationDelay: `${index * 50}ms` }}
           >
             <TrendCard
               trend={trend}
@@ -170,15 +160,15 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix }: IdeaLabFeedPr
           </div>
         ))}
 
-        {/* Load more placeholder */}
+        {/* Load More */}
         <div className="text-center py-8">
-          <p className="text-muted-foreground text-sm">
-            AI is analyzing more trends...
-          </p>
-          <div className="flex justify-center gap-1 mt-2">
-            <div className="w-2 h-2 bg-primary rounded-full animate-bounce" />
-            <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "100ms" }} />
-            <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "200ms" }} />
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-muted/50 rounded-full">
+            <div className="flex gap-1">
+              <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+              <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" style={{ animationDelay: "150ms" }} />
+              <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" style={{ animationDelay: "300ms" }} />
+            </div>
+            <span className="text-xs text-muted-foreground font-medium">AI discovering more trends...</span>
           </div>
         </div>
       </div>
