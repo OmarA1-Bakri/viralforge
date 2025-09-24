@@ -10,18 +10,21 @@
 
 ## Color Palette
 
-### Primary Colors (Dark Mode)
-- Background: 17 8% 5% (Deep charcoal)
-- Surface: 17 8% 8% (Elevated charcoal)
-- Primary Brand: 280 100% 65% (Vibrant purple - creative energy)
-- Text Primary: 0 0% 95% (Near white)
-- Text Secondary: 0 0% 70% (Muted gray)
+### ACTUAL IMPLEMENTED COLORS (from index.css)
 
-### Light Mode
+**Light Mode:**
 - Background: 0 0% 98% (Clean white)
-- Surface: 0 0% 95% (Subtle gray)
-- Primary Brand: 280 80% 50% (Deeper purple)
-- Text Primary: 0 0% 10% (Near black)
+- Card: 0 0% 95% (Subtle gray surface)
+- Primary: 280 100% 70% (Vibrant purple)
+- Text: 0 0% 10% (Near black)
+- Border: 0 0% 88% (Light gray borders)
+
+**Dark Mode:**
+- Background: 0 0% 3% (Deep black)
+- Card: 0 0% 8% (Dark charcoal surface) 
+- Primary: 180 100% 50% (Bright cyan/turquoise)
+- Text: 0 0% 98% (Near white)
+- Border: 17 8% 15% (Dark gray borders)
 
 ### Accent Colors
 - Success: 142 69% 45% (Growth green)
@@ -32,9 +35,9 @@
 - Hero backgrounds: Purple to deep blue gradients (280 100% 65% to 240 80% 40%)
 - Card overlays: Subtle purple fade for automation status indicators
 
-## Typography
-- **Primary**: Inter (Google Fonts) - Clean, modern readability
-- **Accent**: JetBrains Mono (Google Fonts) - For AI processing states and metrics
+## Typography (Implemented)
+- **Primary**: Open Sans - Clean, modern readability (from index.css --font-sans)
+- **Monospace**: Menlo - For technical data and processing states (from index.css --font-mono)
 - **Sizes**: text-sm, text-base, text-lg, text-xl for mobile hierarchy
 
 ## Layout System
