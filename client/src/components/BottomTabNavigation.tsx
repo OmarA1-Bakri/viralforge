@@ -1,36 +1,42 @@
-import { Lightbulb, Rocket, Video } from "lucide-react";
+import { Lightbulb, Rocket, Video, BarChart3 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface BottomTabNavigationProps {
-  activeTab: "idea-lab" | "launch-pad" | "multiplier";
-  onTabChange: (tab: "idea-lab" | "launch-pad" | "multiplier") => void;
+  activeTab: "dashboard" | "idea-lab" | "launch-pad" | "multiplier";
+  onTabChange: (tab: "dashboard" | "idea-lab" | "launch-pad" | "multiplier") => void;
 }
 
 export default function BottomTabNavigation({ activeTab, onTabChange }: BottomTabNavigationProps) {
   const tabs = [
     {
+      id: "dashboard" as const,
+      icon: BarChart3,
+      label: "Dashboard",
+      description: "Your Stats"
+    },
+    {
       id: "idea-lab" as const,
       icon: Lightbulb,
-      label: "Idea Lab",
-      description: "Trending Ideas"
+      label: "Ideas",
+      description: "Trending"
     },
     {
       id: "launch-pad" as const,
       icon: Rocket,
-      label: "Launch Pad",
-      description: "Optimize Content"
+      label: "Launch",
+      description: "Optimize"
     },
     {
       id: "multiplier" as const,
       icon: Video,
-      label: "Multiplier",
-      description: "Clip Videos"
+      label: "Multiply",
+      description: "Clip"
     }
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-lg border-t border-primary/20 px-4 py-2 z-50 shadow-2xl">
-      <div className="flex justify-around items-center max-w-md mx-auto">
+    <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-lg border-t border-primary/20 px-2 py-2 z-50 shadow-2xl">
+      <div className="flex justify-around items-center max-w-lg mx-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -41,7 +47,7 @@ export default function BottomTabNavigation({ activeTab, onTabChange }: BottomTa
               data-testid={`tab-${tab.id}`}
               onClick={() => onTabChange(tab.id)}
               className={cn(
-                "flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all duration-200 hover-elevate active-elevate-2",
+                "flex flex-col items-center gap-1 px-2 py-2 rounded-lg transition-all duration-200 hover-elevate active-elevate-2 min-w-0",
                 isActive 
                   ? "text-primary bg-primary/10 shadow-lg shadow-primary/20" 
                   : "text-muted-foreground hover:text-primary"
@@ -54,12 +60,12 @@ export default function BottomTabNavigation({ activeTab, onTabChange }: BottomTa
                 )} 
               />
               <span className={cn(
-                "text-xs font-medium transition-all duration-200",
+                "text-xs font-medium transition-all duration-200 truncate",
                 isActive ? "opacity-100" : "opacity-70"
               )}>
                 {tab.label}
               </span>
-              <span className="text-[10px] text-muted-foreground opacity-60">
+              <span className="text-[10px] text-muted-foreground opacity-60 truncate">
                 {tab.description}
               </span>
             </button>

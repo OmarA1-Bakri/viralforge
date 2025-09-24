@@ -7,16 +7,19 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 
 // Main components
 import BottomTabNavigation from "@/components/BottomTabNavigation";
+import CreatorDashboard from "@/components/CreatorDashboard";
 import IdeaLabFeed from "@/components/IdeaLabFeed";
 import LaunchPadAnalyzer from "@/components/LaunchPadAnalyzer";
 import MultiplierProcessor from "@/components/MultiplierProcessor";
 import NotFound from "@/pages/not-found";
 
 function MainApp() {
-  const [activeTab, setActiveTab] = useState<"idea-lab" | "launch-pad" | "multiplier">("idea-lab");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "idea-lab" | "launch-pad" | "multiplier">("dashboard");
 
   const renderContent = () => {
     switch (activeTab) {
+      case "dashboard":
+        return <CreatorDashboard />;
       case "idea-lab":
         return <IdeaLabFeed />;
       case "launch-pad":
@@ -24,7 +27,7 @@ function MainApp() {
       case "multiplier":
         return <MultiplierProcessor />;
       default:
-        return <IdeaLabFeed />;
+        return <CreatorDashboard />;
     }
   };
 
