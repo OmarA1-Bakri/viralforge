@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import ProcessingIndicator from "./ProcessingIndicator";
 import { Video, Link, Download, Clock, Scissors, Sparkles } from "lucide-react";
-import viralForgeAILogo from "@assets/1_1758687969902.png";
+import viralForgeAILogo from "@assets/viralforge_1758689165504.png";
 
 interface ProcessedClip {
   id: string;
@@ -155,7 +155,7 @@ export default function MultiplierProcessor() {
           <img 
             src={viralForgeAILogo} 
             alt="ViralForgeAI" 
-            className="w-8 h-8 rounded-full"
+            className="w-8 h-8 object-contain"
             data-testid="img-logo-multiplier"
           />
           <div>

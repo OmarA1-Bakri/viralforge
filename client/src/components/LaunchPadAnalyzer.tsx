@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import ScoreDisplay from "./ScoreDisplay";
 import ProcessingIndicator from "./ProcessingIndicator";
 import { Upload, Image, Zap, Eye, MessageSquare } from "lucide-react";
-import viralForgeAILogo from "@assets/1_1758687969902.png";
+import viralForgeAILogo from "@assets/viralforge_1758689165504.png";
 
 interface AnalysisResult {
   clickabilityScore: number;
@@ -115,7 +115,7 @@ export default function LaunchPadAnalyzer() {
             <img 
               src={viralForgeAILogo} 
               alt="ViralForgeAI" 
-              className="w-8 h-8 rounded-full"
+              className="w-8 h-8 object-contain"
               data-testid="img-logo-launchpad"
             />
             <div>

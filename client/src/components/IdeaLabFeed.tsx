@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw, Sparkles } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import viralForgeAILogo from "@assets/1_1758687969902.png";
+import viralForgeAILogo from "@assets/viralforge_1758689165504.png";
 
 // TikTok-first mock data - todo: replace with real API
 const mockTrends = [
@@ -156,7 +156,7 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix }: IdeaLabFeedPr
             <img 
               src={viralForgeAILogo} 
               alt="ViralForgeAI" 
-              className="w-8 h-8 rounded-full"
+              className="w-8 h-8 object-contain"
               data-testid="img-logo-idealab"
             />
             <div>

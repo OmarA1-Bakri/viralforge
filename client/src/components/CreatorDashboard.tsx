@@ -20,7 +20,7 @@ import {
   Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import viralForgeAILogo from "@assets/1_1758687969902.png";
+import viralForgeAILogo from "@assets/viralforge_1758689165504.png";
 
 // Mock data and formatNumber function are not provided in the original code,
 // assuming they are either defined elsewhere or should be removed if not used.
@@ -224,7 +224,7 @@ export default function CreatorDashboard() {
             <img 
               src={viralForgeAILogo} 
               alt="ViralForgeAI" 
-              className="w-8 h-8 rounded-full"
+              className="w-8 h-8 object-contain"
               data-testid="img-logo-dashboard"
             />
             <div>
