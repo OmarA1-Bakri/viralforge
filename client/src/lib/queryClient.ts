@@ -7,12 +7,23 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+// Get API base URL - defaults to current origin for web, configurable for mobile
+const getApiBaseUrl = () => {
+  // For Capacitor mobile apps, use environment variable or localhost
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  // For web deployment, use current origin
+  return window.location.origin;
+};
+
 export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  const fullUrl = url.startsWith('http') ? url : `${getApiBaseUrl()}${url}`;
+  const res = await fetch(fullUrl, {
     method,
     headers: data ? { "Content-Type": "application/json" } : {},
     body: data ? JSON.stringify(data) : undefined,
@@ -29,7 +40,9 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+    const url = queryKey.join("/") as string;
+    const fullUrl = url.startsWith('http') ? url : `${getApiBaseUrl()}${url}`;
+    const res = await fetch(fullUrl, {
       credentials: "include",
     });
 
