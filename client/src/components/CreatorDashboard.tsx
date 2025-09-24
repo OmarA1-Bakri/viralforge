@@ -338,9 +338,9 @@ export default function CreatorDashboard() {
               <Badge className="bg-blue-500 text-white">6-8 PM</Badge>
             </div>
             
-            <div className="flex items-center justify-between p-2 bg-orange-500/10 rounded-md border border-orange-500/20">
+            <div className="flex items-center justify-between p-2 bg-purple-500/10 rounded-md border border-purple-500/20">
               <span className="text-sm text-foreground">Top trending hashtag</span>
-              <Badge className="bg-orange-500 text-white">#viral</Badge>
+              <Badge className="bg-purple-500 text-white">#viral</Badge>
             </div>
           </div>
         </Card>
