@@ -400,7 +400,7 @@ export default function CreatorDashboard() {
         <Card className="p-4">
           <h2 className="font-semibold mb-3">Quick Actions</h2>
           <div className="grid grid-cols-2 gap-2">
-            <Button className="gap-2 bg-gradient-to-r from-primary to-accent hover:shadow-lg hover:shadow-primary/20" data-testid="quick-analyze">
+            <Button className="gap-2 bg-gradient-to-r from-primary to-accent text-black hover:shadow-lg hover:shadow-primary/20" data-testid="quick-analyze">
               <Rocket className="w-4 h-4" />
               Analyze New
             </Button>

@@ -50,7 +50,7 @@
 
   --primary: 181 96% 61%;
 
-  --primary-foreground: 0 0% 98%;
+  --primary-foreground: 0 0% 10%;
 
   --secondary: 0 0% 18%;
 
@@ -62,7 +62,7 @@
 
   --accent: 321 100% 68%;
 
-  --accent-foreground: 0 0% 100%;
+  --accent-foreground: 0 0% 10%;
 
   --destructive: 0 84% 60%;
 
@@ -168,7 +168,7 @@
 
   --primary: 181 96% 61%;
 
-  --primary-foreground: 0 0% 98%;
+  --primary-foreground: 0 0% 10%;
 
   --secondary: 0 0% 18%;
 
@@ -180,7 +180,7 @@
 
   --accent: 321 100% 68%;
 
-  --accent-foreground: 0 0% 90%;
+  --accent-foreground: 0 0% 10%;
 
   --destructive: 0 84% 60%;
 

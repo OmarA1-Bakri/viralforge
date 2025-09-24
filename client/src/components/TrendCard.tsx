@@ -45,7 +45,7 @@ export default function TrendCard({ trend, onSave, onRemix }: TrendCardProps) {
   const hotnessConfig = {
     hot: { label: "Hot", className: "bg-accent text-accent-foreground shadow-lg shadow-accent/30" },
     rising: { label: "Rising", className: "bg-primary text-primary-foreground shadow-lg shadow-primary/30" },
-    relevant: { label: "For You", className: "bg-gradient-to-r from-primary to-accent text-white shadow-lg shadow-primary/30" }
+    relevant: { label: "For You", className: "bg-gradient-to-r from-primary to-accent text-black shadow-lg shadow-primary/30" }
   };
 
   return (
@@ -166,7 +166,7 @@ export default function TrendCard({ trend, onSave, onRemix }: TrendCardProps) {
             <Button
               size="sm"
               onClick={handleRemix}
-              className="gap-1.5 text-xs h-8 bg-gradient-to-r from-primary to-accent hover:shadow-lg hover:shadow-primary/20"
+              className="gap-1.5 text-xs h-8 bg-gradient-to-r from-primary to-accent text-black hover:shadow-lg hover:shadow-primary/20"
               data-testid={`button-remix-${trend.id}`}
             >
               <Shuffle className="w-3.5 h-3.5" />

@@ -121,7 +121,7 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix }: IdeaLabFeedPr
             variant="default"
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="gap-2 bg-gradient-to-r from-primary to-accent hover:shadow-lg hover:shadow-primary/20"
+            className="gap-2 bg-gradient-to-r from-primary to-accent text-black hover:shadow-lg hover:shadow-primary/20"
             data-testid="button-refresh-trends"
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
