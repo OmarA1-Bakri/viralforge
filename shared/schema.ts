@@ -158,7 +158,6 @@ export const insertVideoClipSchema = createInsertSchema(videoClips).omit({
 
 export const insertUserAnalyticsSchema = createInsertSchema(userAnalytics).omit({
   id: true,
-  recordedAt: true,
 });
 
 export const insertUserTrendsSchema = createInsertSchema(userTrends).omit({

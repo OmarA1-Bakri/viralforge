@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { openRouterService } from "./ai/openrouter";
+import { analyticsService } from "./analytics";
 import { insertTrendSchema, insertUserTrendsSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -424,6 +425,97 @@ export async function registerRoutes(app: Express): Promise<Server> {
       timestamp: new Date().toISOString(),
       service: "CreatorKit AI Backend"
     });
+  });
+
+  // Dashboard Routes - Analytics and Performance Tracking
+  
+  // Get dashboard statistics
+  app.get('/api/dashboard/stats', async (req, res) => {
+    try {
+      const userId = 'demo-user'; // TODO: Get from authenticated user
+      const timeframe = (req.query.timeframe as 'week' | 'month' | 'year') || 'week';
+      
+      console.log(`📊 Fetching dashboard stats for ${userId} (${timeframe})...`);
+      
+      // Ensure mock analytics data exists for demo
+      await analyticsService.seedAnalyticsIfNeeded(userId);
+      
+      const stats = await analyticsService.calculateDashboardStats(userId, timeframe);
+      
+      console.log('✅ Dashboard stats calculated successfully');
+      
+      res.json({
+        success: true,
+        stats,
+        timeframe
+      });
+    } catch (error) {
+      console.error('Error fetching dashboard stats:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to fetch dashboard statistics' 
+      });
+    }
+  });
+
+  // Get recent user activity for dashboard
+  app.get('/api/dashboard/activity', async (req, res) => {
+    try {
+      const userId = 'demo-user'; // TODO: Get from authenticated user
+      const limit = parseInt(req.query.limit as string) || 20;
+      
+      console.log(`📋 Fetching recent activity for ${userId}...`);
+      
+      const activities = await storage.getUserActivity(userId, limit);
+      
+      res.json({
+        success: true,
+        activities,
+        total: activities.length
+      });
+    } catch (error) {
+      console.error('Error fetching user activity:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to fetch user activity' 
+      });
+    }
+  });
+
+  // Create analytics record (for tracking real metrics)
+  app.post('/api/analytics/record', async (req, res) => {
+    try {
+      const userId = 'demo-user'; // TODO: Get from authenticated user
+      const { contentId, platform, views, likes, shares, comments, clickRate } = req.body;
+      
+      if (!platform) {
+        return res.status(400).json({ error: 'Platform is required' });
+      }
+      
+      const analytics = await storage.createUserAnalytics({
+        userId,
+        contentId: contentId || null,
+        platform,
+        views: views || 0,
+        likes: likes || 0,
+        shares: shares || 0,
+        comments: comments || 0,
+        clickRate: clickRate || null
+      });
+      
+      console.log(`✅ Analytics recorded for content ${contentId} on ${platform}`);
+      
+      res.json({
+        success: true,
+        analytics
+      });
+    } catch (error) {
+      console.error('Error recording analytics:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to record analytics' 
+      });
+    }
   });
 
   const httpServer = createServer(app);

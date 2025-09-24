@@ -11,6 +11,8 @@ import {
   type InsertContentAnalysis,
   type VideoClip,
   type InsertVideoClip,
+  type UserAnalytics,
+  type InsertUserAnalytics,
   type ProcessingJob,
   type InsertProcessingJob,
   type UserActivity,
@@ -58,15 +60,26 @@ export interface IStorage {
   // User activity
   createUserActivity(activity: InsertUserActivity): Promise<UserActivity>;
   getUserActivity(userId: string, limit?: number): Promise<UserActivity[]>;
+  
+  // Analytics methods
+  getUserAnalytics(userId: string): Promise<UserAnalytics[]>;
+  createUserAnalytics(insertAnalytics: InsertUserAnalytics): Promise<UserAnalytics>;
+  getContentAnalysisByUserId(userId: string): Promise<ContentAnalysis[]>;
+  getVideoClipsByUserId(userId: string): Promise<VideoClip[]>;
+  getUserTrendInteractions(userId: string): Promise<UserTrends[]>;
+  getClipById(id: number): Promise<VideoClip | undefined>;
+  updateVideoClip(id: number, updates: Partial<InsertVideoClip>): Promise<VideoClip | undefined>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
   private trends: Map<number, Trend>;
   private userTrends: Map<string, UserTrends>; // key: `${userId}-${trendId}-${action}`
+  private userTrendInteractions: Map<number, UserTrends>;
   private userContent: Map<number, UserContent>;
   private contentAnalysis: Map<number, ContentAnalysis>;
   private videoClips: Map<number, VideoClip>;
+  private userAnalytics: Map<number, UserAnalytics>;
   private processingJobs: Map<number, ProcessingJob>;
   private userActivity: Map<number, UserActivity>;
   
@@ -74,6 +87,7 @@ export class MemStorage implements IStorage {
   private nextContentId = 1;
   private nextAnalysisId = 1;
   private nextClipId = 1;
+  private nextUserAnalyticsId = 1;
   private nextJobId = 1;
   private nextActivityId = 1;
 
@@ -81,9 +95,11 @@ export class MemStorage implements IStorage {
     this.users = new Map();
     this.trends = new Map();
     this.userTrends = new Map();
+    this.userTrendInteractions = new Map();
     this.userContent = new Map();
     this.contentAnalysis = new Map();
     this.videoClips = new Map();
+    this.userAnalytics = new Map();
     this.processingJobs = new Map();
     this.userActivity = new Map();
   }
@@ -314,6 +330,44 @@ export class MemStorage implements IStorage {
       .filter(a => a.userId === userId)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, limit);
+  }
+
+  // Analytics aggregation methods
+  async getUserAnalytics(userId: string): Promise<UserAnalytics[]> {
+    return Array.from(this.userAnalytics.values())
+      .filter(a => a.userId === userId);
+  }
+
+  async createUserAnalytics(insertAnalytics: InsertUserAnalytics): Promise<UserAnalytics> {
+    const id = this.nextUserAnalyticsId++;
+    const analytics: UserAnalytics = {
+      id,
+      ...insertAnalytics,
+      recordedAt: insertAnalytics.recordedAt || new Date(),
+    };
+    this.userAnalytics.set(id, analytics);
+    return analytics;
+  }
+
+  async getContentAnalysisByUserId(userId: string): Promise<ContentAnalysis[]> {
+    const userContent = await this.getUserContent(userId);
+    const contentIds = userContent.map(c => c.id);
+    
+    return Array.from(this.contentAnalysis.values())
+      .filter(a => contentIds.includes(a.contentId));
+  }
+
+  async getVideoClipsByUserId(userId: string): Promise<VideoClip[]> {
+    const userContent = await this.getUserContent(userId);
+    const contentIds = userContent.map(c => c.id);
+    
+    return Array.from(this.videoClips.values())
+      .filter(c => contentIds.includes(c.contentId));
+  }
+
+  async getUserTrendInteractions(userId: string): Promise<UserTrends[]> {
+    return Array.from(this.userTrends.values())
+      .filter(ut => ut.userId === userId);
   }
 }
 
