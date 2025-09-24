@@ -330,7 +330,7 @@ export default function CreatorDashboard() {
               </div>
               <Progress 
                 value={(stats.avgViralScore / 10) * 100} 
-                className="h-2 bg-muted [&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-cyan-400" 
+                className="h-2 bg-muted [&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-accent" 
               />
             </div>
           </Card>
@@ -354,9 +354,9 @@ export default function CreatorDashboard() {
               <Badge className="bg-blue-500 text-white">6-8 PM</Badge>
             </div>
 
-            <div className="flex items-center justify-between p-2 bg-purple-500/10 rounded-md border border-purple-500/20">
+            <div className="flex items-center justify-between p-2 bg-primary/10 rounded-md border border-primary/20">
               <span className="text-sm text-foreground">Top trending hashtag</span>
-              <Badge className="bg-purple-500 text-white">#viral</Badge>
+              <Badge className="bg-primary text-primary-foreground">#viral</Badge>
             </div>
           </div>
         </Card>
@@ -400,7 +400,7 @@ export default function CreatorDashboard() {
         <Card className="p-4">
           <h2 className="font-semibold mb-3">Quick Actions</h2>
           <div className="grid grid-cols-2 gap-2">
-            <Button className="gap-2 bg-gradient-to-r from-primary to-cyan-400 hover:from-primary/90 hover:to-cyan-400/90" data-testid="quick-analyze">
+            <Button className="gap-2 bg-gradient-to-r from-primary to-accent" data-testid="quick-analyze">
               <Rocket className="w-4 h-4" />
               Analyze New
             </Button>

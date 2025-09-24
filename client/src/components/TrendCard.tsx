@@ -45,11 +45,11 @@ export default function TrendCard({ trend, onSave, onRemix }: TrendCardProps) {
   const hotnessConfig = {
     hot: { label: "Hot", className: "bg-gradient-to-r from-red-500 to-orange-500 text-white shadow-lg shadow-red-500/30" },
     rising: { label: "Rising", className: "bg-gradient-to-r from-orange-500 to-yellow-500 text-white shadow-lg shadow-orange-500/30" },
-    relevant: { label: "For You", className: "bg-gradient-to-r from-primary to-cyan-400 text-white shadow-lg shadow-primary/30" }
+    relevant: { label: "For You", className: "bg-gradient-to-r from-primary to-accent text-white shadow-lg shadow-primary/30" }
   };
 
   return (
-    <Card className="relative overflow-hidden hover-elevate transition-all duration-300 group">
+    <Card className="relative overflow-hidden hover-elevate transition-all duration-300 group border-2 border-primary/20 hover:border-primary/40">
       {/* Hotness indicator */}
       <div className="absolute top-4 right-4 z-10">
         <Badge className={cn("text-xs font-medium", hotnessConfig[trend.hotness].className)}>
@@ -80,7 +80,7 @@ export default function TrendCard({ trend, onSave, onRemix }: TrendCardProps) {
         </div>
 
         {/* AI Suggestion - Cleaner Design */}
-        <div className="bg-gradient-to-br from-primary/8 to-cyan-400/8 rounded-lg p-4 mb-4 border border-primary/20">
+        <div className="bg-gradient-to-br from-primary/8 to-accent/8 rounded-lg p-4 mb-4 border border-primary/20">
           <div className="flex items-start gap-3">
             <div className="p-1.5 bg-primary/20 rounded-full mt-0.5">
               <Sparkles className="w-3 h-3 text-primary" />
@@ -95,7 +95,7 @@ export default function TrendCard({ trend, onSave, onRemix }: TrendCardProps) {
         {/* Hashtags - Prettier Display */}
         <div className="flex flex-wrap gap-2 mb-4">
           {trend.hashtags.slice(0, 3).map((tag, index) => (
-            <span key={index} className="inline-flex items-center px-2 py-1 bg-purple-500/10 text-purple-500 rounded-md text-xs font-medium border border-purple-500/20">
+            <span key={index} className="inline-flex items-center px-2 py-1 bg-primary/10 text-primary rounded-md text-xs font-medium border border-primary/20">
               #{tag}
             </span>
           ))}
@@ -166,7 +166,7 @@ export default function TrendCard({ trend, onSave, onRemix }: TrendCardProps) {
             <Button
               size="sm"
               onClick={handleRemix}
-              className="gap-1.5 text-xs h-8 bg-gradient-to-r from-primary to-cyan-400"
+              className="gap-1.5 text-xs h-8 bg-gradient-to-r from-primary to-accent"
               data-testid={`button-remix-${trend.id}`}
             >
               <Shuffle className="w-3.5 h-3.5" />

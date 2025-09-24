@@ -105,7 +105,7 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix }: IdeaLabFeedPr
   return (
     <div className="min-h-screen bg-background">
       {/* Clean Header */}
-      <div className="bg-gradient-to-br from-primary/5 to-cyan-400/5 px-4 py-6">
+      <div className="bg-gradient-to-br from-primary/5 to-accent/5 px-4 py-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-lg">
@@ -121,7 +121,7 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix }: IdeaLabFeedPr
             variant="default"
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="gap-2 bg-gradient-to-r from-primary to-cyan-400"
+            className="gap-2 bg-gradient-to-r from-primary to-accent"
             data-testid="button-refresh-trends"
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
