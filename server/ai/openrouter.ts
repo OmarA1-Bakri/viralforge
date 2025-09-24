@@ -6,7 +6,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENROUTER_API_KEY,
   defaultHeaders: {
     "HTTP-Referer": process.env.REPLIT_DOMAINS || "http://localhost:5000",
-    "X-Title": "CreatorKit AI",
+    "X-Title": "ViralForgeAI",
   }
 });
 
@@ -133,7 +133,7 @@ ${request.category ? `Focus on the ${request.category} category.` : ''}
 ${request.contentType ? `Content should be ${request.contentType} style.` : ''}
 ${request.targetAudience ? `Target audience: ${request.targetAudience}.` : ''}
 
-Respond with a JSON array of 8-12 trend objects. Each trend should have:
+Respond with a JSON object containing a "trends" array of 8-12 trend objects: { "trends": [...] }. Each trend should have:
 - title: Catchy, trend-worthy title
 - description: Brief explanation of the trend
 - category: Content category (e.g., "Comedy", "Education", "Lifestyle", "Tech")

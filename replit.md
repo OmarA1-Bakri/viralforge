@@ -1,8 +1,8 @@
-# CreatorKit AI - Mobile-First AI Automation Suite
+# ViralForgeAI - Mobile-First AI Automation Suite
 
 ## Project Overview
 
-CreatorKit AI is a **production-ready mobile-first AI automation suite** for TikTok and YouTube creators featuring four core modules:
+ViralForgeAI is a **production-ready mobile-first AI automation suite** for TikTok and YouTube creators featuring four core modules:
 
 🎯 **Idea Lab** - AI-powered trending content discovery with engagement analytics  
 🚀 **Launch Pad** - Thumbnail/title optimization with roast mode feedback  

@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import ScoreDisplay from "./ScoreDisplay";
 import ProcessingIndicator from "./ProcessingIndicator";
 import { Upload, Image, Zap, Eye, MessageSquare } from "lucide-react";
+import viralForgeAILogo from "@assets/1_1758687969902.png";
 
 interface AnalysisResult {
   clickabilityScore: number;
@@ -110,9 +111,17 @@ export default function LaunchPadAnalyzer() {
       {/* Header */}
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Zap className="w-5 h-5 text-primary" />
-            <h1 className="text-lg font-bold">Launch Pad</h1>
+          <div className="flex items-center gap-3">
+            <img 
+              src={viralForgeAILogo} 
+              alt="ViralForgeAI" 
+              className="w-8 h-8 rounded-full"
+              data-testid="img-logo-launchpad"
+            />
+            <div>
+              <h1 className="text-lg font-bold">ViralForgeAI</h1>
+              <p className="text-xs text-muted-foreground">Launch Pad</p>
+            </div>
           </div>
           
           {/* Roast Mode Toggle */}

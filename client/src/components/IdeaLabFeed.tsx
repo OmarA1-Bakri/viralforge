@@ -3,6 +3,9 @@ import TrendCard from "./TrendCard";
 import ProcessingIndicator from "./ProcessingIndicator";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Sparkles } from "lucide-react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import viralForgeAILogo from "@assets/1_1758687969902.png";
 
 // TikTok-first mock data - todo: replace with real API
 const mockTrends = [
@@ -74,9 +77,47 @@ interface IdeaLabFeedProps {
 }
 
 export default function IdeaLabFeed({ onTrendSave, onTrendRemix }: IdeaLabFeedProps) {
-  const [trends, setTrends] = useState(mockTrends);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+
+  // Fetch existing trends from database
+  const { data: existingTrends, isLoading: isLoadingTrends } = useQuery({
+    queryKey: ['/api/trends', { platform: 'tiktok' }],
+    enabled: true,
+    queryFn: async () => {
+      const response = await fetch('/api/trends?platform=tiktok');
+      return response.json();
+    }
+  });
+
+  // AI-powered trend discovery mutation
+  const discoverTrendsMutation = useMutation({
+    mutationFn: async () => {
+      console.log("🎯 Discovering new TikTok trends via AI...");
+      const response = await apiRequest('/api/trends/discover', {
+        method: 'POST',
+        body: JSON.stringify({
+          platform: 'tiktok',
+          category: 'All',
+          contentType: 'viral',
+          targetAudience: 'creators'
+        })
+      });
+      console.log("✅ AI trend discovery completed");
+      return response.trends;
+    },
+    onSuccess: () => {
+      // Invalidate and refetch trends with exact key
+      queryClient.invalidateQueries({ queryKey: ['/api/trends', { platform: 'tiktok' }] });
+      setLastUpdated(new Date());
+    }
+  });
+
+  const trends = existingTrends?.trends || [];
+  const isRefreshing = discoverTrendsMutation.isPending;
+  
+  // Show mock data only if no API key is configured and no trends exist
+  const showMockData = trends.length === 0 && !isLoadingTrends && !isRefreshing;
+  const displayTrends = showMockData ? mockTrends : trends;
 
   // Format time ago
   const getTimeAgo = (date: Date): string => {
@@ -92,16 +133,8 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix }: IdeaLabFeedPr
   };
 
   const handleRefresh = async () => {
-    setIsRefreshing(true);
-    console.log("Manually refreshing trends...");
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Shuffle trends to simulate new content
-    setTrends(prev => [...prev].sort(() => Math.random() - 0.5));
-    setLastUpdated(new Date());
-    setIsRefreshing(false);
+    console.log("🔄 Manually refreshing TikTok trends via AI...");
+    discoverTrendsMutation.mutate();
   };
 
   const handleTrendSave = (id: string) => {
@@ -120,11 +153,14 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix }: IdeaLabFeedPr
       <div className="px-4 py-6 border-b border-border/30 bg-transparent">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Sparkles className="w-6 h-6 text-primary" />
-            </div>
+            <img 
+              src={viralForgeAILogo} 
+              alt="ViralForgeAI" 
+              className="w-8 h-8 rounded-full"
+              data-testid="img-logo-idealab"
+            />
             <div>
-              <h1 className="text-xl font-bold">Trending Ideas</h1>
+              <h1 className="text-xl font-bold">ViralForgeAI</h1>
               <p className="text-sm text-muted-foreground">AI-powered TikTok content discovery</p>
             </div>
           </div>

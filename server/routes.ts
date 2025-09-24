@@ -153,10 +153,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Analyze content (title and/or thumbnail)
   app.post('/api/content/analyze', async (req, res) => {
     try {
-      const { title, thumbnailUrl, platform, roastMode } = req.body;
+      const { title, thumbnailDescription, platform, roastMode } = req.body;
       
-      if (!title && !thumbnailUrl) {
-        return res.status(400).json({ error: 'Either title or thumbnailUrl is required' });
+      if (!title && !thumbnailDescription) {
+        return res.status(400).json({ error: 'Either title or thumbnailDescription is required' });
       }
       
       if (!platform) {
@@ -170,14 +170,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: 'demo-user', // TODO: Get from auth
         platform,
         title: title || null,
-        thumbnailUrl: thumbnailUrl || null,
+        thumbnailUrl: thumbnailDescription || null,
         status: 'analyzing'
       });
 
       // Analyze content using AI
       const analysis = await openRouterService.analyzeContent({
         title,
-        thumbnailUrl,
+        thumbnailDescription,
         platform: platform as 'tiktok' | 'youtube' | 'instagram',
         roastMode: roastMode || false
       });

@@ -20,6 +20,7 @@ import {
   Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import viralForgeAILogo from "@assets/1_1758687969902.png";
 
 // Mock data and formatNumber function are not provided in the original code,
 // assuming they are either defined elsewhere or should be removed if not used.
@@ -219,9 +220,17 @@ export default function CreatorDashboard() {
       {/* Header */}
       <div className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-primary" />
-            <h1 className="text-lg font-bold">Dashboard</h1>
+          <div className="flex items-center gap-3">
+            <img 
+              src={viralForgeAILogo} 
+              alt="ViralForgeAI" 
+              className="w-8 h-8 rounded-full"
+              data-testid="img-logo-dashboard"
+            />
+            <div>
+              <h1 className="text-lg font-bold">ViralForgeAI</h1>
+              <p className="text-xs text-muted-foreground">Dashboard</p>
+            </div>
           </div>
 
           {/* Time Filter */}
