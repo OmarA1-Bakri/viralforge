@@ -30,8 +30,8 @@ export default function ProcessingIndicator({
       icon: Loader2,
       iconClassName: "text-primary animate-spin",
       badgeVariant: "default" as const,
-      badgeClassName: "bg-primary text-primary-foreground",
-      label: "AI Working..."
+      badgeClassName: "bg-gradient-to-r from-primary to-purple-500 text-white shadow-lg shadow-primary/30",
+      label: "🤖 AI Working..."
     },
     completed: {
       icon: CheckCircle,

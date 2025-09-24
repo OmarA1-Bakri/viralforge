@@ -43,13 +43,13 @@ export default function TrendCard({ trend, onSave, onRemix }: TrendCardProps) {
   };
 
   const hotnessConfig = {
-    hot: { label: "Hot", className: "bg-destructive text-destructive-foreground" },
-    rising: { label: "Rising", className: "bg-orange-500 text-white" },
-    relevant: { label: "For You", className: "bg-primary text-primary-foreground" }
+    hot: { label: "🔥 Hot", className: "bg-gradient-to-r from-red-500 to-pink-500 text-white shadow-lg" },
+    rising: { label: "📈 Rising", className: "bg-gradient-to-r from-orange-500 to-yellow-500 text-white shadow-lg" },
+    relevant: { label: "✨ For You", className: "bg-gradient-to-r from-primary to-purple-400 text-white shadow-lg" }
   };
 
   return (
-    <Card className="relative overflow-hidden bg-gradient-to-br from-card to-card/90 border-card-border">
+    <Card className="relative overflow-hidden bg-gradient-to-br from-card to-card/90 border-card-border hover-elevate active-elevate-2 transition-all duration-200">
       {/* Hotness indicator */}
       <div className="absolute top-3 right-3 z-10">
         <Badge className={cn("text-xs", hotnessConfig[trend.hotness].className)}>
@@ -87,21 +87,21 @@ export default function TrendCard({ trend, onSave, onRemix }: TrendCardProps) {
         </div>
 
         {/* AI Suggestion */}
-        <div className="bg-accent/50 rounded-md p-3 border border-accent">
+        <div className="bg-gradient-to-r from-primary/20 to-purple-500/20 rounded-md p-3 border border-primary/30">
           <div className="flex items-start gap-2">
-            <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0 animate-pulse" />
+            <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0 animate-pulse shadow-md shadow-primary/50" />
             <div>
-              <p className="text-sm font-medium text-accent-foreground">AI Suggestion</p>
-              <p className="text-sm text-muted-foreground mt-1">{trend.suggestion}</p>
+              <p className="text-sm font-medium text-primary">🤖 AI Suggestion</p>
+              <p className="text-sm text-foreground mt-1">{trend.suggestion}</p>
             </div>
           </div>
         </div>
 
         {/* Sound/Audio */}
         {trend.sound && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-md p-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span>Trending Sound: {trend.sound}</span>
+          <div className="flex items-center gap-2 text-xs bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-md p-2 border border-green-500/30">
+            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-md shadow-green-400/50" />
+            <span className="text-green-400 font-medium">🎵 {trend.sound}</span>
           </div>
         )}
 

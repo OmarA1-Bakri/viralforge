@@ -29,7 +29,7 @@ export default function BottomTabNavigation({ activeTab, onTabChange }: BottomTa
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-card-border px-4 py-2 z-50">
+    <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-lg border-t border-primary/20 px-4 py-2 z-50 shadow-2xl">
       <div className="flex justify-around items-center max-w-md mx-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -43,8 +43,8 @@ export default function BottomTabNavigation({ activeTab, onTabChange }: BottomTa
               className={cn(
                 "flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-all duration-200 hover-elevate active-elevate-2",
                 isActive 
-                  ? "text-primary" 
-                  : "text-muted-foreground"
+                  ? "text-primary bg-primary/10 shadow-lg shadow-primary/20" 
+                  : "text-muted-foreground hover:text-primary"
               )}
             >
               <Icon 
