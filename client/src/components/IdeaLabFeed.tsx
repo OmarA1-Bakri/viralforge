@@ -105,7 +105,7 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix }: IdeaLabFeedPr
   return (
     <div className="min-h-screen bg-background">
       {/* Clean Header */}
-      <div className="bg-gradient-to-br from-primary/5 to-accent/5 px-4 py-6">
+      <div className="px-4 py-6 border-b border-border/30 bg-transparent">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-lg">

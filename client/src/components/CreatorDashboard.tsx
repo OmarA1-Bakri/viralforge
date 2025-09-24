@@ -344,19 +344,19 @@ export default function CreatorDashboard() {
           </div>
 
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-2 bg-green-500/10 rounded-md border border-green-500/20">
+            <div className="flex items-center justify-between p-2 rounded-md border border-border/30 bg-transparent">
               <span className="text-sm text-foreground">Best performing content type</span>
-              <Badge className="bg-green-500 text-white">Pet + Dance</Badge>
+              <Badge variant="outline">Pet + Dance</Badge>
             </div>
 
-            <div className="flex items-center justify-between p-2 bg-blue-500/10 rounded-md border border-blue-500/20">
+            <div className="flex items-center justify-between p-2 rounded-md border border-border/30 bg-transparent">
               <span className="text-sm text-foreground">Optimal posting time</span>
-              <Badge className="bg-blue-500 text-white">6-8 PM</Badge>
+              <Badge variant="outline">6-8 PM</Badge>
             </div>
 
-            <div className="flex items-center justify-between p-2 bg-primary/10 rounded-md border border-primary/20">
+            <div className="flex items-center justify-between p-2 rounded-md border border-border/30 bg-transparent">
               <span className="text-sm text-foreground">Top trending hashtag</span>
-              <Badge className="bg-primary text-primary-foreground">#viral</Badge>
+              <Badge variant="outline">#viral</Badge>
             </div>
           </div>
         </Card>

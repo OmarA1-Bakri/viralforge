@@ -1,0 +1,92 @@
+Got it — thanks for sharing the screenshots and your logo. I’ll break this down into a **design system proposal** that aligns the dark UI of your app with your logo’s cyan + pink palette, while making the whole interface more consistent and modern.
+
+---
+
+### 🎨 Color Palette (Dark Theme + Accents)
+
+* **Backgrounds**
+
+  * Primary: `#0E0E0E` (deep charcoal black, avoids flat pure black)
+  * Secondary panels/cards: `#1A1A1A` (slightly lighter for separation)
+  * Dividers/lines: `#2A2A2A` (low-contrast greys to keep it sleek)
+
+* **Typography**
+
+  * Primary text: `#FFFFFF` (white, 90% opacity for readability)
+  * Secondary text: `#A0A0A0` (soft grey, avoids too much contrast)
+
+* **Accents (from logo)**
+
+  * Cyan: `#4EE2E8` (used for highlights, links, progress bars)
+  * Pink: `#FF5DBB` (used for key actions like buttons, trending badges)
+  * Supporting Neutral: `#2D2D2D` (hover states, card borders)
+
+* **States**
+
+  * Success: `#4EE2E8` (cyan doubles as a positive/success marker)
+  * Warning: `#FFC857` (warm yellow, minimal use)
+  * Error: `#FF5C70` (soft red that pairs well with pink)
+
+---
+
+### 🔘 Component Styling
+
+* **Cards / Panels**
+
+  * Background: `#1A1A1A`
+  * Rounded corners: `12px`
+  * Shadow: subtle cyan/pink glow for hover states
+
+* **Buttons**
+
+  * Primary CTA: Gradient blend `linear-gradient(135deg, #4EE2E8, #FF5DBB)`
+  * Secondary: Solid `#2D2D2D` with white text
+  * Hover: Slight scale + glow matching cyan/pink
+
+* **Icons & Highlights**
+
+  * Use cyan (`#4EE2E8`) for interactive icons
+  * Use pink (`#FF5DBB`) for "hot" or "trending" badges
+  * Keep all other icons in monochrome white/grey
+
+---
+
+### 📊 Dashboard Alignment
+
+Looking at your current app:
+
+* **Stats (Views, Likes, CTR, etc.)**
+
+  * Replace the current teal/green accent with cyan (`#4EE2E8`) consistently
+  * Use pink (`#FF5DBB`) only for highlighting **growth/positive trends**
+  * Keep % change badges in colored pills with softer background:
+
+    * +positive = Cyan pill (`#132D2E` bg, cyan text)
+    * -negative = Pink pill (`#2E1427` bg, pink text)
+
+* **Performance Insights**
+
+  * Instead of green highlights → use **cyan** (aligned with success)
+  * Trending hashtags: pill badge with cyan border + pink text inside
+
+---
+
+### ✨ Example Mappings
+
+* Current "Hot" (orange) badge → **Pink (`#FF5DBB`)**
+* Current "Rising" (yellow) badge → **Cyan (`#4EE2E8`)**
+* Current green "Performance insights" pill → **Cyan**
+
+---
+
+### 🌐 Overall Vibe
+
+This keeps the **dark pro UI**, but applies your **logo’s cyan + pink identity** across highlights, badges, and CTAs. The app will feel:
+
+* Sleek (black + grey base)
+* Energetic (cyan for active/highlight)
+* Playful but modern (pink for momentum/trending)
+
+---
+
+👉 Do you want me to **mock this into a visual theme guide** (hex palette + component preview) so you can hand it straight to your devs/designers?

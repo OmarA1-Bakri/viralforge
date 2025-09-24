@@ -49,7 +49,7 @@ export default function TrendCard({ trend, onSave, onRemix }: TrendCardProps) {
   };
 
   return (
-    <Card className="relative overflow-hidden hover-elevate transition-all duration-300 group border-2 border-primary/20 hover:border-primary/40">
+    <Card className="relative overflow-hidden hover-elevate transition-all duration-300 group border border-border/50 hover:border-primary/30 bg-transparent">
       {/* Hotness indicator */}
       <div className="absolute top-4 right-4 z-10">
         <Badge className={cn("text-xs font-medium", hotnessConfig[trend.hotness].className)}>
@@ -80,7 +80,7 @@ export default function TrendCard({ trend, onSave, onRemix }: TrendCardProps) {
         </div>
 
         {/* AI Suggestion - Cleaner Design */}
-        <div className="bg-gradient-to-br from-primary/8 to-accent/8 rounded-lg p-4 mb-4 border border-primary/20">
+        <div className="rounded-lg p-4 mb-4 border border-border/30 bg-transparent">
           <div className="flex items-start gap-3">
             <div className="p-1.5 bg-primary/20 rounded-full mt-0.5">
               <Sparkles className="w-3 h-3 text-primary" />
@@ -95,7 +95,7 @@ export default function TrendCard({ trend, onSave, onRemix }: TrendCardProps) {
         {/* Hashtags - Prettier Display */}
         <div className="flex flex-wrap gap-2 mb-4">
           {trend.hashtags.slice(0, 3).map((tag, index) => (
-            <span key={index} className="inline-flex items-center px-2 py-1 bg-primary/10 text-primary rounded-md text-xs font-medium border border-primary/20">
+            <span key={index} className="inline-flex items-center px-2 py-1 text-primary rounded-md text-xs font-medium border border-border/30 bg-transparent">
               #{tag}
             </span>
           ))}
@@ -108,14 +108,14 @@ export default function TrendCard({ trend, onSave, onRemix }: TrendCardProps) {
 
         {/* Sound Track */}
         {trend.sound && (
-          <div className="flex items-center gap-2 bg-green-500/10 rounded-lg p-3 mb-4 border border-green-500/20">
+          <div className="flex items-center gap-2 rounded-lg p-3 mb-4 border border-border/30 bg-transparent">
             <div className="flex gap-0.5">
-              <div className="w-1 h-3 bg-green-500 rounded-full animate-pulse" />
-              <div className="w-1 h-2 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: "100ms" }} />
-              <div className="w-1 h-4 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: "200ms" }} />
-              <div className="w-1 h-1 bg-green-500 rounded-full animate-pulse" style={{ animationDelay: "300ms" }} />
+              <div className="w-1 h-3 bg-primary rounded-full animate-pulse" />
+              <div className="w-1 h-2 bg-primary rounded-full animate-pulse" style={{ animationDelay: "100ms" }} />
+              <div className="w-1 h-4 bg-primary rounded-full animate-pulse" style={{ animationDelay: "200ms" }} />
+              <div className="w-1 h-1 bg-primary rounded-full animate-pulse" style={{ animationDelay: "300ms" }} />
             </div>
-            <span className="text-green-700 dark:text-green-400 font-medium text-sm">{trend.sound}</span>
+            <span className="text-muted-foreground font-medium text-sm">{trend.sound}</span>
           </div>
         )}
 
