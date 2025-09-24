@@ -34,7 +34,7 @@ function MainApp() {
   return (
     <div className="min-h-screen bg-background">
       {/* Main Content */}
-      <main className="relative">
+      <main className="relative pb-24">
         {renderContent()}
       </main>
 
