@@ -59,7 +59,7 @@ export interface IStorage {
   
   // User activity
   createUserActivity(activity: InsertUserActivity): Promise<UserActivity>;
-  getUserActivity(userId: string, limit?: number): Promise<UserActivity[]>;
+  getUserActivity(userId: string, limit?: number, timeframe?: string): Promise<UserActivity[]>;
   
   // Analytics methods
   getUserAnalytics(userId: string): Promise<UserAnalytics[]>;
@@ -325,9 +325,27 @@ export class MemStorage implements IStorage {
     return activity;
   }
 
-  async getUserActivity(userId: string, limit = 50): Promise<UserActivity[]> {
+  async getUserActivity(userId: string, limit = 50, timeframe = 'week'): Promise<UserActivity[]> {
+    // Calculate cutoff date based on timeframe
+    const now = new Date();
+    let cutoffDate = new Date();
+    
+    switch (timeframe) {
+      case 'week':
+        cutoffDate.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        cutoffDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'year':
+        cutoffDate.setFullYear(now.getFullYear() - 1);
+        break;
+      default:
+        cutoffDate.setDate(now.getDate() - 7); // Default to week
+    }
+
     return Array.from(this.userActivity.values())
-      .filter(a => a.userId === userId)
+      .filter(a => a.userId === userId && a.createdAt >= cutoffDate)
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .slice(0, limit);
   }

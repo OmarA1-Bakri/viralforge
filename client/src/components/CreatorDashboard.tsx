@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,8 @@ import {
   Target,
   Zap,
   Clock,
-  BarChart3
+  BarChart3,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -28,29 +30,88 @@ interface DashboardStats {
   avgClickRate: number;
   weeklyGrowth: number;
   automationSavings: string;
+  avgViralScore: number;
+  totalClips: number;
 }
 
-// Mock data - todo: remove mock functionality
-const mockStats: DashboardStats = {
-  totalViews: 47832,
-  totalLikes: 2341,
-  totalShares: 892,
-  videosCreated: 23,
-  trendsUsed: 15,
-  avgClickRate: 8.4,
-  weeklyGrowth: 23.5,
-  automationSavings: "12h 30m"
-};
+interface UserActivity {
+  id: number;
+  activityType: string;
+  title: string;
+  status: string;
+  metadata?: {
+    views?: string;
+    engagement?: string;
+    score?: string;
+    clips?: string;
+  };
+  createdAt: string;
+}
 
-const mockRecentActivity = [
-  { id: 1, type: "video", title: "Dog React Video", status: "viral", views: "12.3K", time: "2h ago" },
-  { id: 2, type: "trend", title: "Dance Challenge Trend", status: "used", engagement: "8.7K", time: "4h ago" },
-  { id: 3, type: "optimization", title: "Thumbnail Analysis", status: "improved", score: "9.2/10", time: "6h ago" },
-  { id: 4, type: "clip", title: "Tutorial Segments", status: "ready", clips: "3 clips", time: "1d ago" }
-];
+// Utility function to format time
+const formatTimeAgo = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+  
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes}m ago`;
+  } else if (diffInMinutes < 1440) {
+    return `${Math.floor(diffInMinutes / 60)}h ago`;
+  } else {
+    return `${Math.floor(diffInMinutes / 1440)}d ago`;
+  }
+};
 
 export default function CreatorDashboard() {
   const [timeframe, setTimeframe] = useState<"week" | "month" | "year">("week");
+
+  // Fetch dashboard statistics
+  const { data: statsData, isLoading: statsLoading, error: statsError } = useQuery({
+    queryKey: ['/api/dashboard/stats', timeframe],
+    queryFn: async () => {
+      const response = await fetch(`/api/dashboard/stats?timeframe=${timeframe}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch dashboard stats');
+      }
+      return response.json();
+    },
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  // Fetch recent activity
+  const { data: activityData, isLoading: activityLoading, error: activityError } = useQuery({
+    queryKey: ['/api/dashboard/activity', timeframe],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/dashboard/activity?limit=10&timeframe=${timeframe}`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: Failed to fetch activity`);
+        }
+        return await response.json();
+      } catch (error) {
+        throw error;
+      }
+    },
+    refetchInterval: 60000, // Refresh every minute
+    retry: 1, // Only retry once on failure
+    retryDelay: 1000, // Wait 1 second before retry
+  });
+
+  const stats: DashboardStats = statsData?.stats || {
+    totalViews: 0,
+    totalLikes: 0,
+    totalShares: 0,
+    videosCreated: 0,
+    trendsUsed: 0,
+    avgClickRate: 0,
+    weeklyGrowth: 0,
+    automationSavings: "0h 0m",
+    avgViralScore: 0,
+    totalClips: 0,
+  };
+
+  const activities: UserActivity[] = activityData?.activities || [];
 
   const StatCard = ({ 
     icon: Icon, 
@@ -93,42 +154,49 @@ export default function CreatorDashboard() {
     </Card>
   );
 
-  const ActivityItem = ({ item }: { item: any }) => (
-    <div className="flex items-center gap-3 p-3 bg-card/50 rounded-lg border border-border">
-      <div className={cn(
-        "w-10 h-10 rounded-full flex items-center justify-center",
-        item.type === "video" ? "bg-red-500/20 text-red-400" :
-        item.type === "trend" ? "bg-primary/20 text-primary" :
-        item.type === "optimization" ? "bg-blue-500/20 text-blue-400" :
-        "bg-green-500/20 text-green-400"
-      )}>
-        {item.type === "video" ? <Video className="w-5 h-5" /> :
-         item.type === "trend" ? <Lightbulb className="w-5 h-5" /> :
-         item.type === "optimization" ? <Target className="w-5 h-5" /> :
-         <Zap className="w-5 h-5" />}
-      </div>
-      
-      <div className="flex-1 min-w-0">
-        <h4 className="font-medium text-sm text-foreground truncate">{item.title}</h4>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{item.time}</span>
-          <span>•</span>
-          <span className={cn(
-            item.status === "viral" ? "text-green-400" :
-            item.status === "ready" ? "text-blue-400" :
-            item.status === "improved" ? "text-primary" :
-            "text-foreground"
-          )}>
-            {item.views || item.engagement || item.score || item.clips}
-          </span>
+  const ActivityItem = ({ item }: { item: UserActivity }) => {
+    const typeConfig = {
+      video: { icon: Video, color: "bg-red-500/20 text-red-400" },
+      trend: { icon: Lightbulb, color: "bg-primary/20 text-primary" },
+      optimization: { icon: Target, color: "bg-blue-500/20 text-blue-400" },
+      clip: { icon: Zap, color: "bg-green-500/20 text-green-400" },
+    };
+
+    const config = typeConfig[item.activityType as keyof typeof typeConfig] || typeConfig.video;
+    const Icon = config.icon;
+
+    return (
+      <div className="flex items-center gap-3 p-3 bg-card/50 rounded-lg border border-border">
+        <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", config.color)}>
+          <Icon className="w-5 h-5" />
         </div>
+        
+        <div className="flex-1 min-w-0">
+          <h4 className="font-medium text-sm text-foreground truncate">{item.title}</h4>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>{formatTimeAgo(item.createdAt)}</span>
+            {item.metadata && (
+              <>
+                <span>•</span>
+                <span className={cn(
+                  item.status === "viral" ? "text-green-400" :
+                  item.status === "ready" ? "text-blue-400" :
+                  item.status === "improved" ? "text-primary" :
+                  "text-foreground"
+                )}>
+                  {item.metadata.views || item.metadata.engagement || item.metadata.score || item.metadata.clips}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+        
+        <Badge variant="outline" className="text-xs">
+          {item.status}
+        </Badge>
       </div>
-      
-      <Badge variant="outline" className="text-xs">
-        {item.status}
-      </Badge>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -159,65 +227,98 @@ export default function CreatorDashboard() {
       </div>
 
       <div className="px-4 pt-4 space-y-6">
+        {/* Loading State */}
+        {statsLoading && (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            <span className="ml-2 text-sm text-muted-foreground">Loading dashboard analytics...</span>
+          </div>
+        )}
+
+        {/* Error State */}
+        {statsError && (
+          <div className="text-center py-8">
+            <p className="text-sm text-muted-foreground">Failed to load analytics data</p>
+          </div>
+        )}
+
         {/* Quick Stats Grid */}
-        <div className="grid grid-cols-2 gap-3">
-          <StatCard
-            icon={Eye}
-            label="Total Views"
-            value={mockStats.totalViews}
-            change={mockStats.weeklyGrowth}
-            color="blue"
-          />
-          <StatCard
-            icon={Heart}
-            label="Total Likes"
-            value={mockStats.totalLikes}
-            change={15.2}
-            color="primary"
-          />
-          <StatCard
-            icon={Video}
-            label="Videos Created"
-            value={mockStats.videosCreated}
-            change={8.7}
-            color="green"
-          />
-          <StatCard
-            icon={TrendingUp}
-            label="Click Rate"
-            value={mockStats.avgClickRate}
-            suffix="%"
-            change={2.1}
-            color="orange"
-          />
-        </div>
+        {!statsLoading && !statsError && (
+          <div className="grid grid-cols-2 gap-3">
+            <StatCard
+              icon={Eye}
+              label="Total Views"
+              value={stats.totalViews}
+              change={stats.weeklyGrowth}
+              color="blue"
+            />
+            <StatCard
+              icon={Heart}
+              label="Total Likes"
+              value={stats.totalLikes}
+              change={15.2}
+              color="primary"
+            />
+            <StatCard
+              icon={Video}
+              label="Videos Created"
+              value={stats.videosCreated}
+              change={8.7}
+              color="green"
+            />
+            <StatCard
+              icon={TrendingUp}
+              label="Click Rate"
+              value={stats.avgClickRate}
+              suffix="%"
+              change={2.1}
+              color="orange"
+            />
+          </div>
+        )}
 
         {/* AI Automation Stats */}
-        <Card className="p-4 bg-gradient-to-r from-primary/10 to-cyan-500/10 border-primary/20">
-          <div className="flex items-center gap-2 mb-3">
-            <Zap className="w-5 h-5 text-primary" />
-            <h2 className="font-semibold text-primary">AI Automation Impact</h2>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Time Saved</p>
-              <p className="text-xl font-bold text-primary">{mockStats.automationSavings}</p>
+        {!statsLoading && !statsError && (
+          <Card className="p-4 bg-gradient-to-r from-primary/10 to-cyan-500/10 border-primary/20">
+            <div className="flex items-center gap-2 mb-3">
+              <Zap className="w-5 h-5 text-primary" />
+              <h2 className="font-semibold text-primary">AI Automation Impact</h2>
             </div>
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Trends Used</p>
-              <p className="text-xl font-bold text-primary">{mockStats.trendsUsed}</p>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Time Saved</p>
+                <p className="text-xl font-bold text-primary">{stats.automationSavings}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Trends Used</p>
+                <p className="text-xl font-bold text-primary">{stats.trendsUsed}</p>
+              </div>
             </div>
-          </div>
-          
-          <div className="mt-3 space-y-2">
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Weekly AI Usage</span>
-              <span className="text-primary">87%</span>
+            
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Viral Score</p>
+                <p className="text-xl font-bold text-primary">{stats.avgViralScore.toFixed(1)}/10</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-sm text-muted-foreground">Clips Created</p>
+                <p className="text-xl font-bold text-primary">{stats.totalClips}</p>
+              </div>
             </div>
-            <Progress value={87} className="h-2 bg-muted [&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-cyan-400" />
-          </div>
-        </Card>
+            
+            <div className="mt-3 space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-muted-foreground">AI Effectiveness</span>
+                <span className="text-primary">{Math.round((stats.avgViralScore / 10) * 100)}%</span>
+              </div>
+              <Progress 
+                value={(stats.avgViralScore / 10) * 100} 
+                className="h-2 bg-muted [&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-cyan-400" 
+              />
+            </div>
+          </Card>
+        )}
 
         {/* Performance Insights */}
         <Card className="p-4">
@@ -257,9 +358,25 @@ export default function CreatorDashboard() {
           </div>
           
           <div className="space-y-2">
-            {mockRecentActivity.map((item) => (
-              <ActivityItem key={item.id} item={item} />
-            ))}
+            {activityLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-xs text-muted-foreground">Loading activity...</span>
+              </div>
+            ) : activityError ? (
+              <div className="text-center py-4 space-y-2">
+                <div className="text-xs text-destructive">Failed to load recent activity</div>
+                <div className="text-xs text-muted-foreground">Network error or server unavailable</div>
+              </div>
+            ) : activities.length > 0 ? (
+              activities.map((item) => (
+                <ActivityItem key={item.id} item={item} />
+              ))
+            ) : (
+              <div className="text-center py-4 text-xs text-muted-foreground">
+                No recent activity for selected timeframe
+              </div>
+            )}
           </div>
         </div>
 

@@ -463,10 +463,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = 'demo-user'; // TODO: Get from authenticated user
       const limit = parseInt(req.query.limit as string) || 20;
+      const timeframe = req.query.timeframe as string || 'week';
       
-      console.log(`📋 Fetching recent activity for ${userId}...`);
+      console.log(`📋 Fetching recent activity for ${userId} (${timeframe})...`);
       
-      const activities = await storage.getUserActivity(userId, limit);
+      const activities = await storage.getUserActivity(userId, limit, timeframe);
       
       res.json({
         success: true,
