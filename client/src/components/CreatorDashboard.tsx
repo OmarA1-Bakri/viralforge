@@ -193,10 +193,10 @@ export default function CreatorDashboard() {
         </div>
 
         {/* AI Automation Stats */}
-        <Card className="p-4 bg-gradient-to-r from-primary/10 to-purple-500/10 border-primary/20">
+        <Card className="p-4 bg-gradient-to-r from-primary/10 to-cyan-500/10 border-primary/20">
           <div className="flex items-center gap-2 mb-3">
             <Zap className="w-5 h-5 text-primary" />
-            <h2 className="font-semibold text-primary">🤖 AI Automation Impact</h2>
+            <h2 className="font-semibold text-primary">AI Automation Impact</h2>
           </div>
           
           <div className="grid grid-cols-2 gap-4">
@@ -215,7 +215,7 @@ export default function CreatorDashboard() {
               <span className="text-muted-foreground">Weekly AI Usage</span>
               <span className="text-primary">87%</span>
             </div>
-            <Progress value={87} className="h-2 bg-muted [&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-purple-500" />
+            <Progress value={87} className="h-2 bg-muted [&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-cyan-400" />
           </div>
         </Card>
 
@@ -223,7 +223,7 @@ export default function CreatorDashboard() {
         <Card className="p-4">
           <div className="flex items-center gap-2 mb-3">
             <Target className="w-5 h-5 text-green-400" />
-            <h2 className="font-semibold">📈 Performance Insights</h2>
+            <h2 className="font-semibold">Performance Insights</h2>
           </div>
           
           <div className="space-y-3">
@@ -265,9 +265,9 @@ export default function CreatorDashboard() {
 
         {/* Quick Actions */}
         <Card className="p-4">
-          <h2 className="font-semibold mb-3">⚡ Quick Actions</h2>
+          <h2 className="font-semibold mb-3">Quick Actions</h2>
           <div className="grid grid-cols-2 gap-2">
-            <Button className="gap-2 bg-gradient-to-r from-primary to-purple-500 hover:from-primary/90 hover:to-purple-500/90" data-testid="quick-analyze">
+            <Button className="gap-2 bg-gradient-to-r from-primary to-cyan-400 hover:from-primary/90 hover:to-cyan-400/90" data-testid="quick-analyze">
               <Rocket className="w-4 h-4" />
               Analyze New
             </Button>
