@@ -147,6 +147,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Launch Pad Routes - Content Optimization
+  
+  // Analyze content (title and/or thumbnail)
+  app.post('/api/content/analyze', async (req, res) => {
+    try {
+      const { title, thumbnailUrl, platform, roastMode } = req.body;
+      
+      if (!title && !thumbnailUrl) {
+        return res.status(400).json({ error: 'Either title or thumbnailUrl is required' });
+      }
+      
+      if (!platform) {
+        return res.status(400).json({ error: 'Platform is required' });
+      }
+
+      console.log(`🎯 Analyzing content for ${platform}...`);
+      
+      // Create user content record first
+      const content = await storage.createUserContent({
+        userId: 'demo-user', // TODO: Get from auth
+        platform,
+        title: title || null,
+        thumbnailUrl: thumbnailUrl || null,
+        status: 'analyzing'
+      });
+
+      // Analyze content using AI
+      const analysis = await openRouterService.analyzeContent({
+        title,
+        thumbnailUrl,
+        platform: platform as 'tiktok' | 'youtube' | 'instagram',
+        roastMode: roastMode || false
+      });
+
+      // Store analysis results
+      const storedAnalysis = await storage.createContentAnalysis({
+        contentId: content.id,
+        clickabilityScore: analysis.clickabilityScore,
+        clarityScore: analysis.clarityScore,
+        intrigueScore: analysis.intrigueScore,
+        emotionScore: analysis.emotionScore,
+        feedback: analysis.feedback,
+        suggestions: analysis.suggestions,
+        roastMode: roastMode || false
+      });
+
+      const overallScore = Math.round((analysis.clickabilityScore + analysis.clarityScore + analysis.intrigueScore + analysis.emotionScore) / 4);
+      
+      console.log(`✅ Content analysis completed with overall score: ${overallScore}/10`);
+
+      res.json({
+        contentId: content.id,
+        analysis: storedAnalysis,
+        overallScore
+      });
+    } catch (error) {
+      console.error('Error analyzing content:', error);
+      res.status(500).json({ error: 'Failed to analyze content' });
+    }
+  });
+
+  // Get analysis results for specific content
+  app.get('/api/content/:id/analysis', async (req, res) => {
+    try {
+      const contentId = parseInt(req.params.id);
+      const analysis = await storage.getContentAnalysis(contentId);
+      
+      if (!analysis) {
+        return res.status(404).json({ error: 'Analysis not found' });
+      }
+
+      const content = await storage.getContentById(contentId);
+      if (!content) {
+        return res.status(404).json({ error: 'Content not found' });
+      }
+
+      const overallScore = Math.round((analysis.clickabilityScore + analysis.clarityScore + analysis.intrigueScore + analysis.emotionScore) / 4);
+
+      res.json({
+        content,
+        analysis,
+        overallScore
+      });
+    } catch (error) {
+      console.error('Error fetching analysis:', error);
+      res.status(500).json({ error: 'Failed to fetch analysis' });
+    }
+  });
+
+  // Get user's content analysis history
+  app.get('/api/content/history', async (req, res) => {
+    try {
+      const userId = 'demo-user'; // TODO: Get from auth
+      const content = await storage.getUserContent(userId);
+      
+      res.json({ content });
+    } catch (error) {
+      console.error('Error fetching content history:', error);
+      res.status(500).json({ error: 'Failed to fetch content history' });
+    }
+  });
+
   // Health check endpoint
   app.get("/api/health", (req, res) => {
     res.json({ 

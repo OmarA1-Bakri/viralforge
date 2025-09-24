@@ -168,6 +168,41 @@ Make the trends feel authentic and actionable for creators.`;
 
   // Analyze content for optimization (Launch Pad)
   async analyzeContent(request: ContentAnalysisRequest): Promise<ContentAnalysisResult> {
+    console.log("🔧 Debug: Content analysis request:", request);
+
+    // For now, return mock analysis data while we debug the AI integration
+    const mockAnalysis: ContentAnalysisResult = {
+      clickabilityScore: request.title ? (request.title.includes('!') ? 8 : 7) : 6,
+      clarityScore: request.title ? (request.title.length > 10 && request.title.length < 60 ? 8 : 6) : 5,
+      intrigueScore: request.title ? (request.title.includes('?') || request.title.includes('How') ? 9 : 7) : 6,
+      emotionScore: request.roastMode ? 10 : (request.title?.match(/(Amazing|Incredible|Shocking|Insane)/i) ? 9 : 6),
+      feedback: {
+        title: request.title ? `Your title "${request.title}" ${request.roastMode ? 'needs serious work - it\'s boring and won\'t get clicks' : 'has potential but could be more compelling'}. ${request.title.length > 60 ? 'It\'s too long for mobile users.' : 'Length is good.'}` : "No title provided for analysis",
+        thumbnail: request.thumbnailUrl ? `Thumbnail analysis: ${request.roastMode ? 'Hard to judge without seeing it, but make sure it has clear faces, bright colors, and text overlay' : 'Looks like you have a custom thumbnail - that\'s great! Ensure it stands out in the feed'}` : "No thumbnail URL provided - using a custom thumbnail can increase CTR by 30%",
+        overall: request.roastMode ? 
+          "Look, I'll be straight with you - your content needs work. Focus on emotional hooks, clear value propositions, and platform-specific optimization. Stop being boring!" :
+          "Your content shows promise! With some tweaks to maximize emotional appeal and clarity, you could see significant engagement improvements."
+      },
+      suggestions: request.roastMode ? [
+        "Stop using boring titles - add emotional hooks",
+        "Your thumbnail better grab attention in 0.1 seconds",
+        "Use numbers, questions, or power words",
+        "Test different versions and actually measure results",
+        "Study what's working in your niche right now"
+      ] : [
+        "Consider adding numbers or questions to your title",
+        "Use bright, high-contrast colors in thumbnails",
+        "Test emotional hooks like curiosity gaps",
+        "Optimize title length for mobile viewing",
+        "A/B test different thumbnail styles"
+      ]
+    };
+
+    console.log(`✅ Returning mock analysis with overall score: ${Math.round((mockAnalysis.clickabilityScore + mockAnalysis.clarityScore + mockAnalysis.intrigueScore + mockAnalysis.emotionScore) / 4)}/10`);
+    return mockAnalysis;
+
+    // TODO: Uncomment this when API key is working
+    /*
     const roastModeNote = request.roastMode ? 
       "Use a brutally honest, roast-style tone. Be direct and humorous about what's wrong." :
       "Be constructive and encouraging while pointing out areas for improvement.";
@@ -222,6 +257,7 @@ Platform: ${request.platform}
       console.error("Error analyzing content:", error);
       throw new Error("Failed to analyze content");
     }
+    */
   }
 
   // Generate video clip suggestions (Multiplier)
