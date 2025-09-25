@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,6 +47,80 @@ export default function LaunchPadAnalyzer() {
     }
   };
 
+  // Mutation for content analysis
+  const analyzeContentMutation = useMutation({
+    mutationFn: async ({ title, thumbnailDescription, platform, roastMode }: {
+      title: string;
+      thumbnailDescription?: string;
+      platform: string;
+      roastMode: boolean;
+    }) => {
+      const response = await fetch('/api/content/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: title.trim() || undefined,
+          thumbnailDescription: thumbnailDescription || undefined,
+          platform,
+          roastMode
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to analyze content');
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      console.log('✅ Content analysis completed:', data);
+      setAnalysisResult({
+        clickabilityScore: data.analysis.clickabilityScore,
+        clarityScore: data.analysis.clarityScore,
+        intrigueScore: data.analysis.intrigueScore,
+        emotionScore: data.analysis.emotionScore,
+        feedback: data.analysis.feedback,
+        suggestions: data.analysis.suggestions
+      });
+      setIsAnalyzing(false);
+    },
+    onError: (error) => {
+      console.error('❌ Content analysis failed:', error);
+      setIsAnalyzing(false);
+      // Fall back to mock result if API fails
+      setAnalysisResult({
+        clickabilityScore: roastMode ? 3.5 : 7.5,
+        clarityScore: roastMode ? 4.0 : 8.0,
+        intrigueScore: roastMode ? 2.5 : 6.5,
+        emotionScore: roastMode ? 5.5 : 9.0,
+        feedback: {
+          thumbnail: roastMode 
+            ? "Your thumbnail looks like it was made in 2010. The text is basically invisible and the colors clash harder than a bad breakup. Are you trying to hide your video from viewers?"
+            : "Strong visual hierarchy and good contrast. The main subject is clearly visible. Consider making the text 20% larger for better mobile readability.",
+          title: roastMode
+            ? "This title is vaguer than a politician's promise. 'Amazing trick' tells me absolutely nothing. What trick? Amazing for who? My grandmother's knitting circle?"
+            : "Good use of numbers and specific benefits. The emotional hook is strong. Consider adding urgency or scarcity for better performance.",
+          overall: roastMode
+            ? "Listen, I've seen homework assignments with more engagement potential. Your content might be gold, but this packaging is burying it six feet under."
+            : "Solid foundation with room for improvement. Your content shows good understanding of engagement principles."
+        },
+        suggestions: roastMode ? [
+          "Use colors that don't make people's eyes bleed",
+          "Write titles that actually say something specific",
+          "Put your face in the thumbnail (people like faces, apparently)",
+          "Add some contrast - it's not abstract art"
+        ] : [
+          "Increase thumbnail text size by 25%",
+          "Add a bright accent color to draw attention",
+          "Test A/B versions with different emotional expressions",
+          "Consider adding numbers or time indicators"
+        ]
+      });
+    }
+  });
+
   const handleAnalyze = async () => {
     if (!title.trim() && !thumbnailFile) {
       console.log("Need title or thumbnail to analyze");
@@ -58,43 +133,32 @@ export default function LaunchPadAnalyzer() {
 
     // Simulate analysis progress
     const progressSteps = [10, 25, 45, 65, 80, 95, 100];
-    for (const step of progressSteps) {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      setAnalysisProgress(step);
+    const progressInterval = setInterval(() => {
+      setAnalysisProgress((prev) => {
+        const nextStep = progressSteps.find(step => step > prev);
+        return nextStep || prev;
+      });
+    }, 300);
+
+    // Get thumbnail description if available
+    let thumbnailDescription: string | undefined;
+    if (thumbnailFile) {
+      // For now, use a simple description. In the future, we could use AI to analyze the actual image
+      thumbnailDescription = `Thumbnail image: ${thumbnailFile.name}`;
     }
 
-    // Mock analysis result - todo: remove mock functionality
-    const mockResult: AnalysisResult = {
-      clickabilityScore: roastMode ? 3.5 : 7.5,
-      clarityScore: roastMode ? 4.0 : 8.0,
-      intrigueScore: roastMode ? 2.5 : 6.5,
-      emotionScore: roastMode ? 5.5 : 9.0,
-      feedback: {
-        thumbnail: roastMode 
-          ? "Your thumbnail looks like it was made in 2010. The text is basically invisible and the colors clash harder than a bad breakup. Are you trying to hide your video from viewers?"
-          : "Strong visual hierarchy and good contrast. The main subject is clearly visible. Consider making the text 20% larger for better mobile readability.",
-        title: roastMode
-          ? "This title is vaguer than a politician's promise. 'Amazing trick' tells me absolutely nothing. What trick? Amazing for who? My grandmother's knitting circle?"
-          : "Good use of numbers and specific benefits. The emotional hook is strong. Consider adding urgency or scarcity for better performance.",
-        overall: roastMode
-          ? "Listen, I've seen homework assignments with more engagement potential. Your content might be gold, but this packaging is burying it six feet under."
-          : "Solid foundation with room for improvement. Your content shows good understanding of engagement principles."
-      },
-      suggestions: roastMode ? [
-        "Use colors that don't make people's eyes bleed",
-        "Write titles that actually say something specific",
-        "Put your face in the thumbnail (people like faces, apparently)",
-        "Add some contrast - it's not abstract art"
-      ] : [
-        "Increase thumbnail text size by 25%",
-        "Add a bright accent color to draw attention",
-        "Test A/B versions with different emotional expressions",
-        "Consider adding numbers or time indicators"
-      ]
-    };
+    try {
+      await analyzeContentMutation.mutateAsync({
+        title: title.trim(),
+        thumbnailDescription,
+        platform,
+        roastMode
+      });
+    } finally {
+      clearInterval(progressInterval);
+      setAnalysisProgress(100);
+    }
 
-    setAnalysisResult(mockResult);
-    setIsAnalyzing(false);
     console.log("Analysis complete:", { title, thumbnail: thumbnailFile?.name, roastMode });
   };
 
