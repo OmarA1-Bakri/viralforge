@@ -49,8 +49,8 @@ export default function BottomTabNavigation({ activeTab, onTabChange }: BottomTa
               className={cn(
                 "flex flex-col items-center gap-1 px-2 py-2 rounded-lg transition-all duration-200 hover-elevate active-elevate-2 min-w-0",
                 isActive 
-                  ? "text-primary bg-primary/10 shadow-lg shadow-primary/20" 
-                  : "text-muted-foreground hover:text-primary"
+                  ? "text-accent bg-accent/10 shadow-lg shadow-accent/20" 
+                  : "text-muted-foreground hover:text-accent"
               )}
             >
               <Icon 

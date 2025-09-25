@@ -304,38 +304,38 @@ export default function CreatorDashboard() {
 
         {/* AI Automation Stats */}
         {!statsLoading && !statsError && (
-          <Card className="p-4 bg-gradient-to-r from-primary/10 to-cyan-500/10 border-primary/20">
+          <Card className="p-4 bg-gradient-to-r from-accent/10 to-pink-500/10 border-accent/20">
             <div className="flex items-center gap-2 mb-3">
-              <Zap className="w-5 h-5 text-primary" />
-              <h2 className="font-semibold text-primary">AI Automation Impact</h2>
+              <Zap className="w-5 h-5 text-accent" />
+              <h2 className="font-semibold text-accent">AI Automation Impact</h2>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Time Saved</p>
-                <p className="text-xl font-bold text-primary">{stats.automationSavings}</p>
+                <p className="text-xl font-bold text-accent">{stats.automationSavings}</p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Trends Used</p>
-                <p className="text-xl font-bold text-primary">{stats.trendsUsed}</p>
+                <p className="text-xl font-bold text-accent">{stats.trendsUsed}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 mt-4">
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Viral Score</p>
-                <p className="text-xl font-bold text-primary">{stats.avgViralScore.toFixed(1)}/10</p>
+                <p className="text-xl font-bold text-accent">{stats.avgViralScore.toFixed(1)}/10</p>
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Clips Created</p>
-                <p className="text-xl font-bold text-primary">{stats.totalClips}</p>
+                <p className="text-xl font-bold text-accent">{stats.totalClips}</p>
               </div>
             </div>
 
             <div className="mt-3 space-y-2">
               <div className="flex justify-between text-xs">
                 <span className="text-muted-foreground">AI Effectiveness</span>
-                <span className="text-primary">{Math.round((stats.avgViralScore / 10) * 100)}%</span>
+                <span className="text-accent">{Math.round((stats.avgViralScore / 10) * 100)}%</span>
               </div>
               <Progress 
                 value={(stats.avgViralScore / 10) * 100} 
@@ -348,7 +348,7 @@ export default function CreatorDashboard() {
         {/* Performance Insights */}
         <Card className="p-4">
           <div className="flex items-center gap-2 mb-3">
-            <Target className="w-5 h-5 text-primary" />
+            <Target className="w-5 h-5 text-accent" />
             <h2 className="font-semibold">Performance Insights</h2>
           </div>
 

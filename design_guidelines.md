@@ -15,21 +15,24 @@
 **Light Mode:**
 - Background: 0 0% 98% (Clean white)
 - Card: 0 0% 95% (Subtle gray surface)
-- Primary: 280 100% 70% (Vibrant purple)
+- Primary: 181 96% 61% (Cyan for primary actions)
+- **Accent: 321 100% 68% (Brand pink for highlights)**
 - Text: 0 0% 10% (Near black)
 - Border: 0 0% 88% (Light gray borders)
 
 **Dark Mode:**
 - Background: 0 0% 3% (Deep black)
 - Card: 0 0% 8% (Dark charcoal surface) 
-- Primary: 180 100% 50% (Bright cyan/turquoise)
+- Primary: 181 96% 61% (Bright cyan for contrast)
+- **Accent: 321 100% 68% (Brand pink for highlights)**
 - Text: 0 0% 98% (Near white)
 - Border: 17 8% 15% (Dark gray borders)
 
-### Accent Colors
+### Accent Colors  
+- **Brand Pink**: 321 100% 68% (Primary accent matching logo)
 - Success: 142 69% 45% (Growth green)
 - Warning: 25 85% 55% (Trend orange)
-- AI Active: 280 60% 75% (Soft purple glow)
+- AI Active: 321 60% 75% (Soft pink glow for automation)
 
 ### Gradients
 - Hero backgrounds: Purple to deep blue gradients (280 100% 65% to 240 80% 40%)
