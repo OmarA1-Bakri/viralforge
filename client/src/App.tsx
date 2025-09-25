@@ -11,10 +11,11 @@ import CreatorDashboard from "@/components/CreatorDashboard";
 import IdeaLabFeed from "@/components/IdeaLabFeed";
 import LaunchPadAnalyzer from "@/components/LaunchPadAnalyzer";
 import MultiplierProcessor from "@/components/MultiplierProcessor";
+import UserPreferences from "@/pages/UserPreferences";
 import NotFound from "@/pages/not-found";
 
 function MainApp() {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "idea-lab" | "launch-pad" | "multiplier">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "idea-lab" | "launch-pad" | "multiplier" | "preferences">("dashboard");
 
   const renderContent = () => {
     switch (activeTab) {
@@ -26,6 +27,8 @@ function MainApp() {
         return <LaunchPadAnalyzer />;
       case "multiplier":
         return <MultiplierProcessor />;
+      case "preferences":
+        return <UserPreferences />;
       default:
         return <CreatorDashboard />;
     }

@@ -1,9 +1,9 @@
-import { Lightbulb, Rocket, Video, BarChart3 } from "lucide-react";
+import { Lightbulb, Rocket, Video, BarChart3, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface BottomTabNavigationProps {
-  activeTab: "dashboard" | "idea-lab" | "launch-pad" | "multiplier";
-  onTabChange: (tab: "dashboard" | "idea-lab" | "launch-pad" | "multiplier") => void;
+  activeTab: "dashboard" | "idea-lab" | "launch-pad" | "multiplier" | "preferences";
+  onTabChange: (tab: "dashboard" | "idea-lab" | "launch-pad" | "multiplier" | "preferences") => void;
 }
 
 export default function BottomTabNavigation({ activeTab, onTabChange }: BottomTabNavigationProps) {
@@ -31,6 +31,12 @@ export default function BottomTabNavigation({ activeTab, onTabChange }: BottomTa
       icon: Video,
       label: "Multiply",
       description: "Clip"
+    },
+    {
+      id: "preferences" as const,
+      icon: Settings,
+      label: "Settings",
+      description: "Profile"
     }
   ];
 
