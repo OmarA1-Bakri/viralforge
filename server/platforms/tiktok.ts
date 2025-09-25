@@ -1,5 +1,7 @@
 // TikTok trending data integration for ViralForgeAI
 import { TrendResult } from "../ai/openrouter.js";
+import { spawn } from "child_process";
+import { join } from "path";
 
 // Provider interface for different TikTok trending data sources
 export interface ITikTokTrendsProvider {
@@ -195,6 +197,85 @@ export class RapidAPITikTokProvider implements ITikTokTrendsProvider {
   }
 }
 
+// Python Scraper Provider using tiktok-trending library
+export class PythonScraperTikTokProvider implements ITikTokTrendsProvider {
+  getName(): string {
+    return 'Python TikTok Scraper';
+  }
+
+  isAvailable(): boolean {
+    // Always available if Python script exists
+    return true;
+  }
+
+  async getTrendingHashtags(region: string = 'US', limit: number = 20): Promise<TrendResult[]> {
+    console.log(`🐍 [${this.getName()}] Scraping TikTok trending data (limit: ${limit})...`);
+    
+    return new Promise((resolve) => {
+      const scriptPath = join(process.cwd(), 'server', 'scripts', 'tiktok_scraper.py');
+      
+      // Spawn Python process to run the scraper
+      const pythonProcess = spawn('python3', [scriptPath, limit.toString()], {
+        stdio: ['pipe', 'pipe', 'pipe'],
+        cwd: process.cwd()
+      });
+
+      let stdout = '';
+      let stderr = '';
+      
+      pythonProcess.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+      
+      pythonProcess.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+      
+      pythonProcess.on('close', (code) => {
+        if (code !== 0) {
+          console.error(`❌ [${this.getName()}] Python script failed with code ${code}`);
+          if (stderr) {
+            console.error(`❌ [${this.getName()}] Error output:`, stderr);
+          }
+          resolve([]); // Return empty array on failure
+          return;
+        }
+        
+        try {
+          // Parse JSON output from Python script
+          const trends = JSON.parse(stdout.trim());
+          console.log(`✅ [${this.getName()}] Successfully scraped ${trends.length} TikTok trends`);
+          
+          // Log stderr (our debug messages) but don't treat as error
+          if (stderr) {
+            console.log(`📝 [${this.getName()}] Scraper output:`, stderr.trim());
+          }
+          
+          resolve(trends);
+        } catch (error) {
+          console.error(`❌ [${this.getName()}] Failed to parse JSON:`, error);
+          console.error(`❌ [${this.getName()}] Raw output:`, stdout);
+          resolve([]); // Return empty array on parse failure
+        }
+      });
+      
+      pythonProcess.on('error', (error) => {
+        console.error(`❌ [${this.getName()}] Process error:`, error);
+        resolve([]); // Return empty array on process error
+      });
+      
+      // Set timeout to prevent hanging
+      setTimeout(() => {
+        if (!pythonProcess.killed) {
+          console.log(`⏰ [${this.getName()}] Timeout reached, killing process...`);
+          pythonProcess.kill();
+          resolve([]); // Return empty array on timeout
+        }
+      }, 30000); // 30 second timeout
+    });
+  }
+}
+
 // AI Fallback Provider using OpenRouter
 export class AITikTokProvider implements ITikTokTrendsProvider {
   getName(): string {
@@ -277,6 +358,10 @@ export class TikTokService {
     switch (providerType) {
       case 'rapidapi':
         this.provider = new RapidAPITikTokProvider();
+        break;
+      case 'scraper':
+      case 'python':
+        this.provider = new PythonScraperTikTokProvider();
         break;
       case 'ai':
       default:
