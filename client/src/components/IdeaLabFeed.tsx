@@ -203,7 +203,7 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix, onNavigate }: I
 
       {/* Trend Feed */}
       <div className="px-4 pt-6 pb-28 space-y-4">
-        {displayTrends.map((trend, index) => (
+        {displayTrends.map((trend: any, index: number) => (
           <div 
             key={trend.id} 
             className="animate-in slide-in-from-bottom-2 duration-300"
