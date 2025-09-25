@@ -1,0 +1,101 @@
+1. Color Hierarchy & Consistency
+
+Current issue: Both pink and cyan are scattered (some panels pink, some cyan, some default grey/blue).
+
+Refine:
+
+Use cyan as the primary accent (for active states, highlights, progress bars).
+
+Use pink as the secondary accent (for CTAs, emphasis, “hot/trending” badges).
+
+Keep neutral greys consistent for inactive/secondary states.
+
+➡ Example:
+
+Sidebar/tab highlight = cyan
+
+Active button/focus = cyan glow
+
+“Hot/Trending” = pink pill badge
+
+Errors = muted pink/red variant
+
+2. Typography & Spacing
+
+Current issue: Font weights, sizes, and spacings vary, which makes panels feel slightly disjointed.
+
+Refine:
+
+Titles: Semibold, 16–18px, consistent color (white at 90%).
+
+Metrics: Bold, 20–24px, accented with cyan/pink, but always in the same typographic style.
+
+Sub-labels: Regular, 12–14px, grey (#A0A0A0).
+
+Line-height: Increase by ~10% to create air between blocks.
+
+3. Component Shapes & Shadows
+
+Current issue: Some panels have a flat look, others faint shadows — not unified.
+
+Refine:
+
+All cards: Rounded corners (12px).
+
+Shadow: very subtle cyan or pink glow on hover (0, 0, 12px, accent color at 20% opacity).
+
+Flat but layered: Ensure consistent panel backgrounds (#1A1A1A for cards, #0E0E0E for app background).
+
+4. Navigation Bar
+
+Current issue: Pink glow under active tab is heavy compared to the rest.
+
+Refine:
+
+Use underline or subtle pill highlight in cyan for active tab.
+
+Keep icons monochrome white; add cyan glow on hover, pink only for emphasis.
+
+Balance spacing so all items align cleanly.
+
+5. Micro-interactions
+
+Right now everything is static. Adding subtle motion makes it feel alive and premium:
+
+Hover → accent glow + scale up 2–3%.
+
+Tab change → smooth 150–200ms slide or fade.
+
+Progress bar → cyan gradient animation.
+
+6. Logo Integration
+
+Your logo is cyan + pink split. Right now the app uses both but without tying back.
+
+Refine:
+
+Use a cyan→pink diagonal gradient (like your logo) selectively:
+
+On CTAs (primary buttons, “Process” etc.)
+
+On active metrics or “AI Effectiveness” progress bars
+
+Keep gradients rare so they pop instead of overwhelm.
+
+🎨 Visual Example System
+
+Primary Accent: #4EE2E8 (cyan)
+
+Secondary Accent: #FF5DBB (pink)
+
+Background: #0E0E0E
+
+Card Panels: #1A1A1A
+
+Typography:
+
+White (90%) #EAEAEA
+
+Secondary Grey #A0A0A0
+
+➡ Rule of Thumb: Cyan = default highlight, Pink = emphasis/trend, White = clarity, Grey = support.

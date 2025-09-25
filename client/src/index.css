@@ -2,27 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LIGHT MODE */
+/* DARK MODE (Primary) */
 :root {
-  --button-outline: rgba(0,0,0, .10);
-  --badge-outline: rgba(0,0,0, .05);
+  --button-outline: rgba(255,255,255, .10);
+  --badge-outline: rgba(255,255,255, .05);
 
   /* Automatic computation of border around primary / danger buttons */
   --opaque-button-border-intensity: -8; /* In terms of percentages */
 
   /* Backgrounds applied on top of other backgrounds when hovered/active */
-  --elevate-1: rgba(0,0,0, .03);
-  --elevate-2: rgba(0,0,0, .08);
+  --elevate-1: rgba(255,255,255, .03);
+  --elevate-2: rgba(255,255,255, .08);
 
-  --background: 0 0% 6%;
+  --background: 0 0% 5.5%;
 
-  --foreground: 0 0% 100%;
+  --foreground: 0 0% 92%;
 
   --border: 0 0% 16%;
 
   --card: 0 0% 10%;
 
-  --card-foreground: 0 0% 100%;
+  --card-foreground: 0 0% 92%;
 
   --card-border: 0 0% 16%;
 
@@ -48,7 +48,7 @@
 
   --popover-border: 0 0% 87%;
 
-  --primary: 181 96% 61%;
+  --primary: 184 88% 62%;
 
   --primary-foreground: 0 0% 10%;
 
@@ -132,15 +132,15 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 0 0% 6%;
+  --background: 0 0% 5.5%;
 
-  --foreground: 0 0% 98%;
+  --foreground: 0 0% 92%;
 
   --border: 0 0% 16%;
 
   --card: 0 0% 10%;
 
-  --card-foreground: 0 0% 98%;
+  --card-foreground: 0 0% 92%;
 
   --card-border: 0 0% 16%;
 
@@ -166,7 +166,7 @@
 
   --popover-border: 17 8% 20%;
 
-  --primary: 181 96% 61%;
+  --primary: 184 88% 62%;
 
   --primary-foreground: 0 0% 10%;
 
@@ -202,6 +202,51 @@
   --shadow-lg: 0px 2px 0px 0px hsl(0 0% 0% / 0.25), 0px 4px 6px -1px hsl(0 0% 0% / 0.25);
   --shadow-xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.25), 0px 8px 10px -1px hsl(0 0% 0% / 0.25);
   --shadow-2xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.25);
+}
+
+/* Custom hover effects and brand elements */
+@layer utilities {
+  /* Hover glow effects */
+  .hover-cyan-glow:hover {
+    box-shadow: 0 0 12px rgba(78, 226, 232, 0.2);
+    transition: all 150ms ease-out;
+  }
+  
+  .hover-pink-glow:hover {
+    box-shadow: 0 0 12px rgba(255, 93, 187, 0.2);
+    transition: all 150ms ease-out;
+  }
+  
+  /* Micro-interactions */
+  .interactive:hover {
+    transform: scale(1.02);
+    transition: all 150ms ease-out;
+  }
+  
+  .tab-transition {
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* Brand gradient for CTAs */
+  .brand-gradient {
+    background: linear-gradient(135deg, #4EE2E8 0%, #FF5DBB 100%);
+  }
+  
+  /* Typography improvements */
+  .improved-line-height {
+    line-height: 1.6;
+  }
+  
+  /* Progress bar animations */
+  .progress-animate {
+    background: linear-gradient(90deg, #4EE2E8 0%, #4EE2E8 100%);
+    animation: progressPulse 2s infinite;
+  }
+  
+  @keyframes progressPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+  }
 }
 
 @layer base {
