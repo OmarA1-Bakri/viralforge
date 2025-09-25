@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import ProcessingIndicator from "./ProcessingIndicator";
-import { Video, Link, Download, Clock, Scissors, Sparkles } from "lucide-react";
+import { Video, Link, Download, Clock, Scissors, Sparkles, Upload } from "lucide-react";
 import viralForgeAILogo from "@assets/viralforge_1758689165504.png";
 
 interface ProcessedClip {
@@ -31,6 +31,9 @@ interface ProcessingJob {
 
 export default function MultiplierProcessor() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [videoFile, setVideoFile] = useState<File | null>(null);
+  const [uploadMode, setUploadMode] = useState<"youtube" | "upload">("youtube");
+  const [isUploading, setIsUploading] = useState(false);
   const [jobs, setJobs] = useState<ProcessingJob[]>([]);
   const [targetPlatform, setTargetPlatform] = useState("tiktok"); // Default to TikTok
   const [clipDuration, setClipDuration] = useState(15); // Default 15s for TikTok
@@ -38,6 +41,61 @@ export default function MultiplierProcessor() {
   const isValidYouTubeUrl = (url: string) => {
     const regex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/;
     return regex.test(url);
+  };
+
+  // Mutation for video upload
+  const uploadVideoMutation = useMutation({
+    mutationFn: async ({ fileName, fileSize, contentType }: {
+      fileName: string;
+      fileSize: number;
+      contentType: string;
+    }) => {
+      const response = await fetch('/api/upload/video', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileName,
+          fileSize,
+          contentType
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload video');
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      console.log('✅ Video upload prepared:', data.fileName);
+      setIsUploading(false);
+    },
+    onError: (error) => {
+      console.error('❌ Video upload failed:', error);
+      setIsUploading(false);
+    }
+  });
+
+  const handleVideoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setVideoFile(file);
+      setIsUploading(true);
+      
+      try {
+        await uploadVideoMutation.mutateAsync({
+          fileName: file.name,
+          fileSize: file.size,
+          contentType: file.type
+        });
+      } catch (error) {
+        console.error("Failed to upload video:", error);
+      }
+      
+      console.log("Video selected:", file.name, `${(file.size / 1024 / 1024).toFixed(2)} MB`);
+    }
   };
 
   // Mutation for video processing
@@ -143,15 +201,28 @@ export default function MultiplierProcessor() {
   });
 
   const handleProcess = async () => {
-    if (!isValidYouTubeUrl(youtubeUrl)) {
-      console.log("Invalid YouTube URL");
-      return;
+    let videoSource: string;
+    let jobId: string;
+    
+    if (uploadMode === "youtube") {
+      if (!isValidYouTubeUrl(youtubeUrl)) {
+        console.log("Invalid YouTube URL");
+        return;
+      }
+      videoSource = youtubeUrl;
+      jobId = youtubeUrl;
+    } else {
+      if (!videoFile) {
+        console.log("No video file selected");
+        return;
+      }
+      videoSource = videoFile.name; // Use filename as source identifier
+      jobId = `upload-${Date.now()}`;
     }
 
-    const jobId = youtubeUrl; // Use URL as job ID
     const newJob: ProcessingJob = {
       id: jobId,
-      url: youtubeUrl,
+      url: videoSource,
       status: "processing",
       progress: 0,
       estimatedTime: "3 min",
@@ -159,8 +230,13 @@ export default function MultiplierProcessor() {
     };
 
     setJobs(prev => [newJob, ...prev]);
-    const currentUrl = youtubeUrl;
-    setYoutubeUrl("");
+    
+    // Clear inputs
+    if (uploadMode === "youtube") {
+      setYoutubeUrl("");
+    } else {
+      setVideoFile(null);
+    }
 
     // Start progress simulation
     simulateProgress(jobId);
@@ -168,14 +244,14 @@ export default function MultiplierProcessor() {
     // Call the API
     try {
       await processVideoMutation.mutateAsync({
-        videoUrl: currentUrl,
+        videoUrl: videoSource,
         platform: targetPlatform
       });
     } catch (error) {
       console.error("Video processing failed:", error);
     }
 
-    console.log("Started processing YouTube URL:", currentUrl);
+    console.log(`Started processing ${uploadMode === "youtube" ? "YouTube URL" : "uploaded video"}:`, videoSource);
   };
 
   // Separate progress simulation function
@@ -235,7 +311,31 @@ export default function MultiplierProcessor() {
       <div className="px-4 pt-4 space-y-6">
         {/* Input Section */}
         <Card className="p-4 space-y-4">
-          <h2 className="font-semibold text-foreground">YouTube Video to Process</h2>
+          <h2 className="font-semibold text-foreground">Video to Process</h2>
+          
+          {/* Upload Mode Toggle */}
+          <div className="flex gap-2 p-1 bg-muted rounded-lg">
+            <Button
+              variant={uploadMode === "youtube" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setUploadMode("youtube")}
+              className="flex-1"
+              data-testid="button-youtube-mode"
+            >
+              <Link className="w-4 h-4 mr-2" />
+              YouTube URL
+            </Button>
+            <Button
+              variant={uploadMode === "upload" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => setUploadMode("upload")}
+              className="flex-1"
+              data-testid="button-upload-mode"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Upload Video
+            </Button>
+          </div>
           
           {/* TikTok Optimization Guide */}
           <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
@@ -248,34 +348,76 @@ export default function MultiplierProcessor() {
             </p>
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="youtube-url">YouTube URL</Label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Link className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  id="youtube-url"
-                  type="url"
-                  placeholder="https://youtube.com/watch?v=..."
-                  value={youtubeUrl}
-                  onChange={(e) => setYoutubeUrl(e.target.value)}
-                  className="pl-10"
-                  data-testid="input-youtube-url"
-                />
+          {uploadMode === "youtube" ? (
+            <div className="space-y-2">
+              <Label htmlFor="youtube-url">YouTube URL</Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Link className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="youtube-url"
+                    type="url"
+                    placeholder="https://youtube.com/watch?v=..."
+                    value={youtubeUrl}
+                    onChange={(e) => setYoutubeUrl(e.target.value)}
+                    className="pl-10"
+                    data-testid="input-youtube-url"
+                  />
+                </div>
+                <Button
+                  onClick={handleProcess}
+                  disabled={!isValidYouTubeUrl(youtubeUrl)}
+                  data-testid="button-process"
+                >
+                  <Scissors className="w-4 h-4 mr-2" />
+                  Process
+                </Button>
               </div>
-              <Button
-                onClick={handleProcess}
-                disabled={!isValidYouTubeUrl(youtubeUrl)}
-                data-testid="button-process"
-              >
-                <Scissors className="w-4 h-4 mr-2" />
-                Process
-              </Button>
+              <p className="text-xs text-muted-foreground">
+                Paste any YouTube URL to automatically extract viral moments
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              AI will automatically extract viral moments and create 15-second TikTok-ready clips
-            </p>
-          </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="video-upload">Upload Video File</Label>
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Button asChild size="sm" variant="outline" className="w-full">
+                      <label htmlFor="video-upload" className="cursor-pointer">
+                        <Video className="w-4 h-4 mr-2" />
+                        {videoFile ? videoFile.name : "Choose Video File"}
+                      </label>
+                    </Button>
+                    <input
+                      id="video-upload"
+                      type="file"
+                      accept="video/*"
+                      onChange={handleVideoUpload}
+                      className="hidden"
+                      data-testid="input-video-upload"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleProcess}
+                    disabled={!videoFile || isUploading}
+                    data-testid="button-process"
+                  >
+                    <Scissors className="w-4 h-4 mr-2" />
+                    {isUploading ? "Uploading..." : "Process"}
+                  </Button>
+                </div>
+                {videoFile && (
+                  <div className="text-xs text-muted-foreground">
+                    Selected: {videoFile.name} ({(videoFile.size / 1024 / 1024).toFixed(2)} MB)
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Upload MP4, MOV, or AVI files up to 100MB for clip generation
+                </p>
+              </div>
+            </div>
+          )}
         </Card>
 
         {/* Processing Jobs */}

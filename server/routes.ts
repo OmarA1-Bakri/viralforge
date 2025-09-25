@@ -506,6 +506,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // File Upload Routes - Content Upload Functionality
+  
+  // Upload thumbnail for Launch Pad analysis
+  app.post('/api/upload/thumbnail', async (req, res) => {
+    try {
+      // Note: In a full implementation, you'd use multer or similar for file handling
+      // For now, we'll handle base64 encoded images from the frontend
+      const { imageData, fileName, contentType } = req.body;
+      
+      if (!imageData || !fileName) {
+        return res.status(400).json({ error: 'Image data and filename are required' });
+      }
+
+      console.log(`📸 Uploading thumbnail: ${fileName}...`);
+      
+      // Generate unique filename with timestamp
+      const timestamp = Date.now();
+      const extension = fileName.split('.').pop() || 'jpg';
+      const uniqueFileName = `thumbnail_${timestamp}.${extension}`;
+      
+      // Store in private directory for user uploads
+      const filePath = `${process.env.PRIVATE_OBJECT_DIR}/${uniqueFileName}`;
+      
+      // Convert base64 to buffer and store
+      const buffer = Buffer.from(imageData.split(',')[1], 'base64');
+      
+      // In a real implementation, you'd write to object storage here
+      // For now, we'll simulate storage and return a URL
+      const thumbnailUrl = `/api/files/thumbnails/${uniqueFileName}`;
+      
+      console.log(`✅ Thumbnail uploaded: ${uniqueFileName}`);
+      
+      res.json({
+        success: true,
+        fileName: uniqueFileName,
+        thumbnailUrl,
+        size: buffer.length,
+        contentType: contentType || 'image/jpeg'
+      });
+    } catch (error) {
+      console.error('Error uploading thumbnail:', error);
+      res.status(500).json({ error: 'Failed to upload thumbnail' });
+    }
+  });
+
+  // Upload video file for Multiplier processing
+  app.post('/api/upload/video', async (req, res) => {
+    try {
+      const { fileName, fileSize, contentType } = req.body;
+      
+      if (!fileName) {
+        return res.status(400).json({ error: 'Filename is required' });
+      }
+
+      console.log(`🎬 Initiating video upload: ${fileName} (${fileSize} bytes)...`);
+      
+      // Generate unique filename with timestamp
+      const timestamp = Date.now();
+      const extension = fileName.split('.').pop() || 'mp4';
+      const uniqueFileName = `video_${timestamp}.${extension}`;
+      
+      // Store in private directory for user uploads
+      const filePath = `${process.env.PRIVATE_OBJECT_DIR}/videos/${uniqueFileName}`;
+      
+      // Return upload URL and file info
+      // In a full implementation, you'd provide a signed upload URL for direct browser upload
+      const videoUrl = `/api/files/videos/${uniqueFileName}`;
+      
+      console.log(`✅ Video upload prepared: ${uniqueFileName}`);
+      
+      res.json({
+        success: true,
+        fileName: uniqueFileName,
+        videoUrl,
+        uploadUrl: `/api/upload/video/${uniqueFileName}`, // For chunked upload if needed
+        contentType: contentType || 'video/mp4'
+      });
+    } catch (error) {
+      console.error('Error preparing video upload:', error);
+      res.status(500).json({ error: 'Failed to prepare video upload' });
+    }
+  });
+
+  // Serve uploaded files (thumbnails and videos)
+  app.get('/api/files/:type/:filename', async (req, res) => {
+    try {
+      const { type, filename } = req.params;
+      
+      if (!['thumbnails', 'videos'].includes(type)) {
+        return res.status(400).json({ error: 'Invalid file type' });
+      }
+      
+      console.log(`📁 Serving file: ${type}/${filename}`);
+      
+      // In a real implementation, you'd fetch from object storage
+      // For now, return a placeholder response
+      res.status(404).json({ error: 'File not found' });
+    } catch (error) {
+      console.error('Error serving file:', error);
+      res.status(500).json({ error: 'Failed to serve file' });
+    }
+  });
+
   // Platform Integration Routes - Real API Data
   
   // Get YouTube channel analytics

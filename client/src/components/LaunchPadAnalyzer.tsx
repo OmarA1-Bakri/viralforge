@@ -28,22 +28,74 @@ export default function LaunchPadAnalyzer() {
   const [title, setTitle] = useState("");
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [roastMode, setRoastMode] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [platform, setPlatform] = useState("tiktok"); // Default to TikTok
 
-  const handleThumbnailUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Mutation for thumbnail upload
+  const uploadThumbnailMutation = useMutation({
+    mutationFn: async ({ imageData, fileName, contentType }: {
+      imageData: string;
+      fileName: string;
+      contentType: string;
+    }) => {
+      const response = await fetch('/api/upload/thumbnail', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageData,
+          fileName,
+          contentType
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload thumbnail');
+      }
+
+      return response.json();
+    },
+    onSuccess: (data) => {
+      console.log('✅ Thumbnail uploaded successfully:', data.fileName);
+      setThumbnailUrl(data.thumbnailUrl);
+      setIsUploading(false);
+    },
+    onError: (error) => {
+      console.error('❌ Thumbnail upload failed:', error);
+      setIsUploading(false);
+    }
+  });
+
+  const handleThumbnailUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setThumbnailFile(file);
+      setIsUploading(true);
+      
       const reader = new FileReader();
-      reader.onload = (e) => {
-        setThumbnailPreview(e.target?.result as string);
+      reader.onload = async (e) => {
+        const result = e.target?.result as string;
+        setThumbnailPreview(result);
+        
+        // Upload to server
+        try {
+          await uploadThumbnailMutation.mutateAsync({
+            imageData: result,
+            fileName: file.name,
+            contentType: file.type
+          });
+        } catch (error) {
+          console.error("Failed to upload thumbnail:", error);
+        }
       };
       reader.readAsDataURL(file);
-      console.log("Thumbnail uploaded:", file.name);
+      console.log("Thumbnail selected:", file.name);
     }
   };
 
