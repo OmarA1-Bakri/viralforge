@@ -80,7 +80,6 @@ export default function UserPreferences() {
 
   const savePreferences = useMutation({
     mutationFn: async (data: PreferencesData) => {
-      console.log('🌐 Making API request to save preferences...');
       const response = await fetch('/api/preferences/save', {
         method: 'POST',
         headers: {
@@ -89,20 +88,13 @@ export default function UserPreferences() {
         body: JSON.stringify(data)
       });
       
-      console.log('📡 API Response status:', response.status);
-      
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ API Error:', errorText);
-        throw new Error(`API Error: ${response.status} - ${errorText}`);
+        throw new Error('Failed to save preferences');
       }
       
-      const result = await response.json();
-      console.log('✅ API Success:', result);
-      return result;
+      return response.json();
     },
     onSuccess: (data: any) => {
-      console.log('🎉 Save success, showing toast...');
       toast({
         title: "Preferences Saved!",
         description: data?.message || "Your preferences have been updated successfully.",
@@ -111,7 +103,6 @@ export default function UserPreferences() {
       queryClient.invalidateQueries({ queryKey: ['/api/trends'] });
     },
     onError: (error: any) => {
-      console.error('💥 Save failed:', error);
       toast({
         title: "Save Failed",
         description: error.message || "Failed to save preferences. Please try again.",
@@ -121,27 +112,9 @@ export default function UserPreferences() {
   });
 
   const onSubmit = (data: PreferencesData) => {
-    console.log('🔄 Submitting preferences:', data);
-    console.log('Form errors:', form.formState.errors);
     savePreferences.mutate(data);
   };
 
-  // Debug function to test API directly
-  const testDirectSave = () => {
-    const testData = {
-      niche: "fitness",
-      targetAudience: "gen-z", 
-      contentStyle: "motivational",
-      preferredPlatforms: ["tiktok"],
-      preferredCategories: ["fitness"],
-      bio: "Test fitness creator",
-      contentLength: "short",
-      goals: "grow_followers",
-      postingSchedule: ["18:00", "21:00"]
-    };
-    console.log('🧪 Testing direct API call...');
-    savePreferences.mutate(testData);
-  };
 
   if (optionsLoading) {
     return (
@@ -184,22 +157,15 @@ export default function UserPreferences() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Content Niche *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-niche">
-                            <SelectValue placeholder="Select your niche" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {options?.options?.niches?.map((niche: string) => (
-                            <SelectItem key={niche} value={niche}>
-                              {niche.charAt(0).toUpperCase() + niche.slice(1)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g., fitness, cooking, tech reviews"
+                          data-testid="input-niche"
+                          {...field}
+                        />
+                      </FormControl>
                       <FormDescription>
-                        Choose your primary content category
+                        Enter your primary content category
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -212,20 +178,13 @@ export default function UserPreferences() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Target Audience *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-audience">
-                            <SelectValue placeholder="Select your audience" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {options?.options?.audiences?.map((audience: string) => (
-                            <SelectItem key={audience} value={audience}>
-                              {audience.charAt(0).toUpperCase() + audience.slice(1)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g., gen-z, millennials, entrepreneurs"
+                          data-testid="input-audience"
+                          {...field}
+                        />
+                      </FormControl>
                       <FormDescription>
                         Who is your primary audience?
                       </FormDescription>
@@ -278,20 +237,13 @@ export default function UserPreferences() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Content Style *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-content-style">
-                            <SelectValue placeholder="Select your style" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {options?.options?.contentStyles?.map((style: string) => (
-                            <SelectItem key={style} value={style}>
-                              {style.charAt(0).toUpperCase() + style.slice(1)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g., educational, entertaining, motivational"
+                          data-testid="input-content-style"
+                          {...field}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -303,18 +255,13 @@ export default function UserPreferences() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Preferred Content Length *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-content-length">
-                            <SelectValue placeholder="Select length" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="short">Short (15-60 seconds)</SelectItem>
-                          <SelectItem value="medium">Medium (1-5 minutes)</SelectItem>
-                          <SelectItem value="long">Long (5+ minutes)</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g., short, medium, long"
+                          data-testid="input-content-length"
+                          {...field}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -437,20 +384,13 @@ export default function UserPreferences() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Primary Goal *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-goals">
-                          <SelectValue placeholder="Select your goal" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {options?.options?.goals?.map((goal: string) => (
-                          <SelectItem key={goal} value={goal}>
-                            {goal.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g., grow followers, increase sales, build brand"
+                        data-testid="input-goals"
+                        {...field}
+                      />
+                    </FormControl>
                     <FormDescription>
                       What's your main objective with content creation?
                     </FormDescription>
@@ -462,7 +402,7 @@ export default function UserPreferences() {
           </Card>
 
           {/* Save Button */}
-          <div className="flex justify-center gap-4 pt-6">
+          <div className="flex justify-center pt-6">
             <Button 
               type="submit" 
               size="lg" 
@@ -481,18 +421,6 @@ export default function UserPreferences() {
                   Save Preferences
                 </>
               )}
-            </Button>
-            
-            {/* Debug Button */}
-            <Button 
-              type="button" 
-              variant="outline"
-              size="lg" 
-              onClick={testDirectSave}
-              disabled={savePreferences.isPending}
-              data-testid="button-test-save"
-            >
-              🧪 Test Save
             </Button>
           </div>
         </form>
