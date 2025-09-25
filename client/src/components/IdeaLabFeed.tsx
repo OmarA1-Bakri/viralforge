@@ -95,6 +95,7 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix }: IdeaLabFeedPr
       console.log("🎯 Discovering new TikTok trends via AI...");
       const response = await apiRequest('/api/trends/discover', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           platform: 'tiktok',
           category: 'All',
@@ -103,7 +104,7 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix }: IdeaLabFeedPr
         })
       });
       console.log("✅ AI trend discovery completed");
-      return response.trends;
+      return response;
     },
     onSuccess: () => {
       // Invalidate and refetch trends with exact key
