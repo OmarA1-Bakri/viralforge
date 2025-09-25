@@ -901,6 +901,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Health check endpoint for monitoring TikTok provider status
+  app.get("/api/health/trends", async (req, res) => {
+    try {
+      const tiktokStatus = tiktokService.getProviderStatus();
+      const youtubeStatus = youtubeService.getProviderStatus();
+      
+      res.json({
+        success: true,
+        providers: {
+          tiktok: tiktokStatus,
+          youtube: youtubeStatus
+        },
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Health check error:", error);
+      res.status(500).json({ error: "Health check failed" });
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;

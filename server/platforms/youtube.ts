@@ -243,6 +243,15 @@ export class YouTubeService {
       }
     ];
   }
+
+  // Health check for monitoring
+  getProviderStatus(): { provider: string; available: boolean; cached: number } {
+    return {
+      provider: 'YouTube Data API v3',
+      available: !!this.apiKey,
+      cached: 0 // YouTube service doesn't implement caching yet
+    };
+  }
 }
 
 export const youtubeService = new YouTubeService();
