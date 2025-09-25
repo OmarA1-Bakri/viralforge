@@ -3,6 +3,9 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { openRouterService } from "./ai/openrouter";
 import { analyticsService } from "./analytics";
+import { youtubeService } from "./platforms/youtube";
+import { tiktokService } from "./platforms/tiktok";
+import { analyzeSuccessPatterns, getUserPreferences, filterTrendsByPreferences } from "./preferences";
 import { insertTrendSchema, insertUserTrendsSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -19,17 +22,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`🔍 Discovering trends for ${platform}...`);
       
-      // Use AI to discover trends
-      const aiTrends = await openRouterService.discoverTrends({
-        platform,
-        category,
-        contentType,
-        targetAudience
-      });
+      // Use platform-specific APIs first, fall back to AI
+      let trends = [];
+      
+      if (platform === 'youtube') {
+        const youtubeTrends = await youtubeService.getTrendingVideos('US', '0', 10);
+        trends = youtubeTrends;
+      } else if (platform === 'tiktok') {
+        const tiktokTrends = await tiktokService.getTrendingHashtags('US', 10);
+        trends = tiktokTrends;
+      }
+      
+      // If no platform trends, enhance with AI discovery
+      if (trends.length === 0) {
+        trends = await openRouterService.discoverTrends({
+          platform,
+          category,
+          contentType,
+          targetAudience
+        });
+      }
 
       // Store trends in database
       const storedTrends = [];
-      for (const trendData of aiTrends) {
+      for (const trendData of trends) {
         try {
           // Validate trend data
           const validatedTrend = insertTrendSchema.parse(trendData);
@@ -415,6 +431,179 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching video history:', error);
       res.status(500).json({ error: 'Failed to fetch video history' });
+    }
+  });
+
+  // Platform Integration Routes - Real API Data
+  
+  // Get YouTube channel analytics
+  app.get('/api/platforms/youtube/analytics/:channelId', async (req, res) => {
+    try {
+      const { channelId } = req.params;
+      
+      console.log(`📺 Fetching YouTube analytics for channel: ${channelId}...`);
+      
+      const analytics = await youtubeService.getChannelAnalytics(channelId);
+      
+      if (!analytics) {
+        return res.status(404).json({ error: 'Channel not found or analytics unavailable' });
+      }
+      
+      console.log(`✅ YouTube analytics retrieved for ${channelId}`);
+      
+      res.json({
+        success: true,
+        platform: 'youtube',
+        analytics
+      });
+    } catch (error) {
+      console.error('YouTube analytics error:', error);
+      res.status(500).json({ error: 'Failed to fetch YouTube analytics' });
+    }
+  });
+
+  // Get TikTok hashtag analytics
+  app.get('/api/platforms/tiktok/hashtag/:hashtag', async (req, res) => {
+    try {
+      const { hashtag } = req.params;
+      
+      console.log(`🎵 Fetching TikTok hashtag analytics for: ${hashtag}...`);
+      
+      const analytics = await tiktokService.getHashtagAnalytics(hashtag);
+      
+      if (!analytics) {
+        return res.status(404).json({ error: 'Hashtag analytics unavailable' });
+      }
+      
+      console.log(`✅ TikTok hashtag analytics retrieved for ${hashtag}`);
+      
+      res.json({
+        success: true,
+        platform: 'tiktok',
+        analytics
+      });
+    } catch (error) {
+      console.error('TikTok hashtag analytics error:', error);
+      res.status(500).json({ error: 'Failed to fetch TikTok hashtag analytics' });
+    }
+  });
+
+  // Get TikTok trending sounds
+  app.get('/api/platforms/tiktok/sounds', async (req, res) => {
+    try {
+      const region = req.query.region as string || 'US';
+      const limit = parseInt(req.query.limit as string) || 15;
+      
+      console.log(`🎶 Fetching trending TikTok sounds for ${region}...`);
+      
+      const sounds = await tiktokService.getTrendingSounds(region, limit);
+      
+      console.log(`✅ Retrieved ${sounds.length} trending sounds`);
+      
+      res.json({
+        success: true,
+        platform: 'tiktok',
+        sounds,
+        region
+      });
+    } catch (error) {
+      console.error('TikTok sounds error:', error);
+      res.status(500).json({ error: 'Failed to fetch trending sounds' });
+    }
+  });
+
+  // Automated Preference System Routes
+  
+  // Learn user preferences from successful content
+  app.post('/api/preferences/learn', async (req, res) => {
+    try {
+      const userId = 'demo-user'; // TODO: Get from auth
+      const { contentId, performance } = req.body; // performance: views, engagement rate, etc.
+      
+      if (!contentId || !performance) {
+        return res.status(400).json({ error: 'Content ID and performance data are required' });
+      }
+      
+      console.log(`🧠 Learning preferences from successful content ${contentId}...`);
+      
+      // Get the content details to analyze patterns
+      const content = await storage.getContentById(contentId);
+      if (!content) {
+        return res.status(404).json({ error: 'Content not found' });
+      }
+      
+      // Extract patterns from successful content
+      const preferences = await analyzeSuccessPatterns(content, performance);
+      
+      // Store or update user preferences
+      const userPrefs = await storage.createOrUpdateUserPreferences(userId, preferences);
+      
+      console.log(`✅ Updated user preferences based on successful content`);
+      
+      res.json({
+        success: true,
+        preferences: userPrefs,
+        learnedFrom: contentId
+      });
+    } catch (error) {
+      console.error('Preference learning error:', error);
+      res.status(500).json({ error: 'Failed to learn from content performance' });
+    }
+  });
+
+  // Get filtered trends based on user preferences
+  app.get('/api/trends/personalized', async (req, res) => {
+    try {
+      const userId = 'demo-user'; // TODO: Get from auth
+      const { platform, limit = 10 } = req.query;
+      
+      console.log(`🎯 Getting personalized trends for ${userId}...`);
+      
+      // Get user preferences
+      const userPrefs = await getUserPreferences(userId);
+      
+      // Get all available trends
+      const allTrends = await storage.getTrends(platform as string);
+      
+      // Filter and rank trends based on user preferences
+      const personalizedTrends = await filterTrendsByPreferences(allTrends, userPrefs);
+      
+      console.log(`✅ Filtered ${personalizedTrends.length} personalized trends`);
+      
+      res.json({
+        success: true,
+        trends: personalizedTrends.slice(0, parseInt(limit as string)),
+        preferenceMatch: true,
+        userNiche: userPrefs?.niche || 'general'
+      });
+    } catch (error) {
+      console.error('Personalized trends error:', error);
+      res.status(500).json({ error: 'Failed to get personalized trends' });
+    }
+  });
+
+  // Get user's content preferences and niche
+  app.get('/api/preferences/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+      
+      const preferences = await getUserPreferences(userId);
+      
+      if (!preferences) {
+        return res.json({
+          success: true,
+          preferences: null,
+          message: 'No preferences learned yet - create some content to get personalized recommendations'
+        });
+      }
+      
+      res.json({
+        success: true,
+        preferences
+      });
+    } catch (error) {
+      console.error('Get preferences error:', error);
+      res.status(500).json({ error: 'Failed to get user preferences' });
     }
   });
 
