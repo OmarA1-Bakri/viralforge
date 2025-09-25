@@ -6,7 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import ProcessingIndicator from "./ProcessingIndicator";
-import { Video, Link, Download, Clock, Scissors, Sparkles, Upload } from "lucide-react";
+import { Video, Link, Download, Clock, Scissors, Sparkles, Upload, Camera } from "lucide-react";
+import { Camera as CapacitorCamera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { Capacitor } from "@capacitor/core";
 import viralForgeAILogo from "@assets/viralforge_1758689165504.png";
 
 interface ProcessedClip {
@@ -81,21 +83,67 @@ export default function MultiplierProcessor() {
   const handleVideoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      setVideoFile(file);
-      setIsUploading(true);
-      
-      try {
-        await uploadVideoMutation.mutateAsync({
-          fileName: file.name,
-          fileSize: file.size,
-          contentType: file.type
-        });
-      } catch (error) {
-        console.error("Failed to upload video:", error);
-      }
-      
-      console.log("Video selected:", file.name, `${(file.size / 1024 / 1024).toFixed(2)} MB`);
+      await processVideoFile(file);
     }
+  };
+
+  const handleVideoRecord = async () => {
+    try {
+      if (!Capacitor.isNativePlatform()) {
+        // Fallback for web - trigger file input
+        document.getElementById('video-upload')?.click();
+        return;
+      }
+
+      const video = await CapacitorCamera.getPhoto({
+        quality: 90,
+        allowEditing: false,
+        resultType: CameraResultType.DataUrl,
+        source: CameraSource.Camera,
+        width: 1080,
+        height: 1920
+      });
+
+      if (video.dataUrl) {
+        const fileName = `video_${Date.now()}.mp4`;
+        
+        // Create a mock file object for processing
+        const mockFile = {
+          name: fileName,
+          size: 5000000, // Estimate 5MB
+          type: 'video/mp4'
+        } as File;
+        
+        setVideoFile(mockFile);
+        await processVideoFile(mockFile);
+      }
+    } catch (error) {
+      console.error("Video recording failed:", error);
+    }
+  };
+
+  const processVideoFile = async (file: File) => {
+    // Check file size (limit to 100MB for mobile)
+    const maxSize = 100 * 1024 * 1024; // 100MB
+    if (file.size > maxSize) {
+      alert('Video too large. Please choose a video under 100MB.');
+      return;
+    }
+
+    setVideoFile(file);
+    setIsUploading(true);
+    
+    try {
+      await uploadVideoMutation.mutateAsync({
+        fileName: file.name,
+        fileSize: file.size,
+        contentType: file.type
+      });
+    } catch (error) {
+      console.error("Failed to upload video:", error);
+    }
+    
+    console.log("Video selected:", file.name, `${(file.size / 1024 / 1024).toFixed(2)} MB`);
   };
 
   // Mutation for video processing
@@ -381,26 +429,37 @@ export default function MultiplierProcessor() {
             <div className="space-y-2">
               <Label htmlFor="video-upload">Upload Video File</Label>
               <div className="space-y-3">
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <Button asChild size="sm" variant="outline" className="w-full">
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleVideoRecord}
+                      className="flex-1"
+                      data-testid="button-camera-record"
+                    >
+                      <Camera className="w-4 h-4 mr-2" />
+                      Record Video
+                    </Button>
+                    <Button asChild size="sm" variant="outline" className="flex-1">
                       <label htmlFor="video-upload" className="cursor-pointer">
                         <Video className="w-4 h-4 mr-2" />
-                        {videoFile ? videoFile.name : "Choose Video File"}
+                        Choose File
                       </label>
                     </Button>
-                    <input
-                      id="video-upload"
-                      type="file"
-                      accept="video/*"
-                      onChange={handleVideoUpload}
-                      className="hidden"
-                      data-testid="input-video-upload"
-                    />
                   </div>
+                  <input
+                    id="video-upload"
+                    type="file"
+                    accept="video/*"
+                    onChange={handleVideoUpload}
+                    className="hidden"
+                    data-testid="input-video-upload"
+                  />
                   <Button
                     onClick={handleProcess}
                     disabled={!videoFile || isUploading}
+                    className="w-full"
                     data-testid="button-process"
                   >
                     <Scissors className="w-4 h-4 mr-2" />

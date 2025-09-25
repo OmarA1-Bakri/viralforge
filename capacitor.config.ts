@@ -5,7 +5,10 @@ const config: CapacitorConfig = {
   appName: 'ViralForgeAI',
   webDir: 'dist/public',
   server: {
-    androidScheme: 'https'
+    androidScheme: 'https',
+    // Development server URL - will be set during mobile dev
+    // url: 'https://your-tunnel-url.ngrok.io',
+    cleartext: true
   },
   plugins: {
     StatusBar: {
@@ -16,6 +19,9 @@ const config: CapacitorConfig = {
       launchShowDuration: 2000,
       backgroundColor: '#000000',
       showSpinner: false
+    },
+    Camera: {
+      permissions: ['camera', 'photos']
     }
   }
 };

@@ -41,7 +41,7 @@ export default function BottomTabNavigation({ activeTab, onTabChange }: BottomTa
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-lg border-t border-primary/20 px-2 py-2 z-50 shadow-2xl">
+    <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-lg border-t border-primary/20 px-2 py-2 safe-area-bottom z-50 shadow-2xl">
       <div className="flex justify-around items-center max-w-lg mx-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;

@@ -8,7 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import ScoreDisplay from "./ScoreDisplay";
 import ProcessingIndicator from "./ProcessingIndicator";
-import { Upload, Image, Zap, Eye, MessageSquare } from "lucide-react";
+import { Upload, Image, Zap, Eye, MessageSquare, Camera } from "lucide-react";
+import { Camera as CapacitorCamera, CameraResultType, CameraSource } from "@capacitor/camera";
+import { Capacitor } from "@capacitor/core";
 import viralForgeAILogo from "@assets/viralforge_1758689165504.png";
 
 interface AnalysisResult {
@@ -75,28 +77,77 @@ export default function LaunchPadAnalyzer() {
   const handleThumbnailUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      setThumbnailFile(file);
-      setIsUploading(true);
-      
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const result = e.target?.result as string;
-        setThumbnailPreview(result);
+      await processImageFile(file);
+    }
+  };
+
+  const handleCameraCapture = async () => {
+    try {
+      if (!Capacitor.isNativePlatform()) {
+        // Fallback for web - trigger file input
+        document.getElementById('thumbnail-upload')?.click();
+        return;
+      }
+
+      const image = await CapacitorCamera.getPhoto({
+        quality: 90,
+        allowEditing: true,
+        resultType: CameraResultType.DataUrl,
+        source: CameraSource.Camera,
+        width: 1080,
+        height: 1920
+      });
+
+      if (image.dataUrl) {
+        const fileName = `thumbnail_${Date.now()}.jpg`;
+        setIsUploading(true);
+        setThumbnailPreview(image.dataUrl);
         
         // Upload to server
         try {
           await uploadThumbnailMutation.mutateAsync({
-            imageData: result,
-            fileName: file.name,
-            contentType: file.type
+            imageData: image.dataUrl,
+            fileName,
+            contentType: 'image/jpeg'
           });
         } catch (error) {
-          console.error("Failed to upload thumbnail:", error);
+          console.error("Failed to upload captured image:", error);
         }
-      };
-      reader.readAsDataURL(file);
-      console.log("Thumbnail selected:", file.name);
+      }
+    } catch (error) {
+      console.error("Camera capture failed:", error);
     }
+  };
+
+  const processImageFile = async (file: File) => {
+    // Check file size (limit to 10MB for mobile)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      alert('Image too large. Please choose an image under 10MB.');
+      return;
+    }
+
+    setThumbnailFile(file);
+    setIsUploading(true);
+    
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const result = e.target?.result as string;
+      setThumbnailPreview(result);
+      
+      // Upload to server
+      try {
+        await uploadThumbnailMutation.mutateAsync({
+          imageData: result,
+          fileName: file.name,
+          contentType: file.type
+        });
+      } catch (error) {
+        console.error("Failed to upload thumbnail:", error);
+      }
+    };
+    reader.readAsDataURL(file);
+    console.log("Thumbnail selected:", file.name);
   };
 
   // Mutation for content analysis
@@ -324,12 +375,23 @@ export default function LaunchPadAnalyzer() {
                   <p className="text-xs text-muted-foreground mb-3">
                     Best: 9:16 aspect ratio • Clear faces • Bright colors • Text overlay
                   </p>
-                  <Button asChild size="sm" variant="outline">
-                    <label htmlFor="thumbnail-upload" className="cursor-pointer">
-                      <Image className="w-4 h-4 mr-2" />
-                      Choose Image
-                    </label>
-                  </Button>
+                  <div className="flex gap-2 justify-center">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleCameraCapture}
+                      data-testid="button-camera-capture"
+                    >
+                      <Camera className="w-4 h-4 mr-2" />
+                      Take Photo
+                    </Button>
+                    <Button asChild size="sm" variant="outline">
+                      <label htmlFor="thumbnail-upload" className="cursor-pointer">
+                        <Image className="w-4 h-4 mr-2" />
+                        Choose Image
+                      </label>
+                    </Button>
+                  </div>
                   <input
                     id="thumbnail-upload"
                     type="file"
