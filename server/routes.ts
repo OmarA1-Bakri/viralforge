@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { openRouterService } from "./ai/openrouter";
-import { aiCache } from "./ai/cache";
+import { simplifiedAICache } from "./ai/simplifiedCache";
 import { analyticsService } from "./analytics";
 import { youtubeService } from "./platforms/youtube";
 import { tiktokService } from "./platforms/tiktok";
@@ -802,10 +802,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI Cache Statistics - Monitor token optimization
+  // AI Cache Statistics - Monitor token optimization (secured for production)
   app.get("/api/cache/stats", (req, res) => {
     try {
-      const stats = aiCache.getStats();
+      const stats = simplifiedAICache.getStats();
       
       res.json({
         success: true,
@@ -813,10 +813,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ...stats,
           description: "AI response cache performance metrics for token optimization",
           savings: {
-            totalTokensSaved: stats.estimatedTokensSaved,
-            estimatedCostSaved: `$${(stats.estimatedTokensSaved * 0.0001).toFixed(4)}`, // Rough estimate
-            description: "Estimated API cost savings from caching"
-          }
+            totalTokensSaved: stats.tokensSaved,
+            estimatedCostSaved: stats.estimatedCostSaved,
+            description: "Estimated API cost savings from persistent caching"
+          },
+          type: "persistent"
         }
       });
     } catch (error) {
@@ -828,19 +829,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Clear cache endpoint (for development/testing)
-  app.post("/api/cache/clear", (req, res) => {
+  // Clear cache endpoint (secured for development only)
+  app.post("/api/cache/clear", async (req, res) => {
     try {
-      const { type } = req.body;
+      // Security: Only allow in development environment
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(403).json({ 
+          success: false, 
+          error: 'Cache clearing not allowed in production' 
+        });
+      }
+
+      const { type, secret } = req.body;
+      
+      // Simple secret check for development security
+      if (secret !== 'dev-clear-cache-2025') {
+        return res.status(401).json({ 
+          success: false, 
+          error: 'Invalid secret for cache clearing' 
+        });
+      }
       
       if (type) {
-        aiCache.clearByType(type);
+        const clearedCount = await simplifiedAICache.clearByType(type);
         res.json({ 
           success: true, 
-          message: `Cleared cache for type: ${type}` 
+          message: `Cleared ${clearedCount} cache entries for type: ${type}` 
         });
       } else {
-        aiCache.clear();
+        await simplifiedAICache.clear();
         res.json({ 
           success: true, 
           message: "All cache cleared" 

@@ -360,8 +360,13 @@ export class MemStorage implements IStorage {
     const id = this.nextUserAnalyticsId++;
     const analytics: UserAnalytics = {
       id,
-      ...insertAnalytics,
+      platform: insertAnalytics.platform,
+      userId: insertAnalytics.userId,
       contentId: insertAnalytics.contentId ?? null,
+      views: insertAnalytics.views ?? 0,
+      likes: insertAnalytics.likes ?? 0,
+      shares: insertAnalytics.shares ?? 0,
+      comments: insertAnalytics.comments ?? 0,
       clickRate: insertAnalytics.clickRate ?? null,
       recordedAt: insertAnalytics.recordedAt || new Date(),
     };

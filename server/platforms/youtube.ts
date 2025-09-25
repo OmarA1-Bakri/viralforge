@@ -41,8 +41,8 @@ export class YouTubeService {
     console.log(`🎥 Fetching trending YouTube videos for region: ${regionCode}...`);
 
     if (!this.apiKey) {
-      console.log('⚠️ No YouTube API key found, using AI-generated trending data');
-      return this.generateAITrendingContent();
+      console.log('⚠️ No YouTube API key found, will use cached AI system');
+      return [];
     }
 
     try {
@@ -73,8 +73,8 @@ export class YouTubeService {
 
     } catch (error) {
       console.error('YouTube API error:', error);
-      console.log('⚠️ Falling back to AI-generated trending content');
-      return this.generateAITrendingContent();
+      console.log('⚠️ YouTube API failed, will use cached AI system');
+      return [];
     }
   }
 

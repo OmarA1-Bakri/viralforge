@@ -34,8 +34,8 @@ export class TikTokService {
     console.log(`🎵 Fetching trending TikTok hashtags for region: ${region}...`);
 
     if (!this.apiKey) {
-      console.log('⚠️ No TikTok API key found, using AI-generated trending data');
-      return this.generateAITrendingContent();
+      console.log('⚠️ No TikTok API key found, will use cached AI system');
+      return [];
     }
 
     try {
@@ -72,8 +72,8 @@ export class TikTokService {
 
     } catch (error) {
       console.error('TikTok API error:', error);
-      console.log('⚠️ Falling back to AI-generated trending content');
-      return this.generateAITrendingContent();
+      console.log('⚠️ TikTok API failed, will use cached AI system');
+      return [];
     }
   }
 
