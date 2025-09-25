@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { openRouterService } from "./ai/openrouter";
+import { aiCache } from "./ai/cache";
 import { analyticsService } from "./analytics";
 import { youtubeService } from "./platforms/youtube";
 import { tiktokService } from "./platforms/tiktok";
@@ -40,7 +41,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           category,
           contentType,
           targetAudience
-        });
+        }, "demo-user"); // Pass userId for cache optimization
       }
 
       // Store trends in database
@@ -797,6 +798,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false, 
         error: 'Failed to record analytics' 
+      });
+    }
+  });
+
+  // AI Cache Statistics - Monitor token optimization
+  app.get("/api/cache/stats", (req, res) => {
+    try {
+      const stats = aiCache.getStats();
+      
+      res.json({
+        success: true,
+        cache: {
+          ...stats,
+          description: "AI response cache performance metrics for token optimization",
+          savings: {
+            totalTokensSaved: stats.estimatedTokensSaved,
+            estimatedCostSaved: `$${(stats.estimatedTokensSaved * 0.0001).toFixed(4)}`, // Rough estimate
+            description: "Estimated API cost savings from caching"
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error getting cache stats:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to get cache statistics' 
+      });
+    }
+  });
+
+  // Clear cache endpoint (for development/testing)
+  app.post("/api/cache/clear", (req, res) => {
+    try {
+      const { type } = req.body;
+      
+      if (type) {
+        aiCache.clearByType(type);
+        res.json({ 
+          success: true, 
+          message: `Cleared cache for type: ${type}` 
+        });
+      } else {
+        aiCache.clear();
+        res.json({ 
+          success: true, 
+          message: "All cache cleared" 
+        });
+      }
+    } catch (error) {
+      console.error('Error clearing cache:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to clear cache' 
       });
     }
   });

@@ -1,5 +1,6 @@
-// OpenRouter AI service for CreatorKit - using OpenAI-compatible API
+// OpenRouter AI service for CreatorKit - using OpenAI-compatible API with caching
 import OpenAI from "openai";
+import { aiCache } from "./cache.js";
 
 const openai = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
@@ -61,8 +62,16 @@ export interface VideoClipSuggestion {
 }
 
 export class OpenRouterService {
-  // Discover trending content ideas using AI
-  async discoverTrends(request: TrendDiscoveryRequest): Promise<TrendResult[]> {
+  // Discover trending content ideas using AI with caching
+  async discoverTrends(request: TrendDiscoveryRequest, userId?: string): Promise<TrendResult[]> {
+    console.log("🔍 Discovering trends for:", request);
+
+    // Check cache first
+    const cachedResult = aiCache.getCachedWithUserContext<TrendResult[]>('trends', request, userId);
+    if (cachedResult) {
+      return cachedResult;
+    }
+
     console.log("🔧 Debug: API Key exists:", !!process.env.OPENROUTER_API_KEY);
     console.log("🔧 Debug: API Key length:", process.env.OPENROUTER_API_KEY?.length);
 
@@ -117,7 +126,9 @@ export class OpenRouterService {
         }
       ];
 
-      console.log(`✅ Returning ${mockTrends.length} mock trends for development`);
+      // Cache mock data too (but with shorter TTL)
+      aiCache.setCachedWithUserContext('trends', request, mockTrends, userId);
+      console.log(`✅ Returning ${mockTrends.length} mock trends for development - cached for 15 minutes`);
       return mockTrends;
     }
 
@@ -159,8 +170,13 @@ Make the trends feel authentic and actionable for creators.`;
       });
 
       const result = JSON.parse(response.choices[0].message.content || "{}");
-      console.log(`✅ AI model used: ${response.model} (via OpenRouter)`);
-      return result.trends || [];
+      const trends = result.trends || [];
+      
+      // Cache the successful result
+      aiCache.setCachedWithUserContext('trends', request, trends, userId);
+      
+      console.log(`✅ AI model used: ${response.model} (via OpenRouter) - cached for 15 minutes`);
+      return trends;
     } catch (error) {
       console.error("Error discovering trends:", error);
       
@@ -219,9 +235,15 @@ Make the trends feel authentic and actionable for creators.`;
     }
   }
 
-  // Analyze content for optimization (Launch Pad)
-  async analyzeContent(request: ContentAnalysisRequest): Promise<ContentAnalysisResult> {
-    console.log("🔧 Debug: Content analysis request:", request);
+  // Analyze content for optimization (Launch Pad) with caching
+  async analyzeContent(request: ContentAnalysisRequest, userId?: string): Promise<ContentAnalysisResult> {
+    console.log("🔍 Analyzing content:", request);
+
+    // Check cache first
+    const cachedResult = aiCache.getCachedWithUserContext<ContentAnalysisResult>('content', request, userId);
+    if (cachedResult) {
+      return cachedResult;
+    }
 
     // If no API key, return mock analysis data
     if (!process.env.OPENROUTER_API_KEY) {
@@ -253,7 +275,10 @@ Make the trends feel authentic and actionable for creators.`;
         ]
       };
 
-      console.log(`✅ Returning mock analysis with overall score: ${Math.round((mockAnalysis.clickabilityScore + mockAnalysis.clarityScore + mockAnalysis.intrigueScore + mockAnalysis.emotionScore) / 4)}/10`);
+      // Cache mock analysis too
+      aiCache.setCachedWithUserContext('content', request, mockAnalysis, userId);
+      
+      console.log(`✅ Returning mock analysis with overall score: ${Math.round((mockAnalysis.clickabilityScore + mockAnalysis.clarityScore + mockAnalysis.intrigueScore + mockAnalysis.emotionScore) / 4)}/10 - cached for 1 hour`);
       return mockAnalysis;
     }
 
@@ -306,6 +331,11 @@ Platform: ${request.platform}
       });
 
       const result = JSON.parse(response.choices[0].message.content || "{}");
+      
+      // Cache the successful result
+      aiCache.setCachedWithUserContext('content', request, result, userId);
+      
+      console.log(`✅ AI content analysis completed and cached for 1 hour`);
       return result;
     } catch (error) {
       console.error("Error analyzing content:", error);
@@ -313,13 +343,23 @@ Platform: ${request.platform}
     }
   }
 
-  // Generate video clip suggestions (Multiplier)
+  // Generate video clip suggestions (Multiplier) with caching
   async generateVideoClips(
     videoDescription: string, 
     videoDuration: number, 
-    targetPlatform: string
+    targetPlatform: string,
+    userId?: string
   ): Promise<VideoClipSuggestion[]> {
-    console.log("🔧 Debug: Video clip generation request:", { videoDescription, videoDuration, targetPlatform });
+    console.log("🔍 Generating video clips:", { videoDescription, videoDuration, targetPlatform });
+
+    // Create cache key from parameters
+    const clipRequest = { videoDescription, videoDuration, targetPlatform };
+    
+    // Check cache first
+    const cachedResult = aiCache.getCachedWithUserContext<VideoClipSuggestion[]>('videoClips', clipRequest, userId);
+    if (cachedResult) {
+      return cachedResult;
+    }
 
     // If no API key, return mock clip data
     if (!process.env.OPENROUTER_API_KEY) {
@@ -380,7 +420,10 @@ Platform: ${request.platform}
         return clip;
       });
 
-      console.log(`✅ Generated ${platformOptimizedClips.length} mock clips for ${targetPlatform} (${videoDuration}s video)`);
+      // Cache mock clips
+      aiCache.setCachedWithUserContext('videoClips', clipRequest, platformOptimizedClips, userId);
+      
+      console.log(`✅ Generated ${platformOptimizedClips.length} mock clips for ${targetPlatform} (${videoDuration}s video) - cached for 30 minutes`);
       return platformOptimizedClips;
     }
 
@@ -426,7 +469,13 @@ Suggest 3-5 of the best clips with high viral potential.`;
       });
 
       const result = JSON.parse(response.choices[0].message.content || "{}");
-      return result.clips || [];
+      const clips = result.clips || [];
+      
+      // Cache the successful result
+      aiCache.setCachedWithUserContext('videoClips', clipRequest, clips, userId);
+      
+      console.log(`✅ AI generated ${clips.length} video clips and cached for 30 minutes`);
+      return clips;
     } catch (error) {
       console.error("Error generating video clips:", error);
       throw new Error("Failed to generate video clips");
