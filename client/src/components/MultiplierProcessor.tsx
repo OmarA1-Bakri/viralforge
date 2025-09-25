@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,14 @@ export default function MultiplierProcessor() {
   const [jobs, setJobs] = useState<ProcessingJob[]>([]);
   const [targetPlatform, setTargetPlatform] = useState("tiktok"); // Default to TikTok
   const [clipDuration, setClipDuration] = useState(15); // Default 15s for TikTok
+  
+  // Ref to track jobs state for the progress simulation
+  const jobsRef = useRef<ProcessingJob[]>([]);
+  
+  // Keep ref in sync with jobs state
+  useEffect(() => {
+    jobsRef.current = jobs;
+  }, [jobs]);
 
   const isValidYouTubeUrl = (url: string) => {
     const regex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+/;
@@ -305,11 +313,13 @@ export default function MultiplierProcessor() {
   // Separate progress simulation function
   const simulateProgress = async (jobId: string) => {
     const updateProgress = (progress: number, estimatedTime?: string) => {
-      setJobs(prev => prev.map(job => 
-        job.id === jobId 
-          ? { ...job, progress, estimatedTime }
-          : job
-      ));
+      setJobs(prev => prev.map(job => {
+        // Don't update if job is already completed or errored
+        if (job.id === jobId && job.status === "processing") {
+          return { ...job, progress, estimatedTime };
+        }
+        return job;
+      }));
     };
 
     // Progress simulation
@@ -323,6 +333,14 @@ export default function MultiplierProcessor() {
 
     for (const step of progressSteps) {
       await new Promise(resolve => setTimeout(resolve, step.delay));
+      
+      // Check if job still exists and is still processing before updating
+      const currentJob = jobsRef.current.find(job => job.id === jobId);
+      if (!currentJob || currentJob.status !== "processing") {
+        console.log(`🛑 Stopping progress simulation for ${jobId} - job completed or not found`);
+        break;
+      }
+      
       updateProgress(step.progress, step.time);
     }
   };
