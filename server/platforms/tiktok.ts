@@ -32,6 +32,11 @@ export class TikTokService {
 
   async getTrendingHashtags(region: string = 'US', limit: number = 20): Promise<TrendResult[]> {
     console.log(`🎵 Fetching trending TikTok hashtags for region: ${region}...`);
+    
+    // Debug TikTok API key detection
+    console.log("🔧 TikTok Debug: API Key exists:", !!this.apiKey);
+    console.log("🔧 TikTok Debug: API Key length:", this.apiKey?.length);
+    console.log("🔧 TikTok Debug: Raw env var:", !!process.env.TIKTOK_API_KEY);
 
     if (!this.apiKey) {
       console.log('⚠️ No TikTok API key found, will use cached AI system');
