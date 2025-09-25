@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,13 +40,115 @@ export default function MultiplierProcessor() {
     return regex.test(url);
   };
 
+  // Mutation for video processing
+  const processVideoMutation = useMutation({
+    mutationFn: async ({ videoUrl, platform }: { videoUrl: string; platform: string }) => {
+      const response = await fetch('/api/videos/process', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          videoUrl,
+          title: `Video from ${videoUrl}`,
+          platform,
+          videoDuration: 300 // Default 5 minutes
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to process video');
+      }
+
+      return response.json();
+    },
+    onSuccess: (data, variables) => {
+      console.log('✅ Video processing completed:', data);
+      const jobId = variables.videoUrl; // Use URL as job ID for simplicity
+      
+      // Convert API clips to our ProcessedClip format
+      const processedClips: ProcessedClip[] = data.clips.map((clip: any, index: number) => ({
+        id: clip.id.toString(),
+        title: clip.title,
+        duration: `${Math.floor((clip.endTime - clip.startTime) / 60)}:${String((clip.endTime - clip.startTime) % 60).padStart(2, '0')}`,
+        size: `${Math.round(Math.random() * 500 + 300)} KB`, // Estimated size
+        hookSuggestions: [
+          `Hook for ${clip.title}`,
+          "Grab attention with this opener",
+          "Perfect viral moment here"
+        ],
+        preview: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjM1NiIgdmlld0JveD0iMCAwIDIwMCAzNTYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMzU2IiBmaWxsPSIjMUYyOTM3Ii8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTc4IiBmaWxsPSIjRkZGRkZGIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5WaWRlbyBQcmV2aWV3PC90ZXh0Pgo8L3N2Zz4K",
+        downloadUrl: `#clip-${clip.id}`
+      }));
+
+      setJobs(prev => prev.map(job => 
+        job.id === jobId 
+          ? { ...job, status: "completed", progress: 100, clips: processedClips, estimatedTime: "Complete" }
+          : job
+      ));
+    },
+    onError: (error, variables) => {
+      console.error('❌ Video processing failed:', error);
+      const jobId = variables.videoUrl;
+      
+      // Fall back to mock clips on API failure
+      const mockClips: ProcessedClip[] = [
+        {
+          id: "clip-1",
+          title: "Hook: The Secret Everyone Gets Wrong",
+          duration: "0:15",
+          size: "800 KB",
+          hookSuggestions: [
+            "You're doing this completely wrong...",
+            "This 15-second clip will change everything",
+            "Nobody talks about this, but..."
+          ],
+          preview: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjM1NiIgdmlld0JveD0iMCAwIDIwMCAzNTYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMzU2IiBmaWxsPSIjMUYyOTM3Ii8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTc4IiBmaWxsPSIjRkZGRkZGIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5WaWRlbyBQcmV2aWV3PC90ZXh0Pgo8L3N2Zz4K",
+          downloadUrl: "#"
+        },
+        {
+          id: "clip-2", 
+          title: "Main Content: Step-by-Step Guide",
+          duration: "0:15",
+          size: "750 KB",
+          hookSuggestions: [
+            "Here's exactly how to do it:",
+            "Follow these 3 simple steps",
+            "The method that actually works"
+          ],
+          preview: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjM1NiIgdmlld0JveD0iMCAwIDIwMCAzNTYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMzU2IiBmaWxsPSIjMUYyOTM3Ii8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTc4IiBmaWxsPSIjRkZGRkZGIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5WaWRlbyBQcmV2aWV3PC90ZXh0Pgo8L3N2Zz4K",
+          downloadUrl: "#"
+        },
+        {
+          id: "clip-3",
+          title: "Result: Mind-Blowing Outcome",
+          duration: "0:12",
+          size: "650 KB", 
+          hookSuggestions: [
+            "The results will shock you",
+            "This is what happened next...",
+            "You won't believe this outcome"
+          ],
+          preview: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjM1NiIgdmlld0JveD0iMCAwIDIwMCAzNTYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMzU2IiBmaWxsPSIjMUYyOTM3Ii8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTc4IiBmaWxsPSIjRkZGRkZGIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5WaWRlbyBQcmV2aWV3PC90ZXh0Pgo8L3N2Zz4K",
+          downloadUrl: "#"
+        }
+      ];
+
+      setJobs(prev => prev.map(job => 
+        job.id === jobId 
+          ? { ...job, status: "error", clips: mockClips }
+          : job
+      ));
+    }
+  });
+
   const handleProcess = async () => {
     if (!isValidYouTubeUrl(youtubeUrl)) {
       console.log("Invalid YouTube URL");
       return;
     }
 
-    const jobId = Date.now().toString();
+    const jobId = youtubeUrl; // Use URL as job ID
     const newJob: ProcessingJob = {
       id: jobId,
       url: youtubeUrl,
@@ -56,14 +159,27 @@ export default function MultiplierProcessor() {
     };
 
     setJobs(prev => [newJob, ...prev]);
+    const currentUrl = youtubeUrl;
     setYoutubeUrl("");
 
-    // Simulate processing
-    simulateProcessing(jobId);
-    console.log("Started processing YouTube URL:", youtubeUrl);
+    // Start progress simulation
+    simulateProgress(jobId);
+    
+    // Call the API
+    try {
+      await processVideoMutation.mutateAsync({
+        videoUrl: currentUrl,
+        platform: targetPlatform
+      });
+    } catch (error) {
+      console.error("Video processing failed:", error);
+    }
+
+    console.log("Started processing YouTube URL:", currentUrl);
   };
 
-  const simulateProcessing = async (jobId: string) => {
+  // Separate progress simulation function
+  const simulateProgress = async (jobId: string) => {
     const updateProgress = (progress: number, estimatedTime?: string) => {
       setJobs(prev => prev.map(job => 
         job.id === jobId 
@@ -78,64 +194,15 @@ export default function MultiplierProcessor() {
       { progress: 30, time: "2 min", delay: 1000 },
       { progress: 50, time: "1 min 30s", delay: 1200 },
       { progress: 70, time: "1 min", delay: 800 },
-      { progress: 90, time: "20s", delay: 600 },
-      { progress: 100, time: "Complete", delay: 400 }
+      { progress: 90, time: "20s", delay: 600 }
     ];
 
     for (const step of progressSteps) {
       await new Promise(resolve => setTimeout(resolve, step.delay));
       updateProgress(step.progress, step.time);
     }
-
-    // TikTok-optimized mock clips - todo: replace with real API
-    const mockClips: ProcessedClip[] = [
-      {
-        id: "clip-1",
-        title: "Hook: The Secret Everyone Gets Wrong",
-        duration: "0:15",
-        size: "800 KB",
-        hookSuggestions: [
-          "You're doing this completely wrong...",
-          "This 15-second clip will change everything",
-          "Nobody talks about this, but..."
-        ],
-        preview: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjM1NiIgdmlld0JveD0iMCAwIDIwMCAzNTYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMzU2IiBmaWxsPSIjMUYyOTM3Ii8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTc4IiBmaWxsPSIjRkZGRkZGIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5WaWRlbyBQcmV2aWV3PC90ZXh0Pgo8L3N2Zz4K",
-        downloadUrl: "#"
-      },
-      {
-        id: "clip-2", 
-        title: "Main Content: Step-by-Step Guide",
-        duration: "0:15",
-        size: "750 KB",
-        hookSuggestions: [
-          "Here's exactly how to do it:",
-          "Follow these 3 simple steps",
-          "The method that actually works"
-        ],
-        preview: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjM1NiIgdmlld0JveD0iMCAwIDIwMCAzNTYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMzU2IiBmaWxsPSIjMUYyOTM3Ii8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTc4IiBmaWxsPSIjRkZGRkZGIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5WaWRlbyBQcmV2aWV3PC90ZXh0Pgo8L3N2Zz4K",
-        downloadUrl: "#"
-      },
-      {
-        id: "clip-3",
-        title: "Result: Mind-Blowing Outcome",
-        duration: "0:12",
-        size: "650 KB", 
-        hookSuggestions: [
-          "The results will shock you",
-          "This is what happened next...",
-          "You won't believe this outcome"
-        ],
-        preview: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjM1NiIgdmlld0JveD0iMCAwIDIwMCAzNTYiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMzU2IiBmaWxsPSIjMUYyOTM3Ii8+Cjx0ZXh0IHg9IjEwMCIgeT0iMTc4IiBmaWxsPSIjRkZGRkZGIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5WaWRlbyBQcmV2aWV3PC90ZXh0Pgo8L3N2Zz4K",
-        downloadUrl: "#"
-      }
-    ];
-
-    setJobs(prev => prev.map(job => 
-      job.id === jobId 
-        ? { ...job, status: "completed", clips: mockClips }
-        : job
-    ));
   };
+
 
   const downloadClip = (clip: ProcessedClip) => {
     console.log("Downloading clip:", clip.title);
