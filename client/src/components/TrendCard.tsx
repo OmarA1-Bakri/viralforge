@@ -23,9 +23,10 @@ interface TrendCardProps {
   };
   onSave?: (id: string) => void;
   onRemix?: (id: string) => void;
+  onNavigate?: (tab: "dashboard" | "idea-lab" | "launch-pad" | "multiplier" | "preferences") => void;
 }
 
-export default function TrendCard({ trend, onSave, onRemix }: TrendCardProps) {
+export default function TrendCard({ trend, onSave, onRemix, onNavigate }: TrendCardProps) {
   const [isSaved, setIsSaved] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
 
@@ -33,6 +34,12 @@ export default function TrendCard({ trend, onSave, onRemix }: TrendCardProps) {
     setIsSaved(!isSaved);
     onSave?.(trend.id);
     console.log(`${isSaved ? "Unsaved" : "Saved"} trend: ${trend.title}`);
+    
+    // Show user feedback
+    if (!isSaved) {
+      // Could show a toast notification here
+      console.log("✅ Trend saved to your collection!");
+    }
   };
 
   const handleRemix = () => {
@@ -148,7 +155,15 @@ export default function TrendCard({ trend, onSave, onRemix }: TrendCardProps) {
               size="sm"
               variant="ghost"
               className="gap-1.5 text-xs h-8"
-              onClick={() => console.log("Share trend")}
+              onClick={() => {
+                // Copy trend content to clipboard
+                const shareText = `${trend.title}\n\n${trend.description}\n\nHashtags: ${trend.hashtags.join(' ')}\n\nAI Strategy: ${trend.suggestion}`;
+                navigator.clipboard.writeText(shareText).then(() => {
+                  console.log("📋 Trend copied to clipboard!");
+                }).catch(() => {
+                  console.log("❌ Failed to copy to clipboard");
+                });
+              }}
               data-testid={`button-share-${trend.id}`}
             >
               <Share className="w-3.5 h-3.5" />

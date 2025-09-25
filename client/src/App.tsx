@@ -20,9 +20,9 @@ function MainApp() {
   const renderContent = () => {
     switch (activeTab) {
       case "dashboard":
-        return <CreatorDashboard />;
+        return <CreatorDashboard onNavigate={setActiveTab} />;
       case "idea-lab":
-        return <IdeaLabFeed />;
+        return <IdeaLabFeed onNavigate={setActiveTab} />;
       case "launch-pad":
         return <LaunchPadAnalyzer />;
       case "multiplier":
@@ -30,7 +30,7 @@ function MainApp() {
       case "preferences":
         return <UserPreferences />;
       default:
-        return <CreatorDashboard />;
+        return <CreatorDashboard onNavigate={setActiveTab} />;
     }
   };
 

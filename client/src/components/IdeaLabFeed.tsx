@@ -74,9 +74,10 @@ const mockTrends = [
 interface IdeaLabFeedProps {
   onTrendSave?: (id: string) => void;
   onTrendRemix?: (id: string) => void;
+  onNavigate?: (tab: "dashboard" | "idea-lab" | "launch-pad" | "multiplier" | "preferences") => void;
 }
 
-export default function IdeaLabFeed({ onTrendSave, onTrendRemix }: IdeaLabFeedProps) {
+export default function IdeaLabFeed({ onTrendSave, onTrendRemix, onNavigate }: IdeaLabFeedProps) {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
   // Fetch existing trends from database
@@ -149,8 +150,10 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix }: IdeaLabFeedPr
   };
 
   const handleTrendRemix = (id: string) => {
-    console.log("Remixing trend:", id);
+    console.log("Using trend for content creation:", id);
     onTrendRemix?.(id);
+    // Navigate to Launch Pad to create content based on this trend
+    onNavigate?.("launch-pad");
   };
 
   return (
@@ -210,6 +213,7 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix }: IdeaLabFeedPr
               trend={trend}
               onSave={handleTrendSave}
               onRemix={handleTrendRemix}
+              onNavigate={onNavigate}
             />
           </div>
         ))}

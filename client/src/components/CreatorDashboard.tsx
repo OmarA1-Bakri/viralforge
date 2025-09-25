@@ -80,7 +80,11 @@ const formatTimeAgo = (dateString: string): string => {
   }
 };
 
-export default function CreatorDashboard() {
+interface CreatorDashboardProps {
+  onNavigate?: (tab: "dashboard" | "idea-lab" | "launch-pad" | "multiplier" | "preferences") => void;
+}
+
+export default function CreatorDashboard({ onNavigate }: CreatorDashboardProps = {}) {
   const [timeframe, setTimeframe] = useState<"week" | "month" | "year">("week");
 
   // Fetch dashboard statistics
@@ -409,19 +413,38 @@ export default function CreatorDashboard() {
         <Card className="p-4 rounded-xl hover-elevate hover-cyan-glow interactive">
           <h2 className="font-semibold text-lg mb-3 improved-line-height">Quick Actions</h2>
           <div className="grid grid-cols-2 gap-2">
-            <Button className="gap-2 brand-gradient text-white hover:shadow-lg hover:shadow-primary/20 interactive" data-testid="quick-analyze">
+            <Button 
+              className="gap-2 brand-gradient text-white hover:shadow-lg hover:shadow-primary/20 interactive" 
+              data-testid="quick-analyze"
+              onClick={() => onNavigate?.("launch-pad")}
+            >
               <Rocket className="w-4 h-4" />
               Analyze New
             </Button>
-            <Button variant="outline" className="gap-2 hover-cyan-glow interactive" data-testid="quick-trends">
+            <Button 
+              variant="outline" 
+              className="gap-2 hover-cyan-glow interactive" 
+              data-testid="quick-trends"
+              onClick={() => onNavigate?.("idea-lab")}
+            >
               <Lightbulb className="w-4 h-4" />
               Find Trends
             </Button>
-            <Button variant="outline" className="gap-2 hover-cyan-glow interactive" data-testid="quick-process">
+            <Button 
+              variant="outline" 
+              className="gap-2 hover-cyan-glow interactive" 
+              data-testid="quick-process"
+              onClick={() => onNavigate?.("multiplier")}
+            >
               <Video className="w-4 h-4" />
               Process Video
             </Button>
-            <Button variant="outline" className="gap-2 hover-cyan-glow interactive" data-testid="quick-schedule">
+            <Button 
+              variant="outline" 
+              className="gap-2 hover-cyan-glow interactive" 
+              data-testid="quick-schedule"
+              onClick={() => console.log("Schedule Post feature coming soon!")}
+            >
               <Calendar className="w-4 h-4" />
               Schedule Post
             </Button>
