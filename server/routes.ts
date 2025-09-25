@@ -462,6 +462,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get multiplier processing jobs (for UI compatibility)
+  app.get('/api/multiplier/jobs', async (req, res) => {
+    try {
+      const userId = 'demo-user'; // TODO: Get from auth
+      
+      // Get video processing jobs from user content
+      const videos = await storage.getUserContent(userId);
+      const videoJobs = videos.filter(v => v.videoUrl);
+      
+      // Transform to jobs format expected by UI
+      const jobs = [];
+      for (const video of videoJobs) {
+        const clips = await storage.getVideoClips(video.id);
+        jobs.push({
+          id: video.id,
+          url: video.videoUrl,
+          status: video.status, // 'processing', 'completed', 'failed'
+          progress: video.status === 'completed' ? 100 : video.status === 'processing' ? 75 : 0,
+          clips: clips.map(clip => ({
+            id: clip.id,
+            title: clip.title,
+            startTime: clip.startTime,
+            endTime: clip.endTime,
+            viralScore: clip.viralScore,
+            status: clip.status
+          })),
+          createdAt: video.createdAt,
+          updatedAt: video.updatedAt
+        });
+      }
+      
+      console.log(`📋 Fetched ${jobs.length} multiplier jobs for ${userId}`);
+      
+      res.json({
+        success: true,
+        jobs,
+        totalJobs: jobs.length
+      });
+    } catch (error) {
+      console.error('Error fetching multiplier jobs:', error);
+      res.status(500).json({ error: 'Failed to fetch multiplier jobs' });
+    }
+  });
+
   // Platform Integration Routes - Real API Data
   
   // Get YouTube channel analytics

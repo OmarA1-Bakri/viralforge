@@ -217,30 +217,26 @@ export class PythonScraperTikTokProvider implements ITikTokTrendsProvider {
         return false;
       }
       
-      // Quick availability check by spawning Python and checking if modules can be imported
-      const testProcess = spawn('python3', ['-c', 'import tiktok_trending; print("OK")'], {
-        stdio: ['pipe', 'pipe', 'pipe'],
-        timeout: 5000 // 5 second timeout for availability check
+      // Synchronous availability check using spawnSync
+      const { spawnSync } = require('child_process');
+      const result = spawnSync('python3', ['-c', 'import tiktok_trending; print("OK")'], {
+        encoding: 'utf8',
+        timeout: 5000, // 5 second timeout for availability check
+        stdio: ['pipe', 'pipe', 'pipe']
       });
       
-      let available = false;
-      let stdout = '';
+      // Check if command succeeded and returned expected output
+      const isAvailable = result.status === 0 && result.stdout?.trim() === 'OK';
       
-      testProcess.stdout.on('data', (data) => {
-        stdout += data.toString();
-      });
+      if (!isAvailable) {
+        console.warn(`⚠️ [${this.getName()}] Python availability check failed:`, {
+          status: result.status,
+          stdout: result.stdout?.trim(),
+          stderr: result.stderr?.trim()
+        });
+      }
       
-      testProcess.on('close', (code) => {
-        available = (code === 0 && stdout.trim() === 'OK');
-      });
-      
-      testProcess.on('error', () => {
-        available = false;
-      });
-      
-      // Since this is synchronous for availability check, we'll use a simple heuristic
-      // In production, this could be cached or made async
-      return true; // Assume available for now, errors will be caught during execution
+      return isAvailable;
     } catch (error) {
       console.warn(`⚠️ [${this.getName()}] Availability check failed:`, error);
       return false;
@@ -413,10 +409,20 @@ export class TikTokService {
     switch (providerType) {
       case 'rapidapi':
         this.provider = new RapidAPITikTokProvider();
+        if (!this.provider.isAvailable()) {
+          console.warn(`⚠️ RapidAPI provider not available, falling back to AI provider`);
+          this.provider = new AITikTokProvider();
+        }
         break;
       case 'scraper':
       case 'python':
-        this.provider = new PythonScraperTikTokProvider();
+        const pythonProvider = new PythonScraperTikTokProvider();
+        if (pythonProvider.isAvailable()) {
+          this.provider = pythonProvider;
+        } else {
+          console.warn(`⚠️ Python scraper provider not available, falling back to AI provider`);
+          this.provider = new AITikTokProvider();
+        }
         break;
       case 'ai':
       default:
