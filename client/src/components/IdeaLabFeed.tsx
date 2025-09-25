@@ -93,23 +93,28 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix }: IdeaLabFeedPr
   const discoverTrendsMutation = useMutation({
     mutationFn: async () => {
       console.log("🎯 Discovering new TikTok trends via AI...");
-      const response = await apiRequest('/api/trends/discover', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      try {
+        const response = await apiRequest('POST', '/api/trends/discover', {
           platform: 'tiktok',
           category: 'All',
           contentType: 'viral',
           targetAudience: 'creators'
-        })
-      });
-      console.log("✅ AI trend discovery completed");
-      return response;
+        });
+        console.log("✅ AI trend discovery completed", response);
+        return response;
+      } catch (error) {
+        console.error("❌ Error during trend discovery:", error);
+        throw error;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      console.log("🔄 Invalidating queries and updating...", data);
       // Invalidate and refetch trends with exact key
       queryClient.invalidateQueries({ queryKey: ['/api/trends', { platform: 'tiktok' }] });
       setLastUpdated(new Date());
+    },
+    onError: (error) => {
+      console.error("💥 Mutation failed:", error);
     }
   });
 
@@ -185,7 +190,7 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix }: IdeaLabFeedPr
             <span className="text-sm text-muted-foreground">Live trending</span>
           </div>
           <div className="text-sm text-muted-foreground">
-            {trends.length} fresh ideas
+            {displayTrends.length} fresh ideas
           </div>
           <div className="text-sm text-muted-foreground">
             Updated {getTimeAgo(lastUpdated)}
@@ -195,7 +200,7 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix }: IdeaLabFeedPr
 
       {/* Trend Feed */}
       <div className="px-4 pt-6 pb-28 space-y-4">
-        {trends.map((trend, index) => (
+        {displayTrends.map((trend, index) => (
           <div 
             key={trend.id} 
             className="animate-in slide-in-from-bottom-2 duration-300"
