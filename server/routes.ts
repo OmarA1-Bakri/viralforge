@@ -741,6 +741,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get performance insights
+  app.get('/api/dashboard/insights', async (req, res) => {
+    try {
+      const userId = 'demo-user'; // TODO: Get from authenticated user
+      const timeframe = (req.query.timeframe as 'week' | 'month' | 'year') || 'week';
+      
+      console.log(`💡 Fetching performance insights for ${userId} (${timeframe})...`);
+      
+      // Ensure mock analytics data exists for demo
+      await analyticsService.seedAnalyticsIfNeeded(userId);
+      
+      const insights = await analyticsService.calculatePerformanceInsights(userId, timeframe);
+      
+      console.log('✅ Performance insights calculated successfully');
+      
+      res.json({
+        success: true,
+        insights,
+        timeframe
+      });
+    } catch (error) {
+      console.error('Error fetching performance insights:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to fetch performance insights' 
+      });
+    }
+  });
+
   // Get recent user activity for dashboard
   app.get('/api/dashboard/activity', async (req, res) => {
     try {

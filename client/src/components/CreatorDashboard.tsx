@@ -119,6 +119,19 @@ export default function CreatorDashboard({ onNavigate }: CreatorDashboardProps =
     retryDelay: 1000, // Wait 1 second before retry
   });
 
+  // Fetch performance insights
+  const { data: insightsData, isLoading: insightsLoading, error: insightsError } = useQuery({
+    queryKey: ['/api/dashboard/insights', timeframe],
+    queryFn: async () => {
+      const response = await fetch(`/api/dashboard/insights?timeframe=${timeframe}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch performance insights');
+      }
+      return response.json();
+    },
+    refetchInterval: 120000, // Refresh every 2 minutes (insights change less frequently)
+  });
+
   const stats: DashboardStats = statsData?.stats || {
     totalViews: 0,
     totalLikes: 0,
@@ -133,6 +146,13 @@ export default function CreatorDashboard({ onNavigate }: CreatorDashboardProps =
   };
 
   const activities: UserActivity[] = activityData?.activities || [];
+  const insights = insightsData?.insights || {
+    bestContentType: 'Mixed Content',
+    optimalPostingTime: '6-8 PM',
+    topTrendingHashtag: '#viral',
+    bestPlatform: 'TikTok',
+    avgEngagementRate: 0
+  };
 
   const StatCard = ({ 
     icon: Icon, 
@@ -356,20 +376,37 @@ export default function CreatorDashboard({ onNavigate }: CreatorDashboardProps =
             <h2 className="font-semibold text-lg improved-line-height">Performance Insights</h2>
           </div>
 
+          {insightsLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-xs text-muted-foreground">Loading insights...</span>
+            </div>
+          ) : insightsError ? (
+            <div className="text-center py-4 space-y-2">
+              <div className="text-xs text-destructive">Failed to load insights</div>
+              <div className="text-xs text-muted-foreground">Using cached data</div>
+            </div>
+          ) : null}
+
           <div className="space-y-3">
             <div className="flex items-center justify-between p-2 rounded-md border border-border/30 bg-transparent improved-line-height">
               <span className="text-sm text-foreground">Best performing content type</span>
-              <Badge variant="outline" className="hover-pink-glow">Pet + Dance</Badge>
+              <Badge variant="outline" className="hover-pink-glow">{insights.bestContentType}</Badge>
             </div>
 
             <div className="flex items-center justify-between p-2 rounded-md border border-border/30 bg-transparent improved-line-height">
               <span className="text-sm text-foreground">Optimal posting time</span>
-              <Badge variant="outline" className="hover-pink-glow">6-8 PM</Badge>
+              <Badge variant="outline" className="hover-pink-glow">{insights.optimalPostingTime}</Badge>
             </div>
 
             <div className="flex items-center justify-between p-2 rounded-md border border-border/30 bg-transparent improved-line-height">
               <span className="text-sm text-foreground">Top trending hashtag</span>
-              <Badge variant="outline" className="hover-pink-glow">HOT</Badge>
+              <Badge variant="outline" className="hover-pink-glow">{insights.topTrendingHashtag}</Badge>
+            </div>
+
+            <div className="flex items-center justify-between p-2 rounded-md border border-border/30 bg-transparent improved-line-height">
+              <span className="text-sm text-foreground">Best platform</span>
+              <Badge variant="outline" className="hover-pink-glow">{insights.bestPlatform}</Badge>
             </div>
           </div>
         </Card>
