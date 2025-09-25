@@ -44,7 +44,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }, "demo-user"); // Pass userId for cache optimization
       }
 
-      // Store trends in database
+      // Store trends in database with validation-aware fallback
       const storedTrends = [];
       for (const trendData of trends) {
         try {
@@ -53,8 +53,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const trend = await storage.createTrend(validatedTrend);
           storedTrends.push(trend);
         } catch (error) {
-          console.warn("Failed to store trend:", error);
+          console.warn("Failed to validate/store trend:", error);
           // Continue with other trends even if one fails
+        }
+      }
+
+      // If validation failed for all trends, fall back to AI discovery
+      if (storedTrends.length === 0 && trends.length > 0) {
+        console.log(`⚠️ All ${trends.length} platform trends failed validation, falling back to AI discovery...`);
+        try {
+          const aiTrends = await openRouterService.discoverTrends({
+            platform,
+            category,
+            contentType,
+            targetAudience
+          }, "demo-user");
+          
+          // Store AI trends (these should be pre-validated by our AI service)
+          for (const trendData of aiTrends) {
+            try {
+              const validatedTrend = insertTrendSchema.parse(trendData);
+              const trend = await storage.createTrend(validatedTrend);
+              storedTrends.push(trend);
+            } catch (error) {
+              console.warn("Failed to store AI fallback trend:", error);
+            }
+          }
+          console.log(`✅ AI fallback provided ${storedTrends.length} valid trends`);
+        } catch (aiError) {
+          console.error("AI fallback also failed:", aiError);
         }
       }
 

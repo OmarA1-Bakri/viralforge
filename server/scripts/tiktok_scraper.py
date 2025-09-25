@@ -55,6 +55,13 @@ def format_trend_data(post) -> Dict[str, Any]:
         # Categorize content based on description
         category = categorize_content(description)
         
+        # Extract thumbnail URL if available
+        thumbnail_url = None
+        try:
+            thumbnail_url = getattr(post.video, 'cover', None) or getattr(post.video, 'originCover', None)
+        except:
+            pass
+
         # Format the trend
         trend = {
             'title': f"Trending: {description[:50]}..." if len(description) > 50 else f"Trending: {description}",
@@ -66,13 +73,14 @@ def format_trend_data(post) -> Dict[str, Any]:
             'hashtags': hashtags,
             'sound': extract_sound_info(post),
             'suggestion': generate_suggestion(description, category),
-            'timeAgo': calculate_time_ago(post)
+            'timeAgo': calculate_time_ago(post),
+            'thumbnailUrl': thumbnail_url
         }
         
         return trend
         
     except Exception as e:
-        # Return a fallback trend if parsing fails
+        # Return a fallback trend if parsing fails - include ALL required schema fields
         return {
             'title': 'TikTok Trending Content',
             'description': 'Trending content scraped from TikTok',
@@ -81,8 +89,10 @@ def format_trend_data(post) -> Dict[str, Any]:
             'hotness': 'relevant',
             'engagement': 0,
             'hashtags': ['fyp', 'viral'],
+            'sound': None,  # Include sound field even if None
             'suggestion': 'Create engaging content with trending elements',
-            'timeAgo': 'Recently'
+            'timeAgo': 'Recently',
+            'thumbnailUrl': None  # Include thumbnailUrl field even if None
         }
 
 
