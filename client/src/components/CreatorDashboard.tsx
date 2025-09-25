@@ -147,7 +147,7 @@ export default function CreatorDashboard() {
     suffix?: string;
     prefix?: string;
   }) => (
-    <Card className="p-4 hover-elevate active-elevate-2 transition-all duration-200">
+    <Card className="p-4 rounded-xl hover-elevate active-elevate-2 hover-cyan-glow interactive">
       <div className="flex items-center justify-between mb-2">
         <Icon className={cn("w-5 h-5", 
           color === "primary" ? "text-primary" :
@@ -163,10 +163,10 @@ export default function CreatorDashboard() {
         )}
       </div>
       <div className="space-y-1">
-        <p className="text-2xl font-bold text-foreground">
+        <p className="text-2xl font-bold improved-line-height text-foreground">
           {prefix}{typeof value === 'number' ? value.toLocaleString() : value}{suffix}
         </p>
-        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-xs text-muted-foreground improved-line-height">{label}</p>
       </div>
     </Card>
   );
@@ -304,68 +304,68 @@ export default function CreatorDashboard() {
 
         {/* AI Automation Stats */}
         {!statsLoading && !statsError && (
-          <Card className="p-4 bg-gradient-to-r from-accent/10 to-pink-500/10 border-accent/20">
+          <Card className="p-4 rounded-xl brand-gradient bg-opacity-10 border-primary/20 hover-cyan-glow interactive">
             <div className="flex items-center gap-2 mb-3">
-              <Zap className="w-5 h-5 text-accent" />
-              <h2 className="font-semibold text-accent">AI Automation Impact</h2>
+              <Zap className="w-5 h-5 text-foreground" />
+              <h2 className="font-semibold text-lg improved-line-height text-foreground">AI Automation Impact</h2>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Time Saved</p>
-                <p className="text-xl font-bold text-accent">{stats.automationSavings}</p>
+                <p className="text-sm text-muted-foreground improved-line-height">Time Saved</p>
+                <p className="text-xl font-bold text-foreground improved-line-height">{stats.automationSavings}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Trends Used</p>
-                <p className="text-xl font-bold text-accent">{stats.trendsUsed}</p>
+                <p className="text-sm text-muted-foreground improved-line-height">Trends Used</p>
+                <p className="text-xl font-bold text-foreground improved-line-height">{stats.trendsUsed}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 mt-4">
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Viral Score</p>
-                <p className="text-xl font-bold text-accent">{stats.avgViralScore.toFixed(1)}/10</p>
+                <p className="text-sm text-muted-foreground improved-line-height">Viral Score</p>
+                <p className="text-xl font-bold text-foreground improved-line-height">{stats.avgViralScore.toFixed(1)}/10</p>
               </div>
               <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Clips Created</p>
-                <p className="text-xl font-bold text-accent">{stats.totalClips}</p>
+                <p className="text-sm text-muted-foreground improved-line-height">Clips Created</p>
+                <p className="text-xl font-bold text-foreground improved-line-height">{stats.totalClips}</p>
               </div>
             </div>
 
             <div className="mt-3 space-y-2">
               <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">AI Effectiveness</span>
-                <span className="text-accent">{Math.round((stats.avgViralScore / 10) * 100)}%</span>
+                <span className="text-muted-foreground improved-line-height">AI Effectiveness</span>
+                <span className="text-primary improved-line-height">{Math.round((stats.avgViralScore / 10) * 100)}%</span>
               </div>
               <Progress 
                 value={(stats.avgViralScore / 10) * 100} 
-                className="h-2 bg-muted [&>div]:bg-gradient-to-r [&>div]:from-primary [&>div]:to-accent" 
+                className="h-2 bg-muted progress-animate" 
               />
             </div>
           </Card>
         )}
 
         {/* Performance Insights */}
-        <Card className="p-4">
+        <Card className="p-4 rounded-xl hover-elevate hover-cyan-glow interactive">
           <div className="flex items-center gap-2 mb-3">
-            <Target className="w-5 h-5 text-accent" />
-            <h2 className="font-semibold">Performance Insights</h2>
+            <Target className="w-5 h-5 text-primary" />
+            <h2 className="font-semibold text-lg improved-line-height">Performance Insights</h2>
           </div>
 
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-2 rounded-md border border-border/30 bg-transparent">
+            <div className="flex items-center justify-between p-2 rounded-md border border-border/30 bg-transparent improved-line-height">
               <span className="text-sm text-foreground">Best performing content type</span>
-              <Badge variant="outline">Pet + Dance</Badge>
+              <Badge variant="outline" className="hover-pink-glow">Pet + Dance</Badge>
             </div>
 
-            <div className="flex items-center justify-between p-2 rounded-md border border-border/30 bg-transparent">
+            <div className="flex items-center justify-between p-2 rounded-md border border-border/30 bg-transparent improved-line-height">
               <span className="text-sm text-foreground">Optimal posting time</span>
-              <Badge variant="outline">6-8 PM</Badge>
+              <Badge variant="outline" className="hover-pink-glow">6-8 PM</Badge>
             </div>
 
-            <div className="flex items-center justify-between p-2 rounded-md border border-border/30 bg-transparent">
+            <div className="flex items-center justify-between p-2 rounded-md border border-border/30 bg-transparent improved-line-height">
               <span className="text-sm text-foreground">Top trending hashtag</span>
-              <Badge variant="outline">#viral</Badge>
+              <Badge variant="outline" className="hover-pink-glow">HOT</Badge>
             </div>
           </div>
         </Card>
@@ -406,22 +406,22 @@ export default function CreatorDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <Card className="p-4">
-          <h2 className="font-semibold mb-3">Quick Actions</h2>
+        <Card className="p-4 rounded-xl hover-elevate hover-cyan-glow interactive">
+          <h2 className="font-semibold text-lg mb-3 improved-line-height">Quick Actions</h2>
           <div className="grid grid-cols-2 gap-2">
-            <Button className="gap-2 bg-gradient-to-r from-primary to-accent text-black hover:shadow-lg hover:shadow-primary/20" data-testid="quick-analyze">
+            <Button className="gap-2 brand-gradient text-white hover:shadow-lg hover:shadow-primary/20 interactive" data-testid="quick-analyze">
               <Rocket className="w-4 h-4" />
               Analyze New
             </Button>
-            <Button variant="outline" className="gap-2" data-testid="quick-trends">
+            <Button variant="outline" className="gap-2 hover-cyan-glow interactive" data-testid="quick-trends">
               <Lightbulb className="w-4 h-4" />
               Find Trends
             </Button>
-            <Button variant="outline" className="gap-2" data-testid="quick-process">
+            <Button variant="outline" className="gap-2 hover-cyan-glow interactive" data-testid="quick-process">
               <Video className="w-4 h-4" />
               Process Video
             </Button>
-            <Button variant="outline" className="gap-2" data-testid="quick-schedule">
+            <Button variant="outline" className="gap-2 hover-cyan-glow interactive" data-testid="quick-schedule">
               <Calendar className="w-4 h-4" />
               Schedule Post
             </Button>
