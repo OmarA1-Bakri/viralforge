@@ -387,6 +387,16 @@ export class MemStorage implements IStorage {
     return Array.from(this.userTrends.values())
       .filter(ut => ut.userId === userId);
   }
+
+  // Missing automation methods
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
+  }
+
+  async getProcessingJobsByStatus(status: string): Promise<ProcessingJob[]> {
+    return Array.from(this.processingJobs.values())
+      .filter(job => job.status === status);
+  }
 }
 
 export const storage = new MemStorage();

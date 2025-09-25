@@ -67,5 +67,15 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
+    
+    // Start ViralForgeAI automation system
+    try {
+      import('./automation/scheduler').then(({ automationScheduler }) => {
+        automationScheduler.start();
+        log('🤖 ViralForgeAI automation system started');
+      });
+    } catch (error) {
+      log('❌ Failed to start automation system:', error);
+    }
   });
 })();
