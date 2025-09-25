@@ -149,7 +149,7 @@ Make the trends feel authentic and actionable for creators.`;
 
     try {
       const response = await openai.chat.completions.create({
-        model: "openai/gpt-4o-mini", // Cost-effective model for trend discovery
+        model: "x-ai/grok-4-fast", // Using Grok model for trend discovery
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Discover trending content ideas for ${request.platform}` }
@@ -295,7 +295,7 @@ Platform: ${request.platform}
 
     try {
       const response = await openai.chat.completions.create({
-        model: "openai/gpt-4o-mini",
+        model: "x-ai/grok-4-fast",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: contentToAnalyze }
@@ -415,7 +415,7 @@ Suggest 3-5 of the best clips with high viral potential.`;
 
     try {
       const response = await openai.chat.completions.create({
-        model: "openai/gpt-4o-mini",
+        model: "x-ai/grok-4-fast",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `Video content: ${videoDescription}` }
