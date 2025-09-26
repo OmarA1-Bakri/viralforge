@@ -6,6 +6,8 @@ import { z } from "zod";
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
+  password: text("password").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // Trends discovered by AI
@@ -133,6 +135,7 @@ export const userActivity = pgTable("user_activity", {
 // Insert schemas for forms
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
+  password: true,
 });
 
 export const insertTrendSchema = createInsertSchema(trends).omit({

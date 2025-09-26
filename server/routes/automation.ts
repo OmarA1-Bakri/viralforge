@@ -1,13 +1,14 @@
 import type { Express, Request, Response } from "express";
 import { notificationService } from "../automation/notifications";
 import { workflowTriggers } from "../automation/triggers";
+import { authenticateToken, getUserId, AuthRequest } from "../auth";
 
 export function registerAutomationRoutes(app: Express) {
   
   // Get user notifications
-  app.get("/api/notifications", async (req: Request, res: Response) => {
+  app.get("/api/notifications", authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
-      const userId = "demo-user"; // TODO: Get from session
+      const userId = getUserId(req);
       const notifications = await notificationService.getUserNotifications(userId, 20);
       
       res.json({
@@ -25,9 +26,9 @@ export function registerAutomationRoutes(app: Express) {
   });
 
   // Trigger workflow when content is uploaded
-  app.post("/api/automation/content-uploaded", async (req: Request, res: Response) => {
+  app.post("/api/automation/content-uploaded", authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
-      const userId = "demo-user"; // TODO: Get from session
+      const userId = getUserId(req);
       const { title, description, platform, contentType, filePath } = req.body;
 
       const result = await workflowTriggers.onContentUploaded(userId, {
@@ -53,9 +54,9 @@ export function registerAutomationRoutes(app: Express) {
   });
 
   // Trigger when user saves a trend
-  app.post("/api/automation/trend-saved", async (req: Request, res: Response) => {
+  app.post("/api/automation/trend-saved", authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
-      const userId = "demo-user"; // TODO: Get from session
+      const userId = getUserId(req);
       const { trendId, trendTitle } = req.body;
 
       await workflowTriggers.onTrendSaved(userId, trendId, trendTitle);
@@ -74,9 +75,9 @@ export function registerAutomationRoutes(app: Express) {
   });
 
   // Manual performance check trigger
-  app.post("/api/automation/check-performance", async (req: Request, res: Response) => {
+  app.post("/api/automation/check-performance", authenticateToken, async (req: AuthRequest, res: Response) => {
     try {
-      const userId = "demo-user"; // TODO: Get from session
+      const userId = getUserId(req);
       
       await workflowTriggers.checkPerformanceAlerts(userId);
 

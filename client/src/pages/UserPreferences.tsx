@@ -12,8 +12,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { User, Target, Palette, Monitor, Clock, Trophy, Sparkles } from "lucide-react";
+import { User, Target, Palette, Monitor, Clock, Trophy, Sparkles, LogOut } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/contexts/AuthContext";
 
 const preferencesSchema = z.object({
   niche: z.string().min(1, "Please select your niche"),
@@ -32,6 +33,15 @@ type PreferencesData = z.infer<typeof preferencesSchema>;
 export default function UserPreferences() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    toast({
+      title: "Logged Out",
+      description: "You have been successfully logged out.",
+    });
+  };
 
   // Fetch preference options
   const { data: options, isLoading: optionsLoading } = useQuery<{ success: boolean; options: any }>({
@@ -130,6 +140,21 @@ export default function UserPreferences() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto p-6">
       <div className="text-center mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center w-12 h-12 bg-primary/10 rounded-full">
+              <User className="h-6 w-6 text-primary" />
+            </div>
+            <div className="text-left">
+              <h2 className="text-xl font-semibold">Welcome, {user?.username}</h2>
+              <p className="text-sm text-muted-foreground">Manage your preferences</p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleLogout} className="flex items-center gap-2">
+            <LogOut className="h-4 w-4" />
+            Logout
+          </Button>
+        </div>
         <h1 className="text-3xl font-bold mb-2">Your Creator Preferences</h1>
         <p className="text-muted-foreground">
           Set up your profile to get personalized trending content and recommendations tailored to your niche

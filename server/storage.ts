@@ -16,9 +16,20 @@ import {
   type ProcessingJob,
   type InsertProcessingJob,
   type UserActivity,
-  type InsertUserActivity
+  type InsertUserActivity,
+  users,
+  trends,
+  userTrends,
+  userContent,
+  contentAnalysis,
+  videoClips,
+  userAnalytics,
+  processingJobs,
+  userActivity
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { db } from "./db";
+import { eq, and, desc, gte, lte } from "drizzle-orm";
 
 // modify the interface with any CRUD methods
 // you might need
@@ -70,6 +81,10 @@ export interface IStorage {
   getClipById(id: number): Promise<VideoClip | undefined>;
   updateVideoClip(id: number, updates: Partial<InsertVideoClip>): Promise<VideoClip | undefined>;
 }
+
+import { PostgresStorage } from './storage-postgres';
+
+export const storage = new PostgresStorage();
 
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
@@ -400,5 +415,3 @@ export class MemStorage implements IStorage {
       .filter(job => job.status === status);
   }
 }
-
-export const storage = new MemStorage();

@@ -4,6 +4,8 @@ import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 
 // Main components
 import BottomTabNavigation from "@/components/BottomTabNavigation";
@@ -54,7 +56,11 @@ function MainApp() {
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={MainApp} />
+      <Route path="/">
+        <ProtectedRoute>
+          <MainApp />
+        </ProtectedRoute>
+      </Route>
       <Route component={NotFound} />
     </Switch>
   );
@@ -81,17 +87,19 @@ export default function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <div className="font-sans antialiased dark">
-          <Router />
-          {showSplash && (
-            <div className={`transition-opacity duration-500 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}>
-              <LoadingPage />
-            </div>
-          )}
-        </div>
-        <Toaster />
-      </TooltipProvider>
+      <AuthProvider>
+        <TooltipProvider>
+          <div className="font-sans antialiased dark">
+            <Router />
+            {showSplash && (
+              <div className={`transition-opacity duration-500 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}>
+                <LoadingPage />
+              </div>
+            )}
+          </div>
+          <Toaster />
+        </TooltipProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

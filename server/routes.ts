@@ -8,13 +8,19 @@ import { youtubeService } from "./platforms/youtube";
 import { tiktokService } from "./platforms/tiktok";
 import { analyzeSuccessPatterns, getUserPreferences, filterTrendsByPreferences } from "./preferences";
 import { insertTrendSchema, insertUserTrendsSchema } from "@shared/schema";
+import authRoutes from "./routes/auth";
+import { authenticateToken, optionalAuth, getUserId, AuthRequest } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Auth routes
+  app.use("/api/auth", authRoutes);
+  
   // Idea Lab Routes - AI Trend Discovery
 
   // Discover trends using AI
-  app.post("/api/trends/discover", async (req, res) => {
+  app.post("/api/trends/discover", authenticateToken, async (req: AuthRequest, res) => {
     try {
+      const userId = getUserId(req);
       const { platform, category, contentType, targetAudience } = req.body;
       
       if (!platform) {
@@ -41,7 +47,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           category,
           contentType,
           targetAudience
-        }, "demo-user"); // Pass userId for cache optimization
+        }, userId);
       }
 
       // Store trends in database with validation-aware fallback
@@ -67,7 +73,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             category,
             contentType,
             targetAudience
-          }, "demo-user");
+          }, userId);
           
           // Store AI trends (these should be pre-validated by our AI service)
           for (const trendData of aiTrends) {
@@ -195,8 +201,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Launch Pad Routes - Content Optimization
   
   // Analyze content (title and/or thumbnail)
-  app.post('/api/content/analyze', async (req, res) => {
+  app.post('/api/content/analyze', authenticateToken, async (req: AuthRequest, res) => {
     try {
+      const userId = getUserId(req);
       const { title, thumbnailDescription, platform, roastMode } = req.body;
       
       if (!title && !thumbnailDescription) {
@@ -211,7 +218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create user content record first
       const content = await storage.createUserContent({
-        userId: 'demo-user', // TODO: Get from auth
+        userId,
         platform,
         title: title || null,
         thumbnailUrl: thumbnailDescription || null,
@@ -282,9 +289,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user's content analysis history
-  app.get('/api/content/history', async (req, res) => {
+  app.get('/api/content/history', authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const userId = 'demo-user'; // TODO: Get from auth
+      const userId = getUserId(req);
       const content = await storage.getUserContent(userId);
       
       res.json({ content });
@@ -297,8 +304,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Multiplier Routes - Video Processing & Clip Generation
   
   // Process video and generate clips
-  app.post('/api/videos/process', async (req, res) => {
+  app.post('/api/videos/process', authenticateToken, async (req: AuthRequest, res) => {
     try {
+      const userId = getUserId(req);
       const { videoUrl, title, description, platform, videoDuration } = req.body;
       
       if (!videoUrl) {
@@ -309,7 +317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create user content record for the video
       const videoContent = await storage.createUserContent({
-        userId: 'demo-user', // TODO: Get from auth
+        userId,
         platform: platform || 'youtube',
         title: title || null,
         description: description || null,
@@ -436,9 +444,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user's video processing history
-  app.get('/api/videos/history', async (req, res) => {
+  app.get('/api/videos/history', authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const userId = 'demo-user'; // TODO: Get from auth
+      const userId = getUserId(req);
       const videos = await storage.getUserContent(userId);
       
       // Filter to only video content and add clip counts
@@ -463,9 +471,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get multiplier processing jobs (for UI compatibility)
-  app.get('/api/multiplier/jobs', async (req, res) => {
+  app.get('/api/multiplier/jobs', authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const userId = 'demo-user'; // TODO: Get from auth
+      const userId = getUserId(req);
       
       // Get video processing jobs from user content
       const videos = await storage.getUserContent(userId);
@@ -690,9 +698,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Automated Preference System Routes
   
   // Learn user preferences from successful content
-  app.post('/api/preferences/learn', async (req, res) => {
+  app.post('/api/preferences/learn', authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const userId = 'demo-user'; // TODO: Get from auth
+      const userId = getUserId(req);
       const { contentId, performance } = req.body; // performance: views, engagement rate, etc.
       
       if (!contentId || !performance) {
@@ -731,9 +739,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get filtered trends based on user preferences
-  app.get('/api/trends/personalized', async (req, res) => {
+  app.get('/api/trends/personalized', authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const userId = 'demo-user'; // TODO: Get from auth
+      const userId = getUserId(req);
       const { platform, limit = 10 } = req.query;
       
       console.log(`🎯 Getting personalized trends for ${userId}...`);
@@ -787,9 +795,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Save/update user preferences manually
-  app.post('/api/preferences/save', async (req, res) => {
+  app.post('/api/preferences/save', authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const userId = 'demo-user'; // TODO: Get from auth
+      const userId = getUserId(req);
       const { 
         niche, 
         targetAudience, 
@@ -887,9 +895,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard Routes - Analytics and Performance Tracking
   
   // Get dashboard statistics
-  app.get('/api/dashboard/stats', async (req, res) => {
+  app.get('/api/dashboard/stats', authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const userId = 'demo-user'; // TODO: Get from authenticated user
+      const userId = getUserId(req);
       const timeframe = (req.query.timeframe as 'week' | 'month' | 'year') || 'week';
       
       console.log(`📊 Fetching dashboard stats for ${userId} (${timeframe})...`);
@@ -916,9 +924,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get performance insights
-  app.get('/api/dashboard/insights', async (req, res) => {
+  app.get('/api/dashboard/insights', authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const userId = 'demo-user'; // TODO: Get from authenticated user
+      const userId = getUserId(req);
       const timeframe = (req.query.timeframe as 'week' | 'month' | 'year') || 'week';
       
       console.log(`💡 Fetching performance insights for ${userId} (${timeframe})...`);
@@ -945,9 +953,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get recent user activity for dashboard
-  app.get('/api/dashboard/activity', async (req, res) => {
+  app.get('/api/dashboard/activity', authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const userId = 'demo-user'; // TODO: Get from authenticated user
+      const userId = getUserId(req);
       const limit = parseInt(req.query.limit as string) || 20;
       const timeframe = req.query.timeframe as string || 'week';
       
@@ -970,9 +978,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create analytics record (for tracking real metrics)
-  app.post('/api/analytics/record', async (req, res) => {
+  app.post('/api/analytics/record', authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const userId = 'demo-user'; // TODO: Get from authenticated user
+      const userId = getUserId(req);
       const { contentId, platform, views, likes, shares, comments, clickRate } = req.body;
       
       if (!platform) {
@@ -1032,45 +1040,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Clear cache endpoint (secured for development only)
-  app.post("/api/cache/clear", async (req, res) => {
+  // Cache stats endpoint (read-only, no clearing in production)
+  app.get("/api/cache/stats", (req, res) => {
     try {
-      // Security: Only allow in development environment
-      if (process.env.NODE_ENV === 'production') {
-        return res.status(403).json({ 
-          success: false, 
-          error: 'Cache clearing not allowed in production' 
-        });
-      }
-
-      const { type, secret } = req.body;
+      const stats = simplifiedAICache.getStats();
       
-      // Simple secret check for development security
-      if (secret !== 'dev-clear-cache-2025') {
-        return res.status(401).json({ 
-          success: false, 
-          error: 'Invalid secret for cache clearing' 
-        });
-      }
-      
-      if (type) {
-        const clearedCount = await simplifiedAICache.clearByType(type);
-        res.json({ 
-          success: true, 
-          message: `Cleared ${clearedCount} cache entries for type: ${type}` 
-        });
-      } else {
-        await simplifiedAICache.clear();
-        res.json({ 
-          success: true, 
-          message: "All cache cleared" 
-        });
-      }
+      res.json({
+        success: true,
+        cache: {
+          ...stats,
+          description: "AI response cache performance metrics for token optimization",
+          savings: {
+            totalTokensSaved: stats.tokensSaved,
+            estimatedCostSaved: stats.estimatedCostSaved,
+            description: "Estimated API cost savings from persistent caching"
+          },
+          type: "persistent"
+        }
+      });
     } catch (error) {
-      console.error('Error clearing cache:', error);
+      console.error('Error getting cache stats:', error);
       res.status(500).json({ 
         success: false, 
-        error: 'Failed to clear cache' 
+        error: 'Failed to get cache statistics' 
       });
     }
   });

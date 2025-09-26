@@ -1,6 +1,8 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { validateAuthEnvironment } from "./auth";
 
 const app = express();
 app.use(express.json());
@@ -37,6 +39,15 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Validate environment variables
+  try {
+    validateAuthEnvironment();
+    log('✅ Environment validation passed');
+  } catch (error) {
+    log(`❌ Environment validation failed: ${error}`);
+    process.exit(1);
+  }
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
@@ -68,14 +79,23 @@ app.use((req, res, next) => {
   }, () => {
     log(`serving on port ${port}`);
     
-    // Start ViralForgeAI automation system
+    // Start AI-Enhanced ViralForgeAI automation system
     try {
-      import('./automation/scheduler').then(({ automationScheduler }) => {
-        automationScheduler.start();
-        log('🤖 ViralForgeAI automation system started');
+      import('./automation/ai_scheduler').then(({ ai_enhanced_scheduler }) => {
+        ai_enhanced_scheduler.start();
+        log('🤖 AI-Enhanced ViralForgeAI automation system started');
       });
     } catch (error) {
-      log('❌ Failed to start automation system:', error);
+      log('❌ Failed to start AI-enhanced automation system:', error);
+      // Fallback to original scheduler
+      try {
+        import('./automation/scheduler').then(({ automationScheduler }) => {
+          automationScheduler.start();
+          log('🔄 Fallback automation system started');
+        });
+      } catch (fallbackError) {
+        log('❌ Fallback automation system also failed:', fallbackError);
+      }
     }
   });
 })();
