@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { secureStorage } from '@/lib/mobileStorage';
+import { analytics } from '@/lib/analytics';
 
 export interface User {
   id: string;
@@ -10,7 +12,7 @@ export interface AuthContextType {
   token: string | null;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isLoading: boolean;
   isAuthenticated: boolean;
 }
@@ -36,16 +38,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load token from localStorage on app start
+  // Load token from secure storage on app start
   useEffect(() => {
-    const savedToken = localStorage.getItem('auth_token');
-    if (savedToken) {
-      setToken(savedToken);
-      // Validate token and get user info
-      validateToken(savedToken);
-    } else {
-      setIsLoading(false);
-    }
+    const loadSavedToken = async () => {
+      const savedToken = await secureStorage.getAuthToken();
+      if (savedToken) {
+        setToken(savedToken);
+        // Validate token and get user info
+        validateToken(savedToken);
+      } else {
+        setIsLoading(false);
+      }
+    };
+    
+    loadSavedToken();
   }, []);
 
   const validateToken = async (token: string) => {
@@ -62,15 +68,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const userData = await response.json();
         setUser(userData.user);
         setToken(token);
+        // Identify user in analytics
+        analytics.identify(userData.user.id, {
+          username: userData.user.username
+        });
       } else {
         // Token is invalid, clear it
-        localStorage.removeItem('auth_token');
+        await secureStorage.removeAuthToken();
         setToken(null);
         setUser(null);
       }
     } catch (error) {
       console.error('Token validation error:', error);
-      localStorage.removeItem('auth_token');
+      await secureStorage.removeAuthToken();
       setToken(null);
       setUser(null);
     } finally {
@@ -94,7 +104,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.ok && data.token) {
         setToken(data.token);
         setUser(data.user);
-        localStorage.setItem('auth_token', data.token);
+        await secureStorage.setAuthToken(data.token);
+        
+        // Track login event
+        analytics.trackLogin('password', {
+          username: data.user.username,
+          user_id: data.user.id
+        });
+        
+        // Identify user in analytics
+        analytics.identify(data.user.id, {
+          username: data.user.username
+        });
+        
         return { success: true };
       } else {
         return { success: false, error: data.message || 'Login failed' };
@@ -123,7 +145,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response.ok && data.token) {
         setToken(data.token);
         setUser(data.user);
-        localStorage.setItem('auth_token', data.token);
+        await secureStorage.setAuthToken(data.token);
+        
+        // Track signup event
+        analytics.trackSignup('password', {
+          username: data.user.username,
+          user_id: data.user.id
+        });
+        
+        // Identify user in analytics
+        analytics.identify(data.user.id, {
+          username: data.user.username
+        });
+        
         return { success: true };
       } else {
         return { success: false, error: data.message || 'Registration failed' };
@@ -136,10 +170,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // Track logout event before clearing user data
+    if (user) {
+      analytics.trackLogout({
+        username: user.username,
+        user_id: user.id
+      });
+    }
+    
     setToken(null);
     setUser(null);
-    localStorage.removeItem('auth_token');
+    await secureStorage.removeAuthToken();
+    
+    // Reset analytics
+    analytics.reset();
   };
 
   const value: AuthContextType = {

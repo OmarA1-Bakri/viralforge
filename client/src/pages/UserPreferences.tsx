@@ -15,6 +15,7 @@ import { z } from "zod";
 import { User, Target, Palette, Monitor, Clock, Trophy, Sparkles, LogOut } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/contexts/AuthContext";
+import { analytics } from "@/lib/analytics";
 
 const preferencesSchema = z.object({
   niche: z.string().min(1, "Please select your niche"),
@@ -35,8 +36,8 @@ export default function UserPreferences() {
   const queryClient = useQueryClient();
   const { user, logout } = useAuth();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     toast({
       title: "Logged Out",
       description: "You have been successfully logged out.",
@@ -109,6 +110,16 @@ export default function UserPreferences() {
         title: "Preferences Saved!",
         description: data?.message || "Your preferences have been updated successfully.",
       });
+      
+      // Track preferences save event
+      analytics.trackPreferencesSave({
+        niche: form.getValues('niche'),
+        target_audience: form.getValues('targetAudience'),
+        content_style: form.getValues('contentStyle'),
+        platforms: form.getValues('preferredPlatforms')?.length || 0,
+        categories: form.getValues('preferredCategories')?.length || 0
+      });
+      
       queryClient.invalidateQueries({ queryKey: ['/api/preferences'] });
       queryClient.invalidateQueries({ queryKey: ['/api/trends'] });
     },
