@@ -62,13 +62,21 @@ function Router() {
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
+  const [fadeOut, setFadeOut] = useState(false);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowSplash(false);
-    }, 1500); // Show splash for 1.5 seconds
+    const fadeTimer = setTimeout(() => {
+      setFadeOut(true);
+    }, 2500); // Start fade out after 2.5 seconds
 
-    return () => clearTimeout(timer);
+    const hideTimer = setTimeout(() => {
+      setShowSplash(false);
+    }, 3000); // Hide completely after 3 seconds
+
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(hideTimer);
+    };
   }, []);
 
   return (
@@ -76,7 +84,11 @@ export default function App() {
       <TooltipProvider>
         <div className="font-sans antialiased dark">
           <Router />
-          {showSplash && <LoadingPage />}
+          {showSplash && (
+            <div className={`transition-opacity duration-500 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}>
+              <LoadingPage />
+            </div>
+          )}
         </div>
         <Toaster />
       </TooltipProvider>
