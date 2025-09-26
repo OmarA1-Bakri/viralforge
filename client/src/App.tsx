@@ -11,6 +11,7 @@ import CreatorDashboard from "@/components/CreatorDashboard";
 import IdeaLabFeed from "@/components/IdeaLabFeed";
 import LaunchPadAnalyzer from "@/components/LaunchPadAnalyzer";
 import MultiplierProcessor from "@/components/MultiplierProcessor";
+import LoadingPage from "@/components/LoadingPage";
 import UserPreferences from "@/pages/UserPreferences";
 import NotFound from "@/pages/not-found";
 
@@ -50,10 +51,16 @@ function MainApp() {
   );
 }
 
+// Loading page wrapper for routing
+function LoadingPageRoute() {
+  return <LoadingPage message="Loading ViralForgeAI..." />;
+}
+
 function Router() {
   return (
     <Switch>
       <Route path="/" component={MainApp} />
+      <Route path="/loading" component={LoadingPageRoute} />
       <Route component={NotFound} />
     </Switch>
   );
