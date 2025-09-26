@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -51,27 +51,32 @@ function MainApp() {
   );
 }
 
-// Loading page wrapper for routing
-function LoadingPageRoute() {
-  return <LoadingPage message="Loading ViralForgeAI..." />;
-}
-
 function Router() {
   return (
     <Switch>
       <Route path="/" component={MainApp} />
-      <Route path="/loading" component={LoadingPageRoute} />
       <Route component={NotFound} />
     </Switch>
   );
 }
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 1500); // Show splash for 1.5 seconds
+
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <div className="font-sans antialiased dark">
           <Router />
+          {showSplash && <LoadingPage />}
         </div>
         <Toaster />
       </TooltipProvider>
