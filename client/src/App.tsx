@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { analytics } from "@/lib/analytics";
 
 // Main components
 import BottomTabNavigation from "@/components/BottomTabNavigation";
@@ -71,6 +72,9 @@ export default function App() {
   const [fadeOut, setFadeOut] = useState(false);
 
   useEffect(() => {
+    // Initialize analytics
+    analytics.init();
+    
     const fadeTimer = setTimeout(() => {
       setFadeOut(true);
     }, 2500); // Start fade out after 2.5 seconds
