@@ -28,6 +28,17 @@ Python agents in `server/agents/` are integrated with TypeScript via `server/aut
 - Mobile development: Use `./mobile-dev.sh` script for Android/iOS
 - The server runs on port 5000, Vite dev server proxies API requests
 
+### Environment Variables
+**Required:**
+- `DATABASE_URL` - PostgreSQL connection string
+- `JWT_SECRET` - Secret for JWT token signing (change in production!)
+
+**Optional (AI Features):**
+- `CREWAI_SCRIPT_PATH` - Path to Python CrewAI script (enables AI agents)
+- `OPENROUTER_API_KEY` - OpenRouter API key for AI completions
+- `POSTHOG_API_KEY` - PostHog analytics key
+- `SERPER_API_KEY`, `TAVILY_API_KEY`, `FIRECRAWL_API_KEY` - For CrewAI tools
+
 ### Key Directories
 - `client/src/`: React frontend code
 - `server/`: Express backend with routes, agents, automation
