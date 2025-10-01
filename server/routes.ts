@@ -17,6 +17,7 @@ import { validateRequest, schemas } from './middleware/validation';
 import { logger, logError, logAICall } from './lib/logger';
 import { storageService } from './lib/storage';
 import { uploadImage, uploadVideo } from './middleware/upload';
+import { videoProcessingQueue } from './lib/queue';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
@@ -358,44 +359,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'processing'
       });
 
-      // Generate clip suggestions using AI
-      const clipSuggestions = await openRouterService.generateVideoClips(
-        description || title || 'Video content',
-        videoDuration || 300, // Default 5 minutes
-        platform || 'youtube'
-      );
-
-      // Store clip suggestions in database
-      const storedClips = [];
-      for (const clipData of clipSuggestions) {
-        try {
-          const clip = await storage.createVideoClip({
-            contentId: videoContent.id,
-            title: clipData.title,
-            description: clipData.description,
-            startTime: clipData.startTime,
-            endTime: clipData.endTime,
-            viralScore: clipData.viralScore,
-            status: 'ready'
-          });
-          storedClips.push(clip);
-        } catch (error) {
-          console.warn("Failed to store clip:", error);
-        }
-      }
-
-      // Update video status to completed
-      const updatedContent = await storage.updateUserContent(videoContent.id, {
-        status: 'completed'
+      // Queue video processing job
+      const job = await videoProcessingQueue.add('process-video', {
+        userId,
+        contentId: videoContent.id,
+        videoKey: videoUrl.replace(/^.*\//, ''), // Extract key from URL
+        platform: platform || 'youtube',
+        videoDuration,
       });
 
-      console.log(`✅ Generated ${storedClips.length} clips from video`);
+      logger.info({ jobId: job.id, contentId: videoContent.id }, 'Video processing job queued');
 
       res.json({
+        success: true,
         videoId: videoContent.id,
-        video: updatedContent,
-        clips: storedClips,
-        totalClips: storedClips.length
+        jobId: job.id,
+        status: 'processing',
+        message: 'Video processing started. Check status with job ID.',
       });
     } catch (error) {
       console.error('Error processing video:', error);
@@ -500,6 +480,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error fetching video history:', error);
       res.status(500).json({ error: 'Failed to fetch video history' });
+    }
+  });
+
+  // Get job status
+  app.get('/api/jobs/:jobId', authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const { jobId } = req.params;
+      
+      const job = await videoProcessingQueue.getJob(jobId);
+      
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      const state = await job.getState();
+      const progress = job.progress;
+
+      res.json({
+        success: true,
+        job: {
+          id: job.id,
+          state,
+          progress,
+          data: job.data,
+          returnvalue: job.returnvalue,
+          failedReason: job.failedReason,
+        },
+      });
+    } catch (error) {
+      logError(error as Error, { context: 'job_status' });
+      res.status(500).json({ error: 'Failed to get job status' });
     }
   });
 
