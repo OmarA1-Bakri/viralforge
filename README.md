@@ -98,6 +98,24 @@ TAVILY_API_KEY=your_tavily_key  # For advanced search
 FIRECRAWL_API_KEY=your_firecrawl_key  # For web crawling
 ```
 
+### Platform Integration (Optional - Real Data)
+
+To enable real platform data instead of AI fallbacks:
+
+```env
+# YouTube Data API
+YOUTUBE_API_KEY=your_youtube_api_key
+YOUTUBE_CLIENT_ID=your_oauth_client_id
+YOUTUBE_CLIENT_SECRET=your_oauth_client_secret
+YOUTUBE_REDIRECT_URI=http://localhost:5000/api/oauth/youtube/callback
+
+# Cloudflare R2 for file storage
+CLOUDFLARE_ACCOUNT_ID=your_account_id
+CLOUDFLARE_R2_ACCESS_KEY_ID=your_access_key
+CLOUDFLARE_R2_SECRET_ACCESS_KEY=your_secret_key
+CLOUDFLARE_R2_BUCKET=viralforge-uploads
+```
+
 ### Analytics (Optional)
 
 ```env

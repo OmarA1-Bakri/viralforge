@@ -22,6 +22,9 @@ RUN npm ci --only=production
 # Install Python dependencies
 RUN pip3 install --no-cache-dir -r requirements.txt
 
+# Install FFmpeg
+RUN apk add --no-cache ffmpeg
+
 # Copy application code
 COPY . .
 

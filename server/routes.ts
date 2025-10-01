@@ -6,11 +6,13 @@ import { simplifiedAICache } from "./ai/simplifiedCache";
 import { successPatternService } from "./ai/successPatterns";
 import { analyticsService } from "./analytics";
 import { youtubeService } from "./platforms/youtube";
+import { youtubeService as ytApiService } from "./lib/platforms/youtube";
 import { tiktokService } from "./platforms/tiktok";
 import { analyzeSuccessPatterns, getUserPreferences, filterTrendsByPreferences } from "./preferences";
 import { insertTrendSchema, insertUserTrendsSchema } from "@shared/schema";
 import authRoutes from "./routes/auth";
 import agentRoutes from "./routes/agents";
+import oauthRoutes from "./routes/oauth";
 import { authenticateToken, optionalAuth, getUserId, AuthRequest } from "./auth";
 import { aiAnalysisLimiter, uploadLimiter } from './middleware/security';
 import { validateRequest, schemas } from './middleware/validation';
@@ -25,6 +27,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Agent monitoring routes
   app.use("/api/agents", agentRoutes);
+  
+  // OAuth routes
+  app.use("/api/oauth", oauthRoutes);
   
   // Idea Lab Routes - AI Trend Discovery
 
