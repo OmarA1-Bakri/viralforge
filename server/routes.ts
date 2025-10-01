@@ -14,6 +14,7 @@ import agentRoutes from "./routes/agents";
 import { authenticateToken, optionalAuth, getUserId, AuthRequest } from "./auth";
 import { aiAnalysisLimiter, uploadLimiter } from './middleware/security';
 import { validateRequest, schemas } from './middleware/validation';
+import { logger, logError, logAICall } from './lib/logger';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes

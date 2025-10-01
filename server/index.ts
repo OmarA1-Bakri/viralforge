@@ -10,8 +10,14 @@ import {
   requestIdMiddleware 
 } from './middleware/security';
 import { validateAuthEnvironment } from "./auth";
+import { initSentry, Sentry } from './lib/sentry';
+import { logger, logRequest } from './lib/logger';
+import healthRoutes from './routes/health';
 
 const app = express();
+
+// Initialize Sentry (must be before other middleware)
+initSentry(app);
 
 // Security middleware
 app.use(helmetMiddleware);
@@ -28,30 +34,14 @@ app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 // General rate limiting
 app.use('/api/', generalLimiter);
 
+// Request logging with structured logger
 app.use((req, res, next) => {
   const start = Date.now();
-  const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
-
-  const originalResJson = res.json;
-  res.json = function (bodyJson, ...args) {
-    capturedJsonResponse = bodyJson;
-    return originalResJson.apply(res, [bodyJson, ...args]);
-  };
 
   res.on("finish", () => {
     const duration = Date.now() - start;
-    if (path.startsWith("/api")) {
-      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
-      if (capturedJsonResponse) {
-        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
-      }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
-      log(logLine);
+    if (req.path.startsWith("/api")) {
+      logRequest(req.method, req.path, res.statusCode, duration, req.id);
     }
   });
 
