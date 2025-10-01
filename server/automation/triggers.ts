@@ -28,27 +28,33 @@ export class WorkflowTriggers {
           roastMode: false
         });
 
+        // Create user content first to get contentId
+        const content = await storage.createUserContent({
+          userId,
+          title: contentData.title,
+          description: contentData.description,
+          platform: contentData.platform,
+          status: 'analyzing'
+        });
+
         // Store analysis results
         await storage.createContentAnalysis({
-          userId,
-          contentType: contentData.contentType,
-          title: contentData.title,
-          platform: contentData.platform,
+          contentId: content.id,
           clickabilityScore: analysis.clickabilityScore,
           clarityScore: analysis.clarityScore,
           intrigueScore: analysis.intrigueScore,
           emotionScore: analysis.emotionScore,
-          overallScore: (analysis.clickabilityScore + analysis.clarityScore + 
-                        analysis.intrigueScore + analysis.emotionScore) / 4,
-          feedback: analysis.feedback.overall,
+          feedback: analysis.feedback,
           suggestions: analysis.suggestions
         });
 
         // Create activity log
         await storage.createUserActivity({
           userId,
-          type: 'auto_analysis',
-          description: `Auto-analyzed: ${contentData.title}`,
+          activityType: 'auto_analysis',
+          title: `Auto-analyzed: ${contentData.title}`,
+          status: 'completed',
+          contentId: content.id,
           metadata: {
             contentType: contentData.contentType,
             platform: contentData.platform,
@@ -73,8 +79,9 @@ export class WorkflowTriggers {
       // Log the failure
       await storage.createUserActivity({
         userId,
-        type: 'auto_analysis_failed',
-        description: `Auto-analysis failed for: ${contentData.title}`,
+        activityType: 'auto_analysis_failed',
+        title: `Auto-analysis failed for: ${contentData.title}`,
+        status: 'failed',
         metadata: {
           error: error instanceof Error ? error.message : 'Unknown error',
           contentType: contentData.contentType,
@@ -101,8 +108,9 @@ export class WorkflowTriggers {
       // Create activity log
       await storage.createUserActivity({
         userId,
-        type: 'video_queued',
-        description: `Video queued for auto-processing: ${videoTitle}`,
+        activityType: 'video_queued',
+        title: `Video queued for auto-processing: ${videoTitle}`,
+        status: 'queued',
         metadata: {
           jobId: job.id,
           videoTitle,
@@ -126,15 +134,15 @@ export class WorkflowTriggers {
       // Auto-generate content ideas based on saved trend
       const contentIdeas = await this.openRouterService.discoverTrends({
         platform: 'tiktok',
-        category: 'all',
-        limit: 3
+        category: 'all'
       });
 
       // Create activity with personalized suggestions
       await storage.createUserActivity({
         userId,
-        type: 'trend_saved',
-        description: `Saved trending idea: ${trendTitle}`,
+        activityType: 'trend_saved',
+        title: `Saved trending idea: ${trendTitle}`,
+        status: 'saved',
         metadata: {
           trendId,
           trendTitle,
@@ -201,8 +209,9 @@ export class WorkflowTriggers {
       for (const alert of alerts) {
         await storage.createUserActivity({
           userId,
-          type: 'performance_alert',
-          description: alert.message,
+          activityType: 'performance_alert',
+          title: alert.message,
+          status: 'active',
           metadata: {
             alertType: alert.type,
             priority: alert.priority,

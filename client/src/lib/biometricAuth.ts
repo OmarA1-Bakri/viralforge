@@ -1,4 +1,4 @@
-import { BiometricAuth, BiometricsError, BiometricsErrorType } from '@aparajita/capacitor-biometric-auth';
+import { BiometricAuth, BiometryError, BiometryErrorType, BiometryType } from '@aparajita/capacitor-biometric-auth';
 import { secureStorage } from './mobileStorage';
 
 export interface BiometricResult {
@@ -23,7 +23,7 @@ export const biometricAuth = {
   async getAvailableBiometrics(): Promise<string[]> {
     try {
       const result = await BiometricAuth.checkBiometry();
-      return result.biometryTypes || [];
+      return (result.biometryTypes || []).map((type: BiometryType) => type.toString());
     } catch (error) {
       console.warn('Could not get biometric types:', error);
       return [];
@@ -72,56 +72,47 @@ export const biometricAuth = {
       }
 
       // Perform biometric authentication
-      const result = await BiometricAuth.authenticate({
+      await BiometricAuth.authenticate({
         reason: reason || 'Please authenticate to access your account',
         cancelTitle: 'Cancel',
         allowDeviceCredential: true,
         iosFallbackTitle: 'Use Password',
         androidTitle: 'Biometric Authentication',
-        androidSubtitle: 'Use your fingerprint or face to authenticate',
-        androidDescription: reason || 'Please authenticate to continue',
-        androidNegativeText: 'Cancel'
+        androidSubtitle: 'Use your fingerprint or face to authenticate'
       });
 
-      if (result.isAuthenticated) {
-        return { success: true };
-      } else {
-        return {
-          success: false,
-          error: 'Authentication failed',
-          fallbackToPassword: true
-        };
-      }
+      // If we reach here, authentication succeeded
+      return { success: true };
     } catch (error) {
       console.error('Biometric authentication error:', error);
       
-      if (error instanceof BiometricsError) {
-        switch (error.code) {
-          case BiometricsErrorType.userCancel:
+      if (error instanceof BiometryError) {
+        switch ((error as any).code) {
+          case BiometryErrorType.userCancel:
             return {
               success: false,
               error: 'Authentication cancelled by user',
               fallbackToPassword: true
             };
-          case BiometricsErrorType.userFallback:
+          case BiometryErrorType.userFallback:
             return {
               success: false,
               error: 'User chose to use password',
               fallbackToPassword: true
             };
-          case BiometricsErrorType.biometryNotAvailable:
+          case BiometryErrorType.biometryNotAvailable:
             return {
               success: false,
               error: 'Biometric authentication is not available',
               fallbackToPassword: true
             };
-          case BiometricsErrorType.biometryNotEnrolled:
+          case BiometryErrorType.biometryNotEnrolled:
             return {
               success: false,
               error: 'No biometrics enrolled on device',
               fallbackToPassword: true
             };
-          case BiometricsErrorType.biometryLockout:
+          case BiometryErrorType.biometryLockout:
             return {
               success: false,
               error: 'Biometric authentication temporarily locked',

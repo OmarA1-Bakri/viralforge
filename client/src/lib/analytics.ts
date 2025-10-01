@@ -100,7 +100,7 @@ export const analytics = {
     if (!isInitialized) return false;
     
     try {
-      return posthog.isFeatureEnabled(flag);
+      return posthog.isFeatureEnabled(flag) || false;
     } catch (error) {
       console.error('Failed to check feature flag:', error);
       return false;

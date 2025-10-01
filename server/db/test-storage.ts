@@ -9,7 +9,8 @@ async function testStorage() {
   try {
     // Test user creation
     const testUser = await storage.createUser({
-      username: 'test-user-' + Date.now()
+      username: 'test-user-' + Date.now(),
+      password: 'test-password-123'
     });
     console.log('✅ Created test user:', testUser.id);
     

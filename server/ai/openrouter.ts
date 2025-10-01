@@ -16,6 +16,7 @@ export interface TrendDiscoveryRequest {
   category?: string;
   contentType?: string;
   targetAudience?: string;
+  limit?: number;
 }
 
 export interface TrendResult {
@@ -63,7 +64,7 @@ export interface VideoClipSuggestion {
 
 export class OpenRouterService {
   // Discover trending content ideas using AI with caching
-  async discoverTrends(request: TrendDiscoveryRequest, userId?: string): Promise<TrendResult[]> {
+  async discoverTrends(request: TrendDiscoveryRequest & { limit?: number }, userId?: string): Promise<TrendResult[]> {
     console.log("🔍 Discovering trends for:", request);
 
     // Check cache first

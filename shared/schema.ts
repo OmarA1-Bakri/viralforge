@@ -123,12 +123,7 @@ export const userActivity = pgTable("user_activity", {
   status: text("status").notNull(),
   contentId: integer("content_id").references(() => userContent.id, { onDelete: "cascade" }),
   trendId: integer("trend_id").references(() => trends.id),
-  metadata: json("metadata").$type<{
-    views?: string;
-    engagement?: string;
-    score?: string;
-    clips?: string;
-  }>(),
+  metadata: json("metadata"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

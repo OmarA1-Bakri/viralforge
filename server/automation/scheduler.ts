@@ -32,7 +32,7 @@ export class AutomationScheduler {
   }
 
   // 1. Scheduled trend monitoring (daily/weekly trend reports)
-  private async dailyTrendMonitoring() {
+  protected async dailyTrendMonitoring() {
     console.log('📊 Running daily trend monitoring...');
     
     try {
@@ -66,7 +66,7 @@ export class AutomationScheduler {
   }
 
   // 2. Automatic content scoring (batch process all content)
-  private async automaticContentScoring() {
+  protected async automaticContentScoring() {
     console.log('🎯 Running automatic content scoring...');
     
     try {
@@ -85,24 +85,21 @@ export class AutomationScheduler {
         for (const content of unanalyzedContent) {
           try {
             const analysis = await this.openRouterService.analyzeContent({
-              title: content.title,
+              title: content.title || '',
               description: content.description || '',
               platform: content.platform || 'tiktok',
               roastMode: false
             });
 
             await storage.createContentAnalysis({
-              userId: user.id,
-              contentType: 'text',
-              title: content.title,
-              platform: content.platform || 'tiktok',
+              contentId: content.id,
               clickabilityScore: analysis.clickabilityScore,
               clarityScore: analysis.clarityScore,
               intrigueScore: analysis.intrigueScore,
               emotionScore: analysis.emotionScore,
-              overallScore: (analysis.clickabilityScore + analysis.clarityScore + 
-                            analysis.intrigueScore + analysis.emotionScore) / 4,
-              feedback: typeof analysis.feedback === 'string' ? analysis.feedback : analysis.feedback.overall,
+              feedback: typeof analysis.feedback === 'string' 
+                ? { thumbnail: '', title: '', overall: analysis.feedback }
+                : analysis.feedback,
               suggestions: analysis.suggestions
             });
 
@@ -118,7 +115,7 @@ export class AutomationScheduler {
   }
 
   // 3. Background video processing (auto-process uploaded videos)
-  private async backgroundVideoProcessing() {
+  protected async backgroundVideoProcessing() {
     console.log('🎬 Running background video processing...');
     
     try {
@@ -136,22 +133,19 @@ export class AutomationScheduler {
 
           try {
             // Simulate video processing with AI
-            const clips = await this.openRouterService.generateVideoClips({
-              videoUrl: job.targetId?.toString() || '',
-              platform: 'tiktok',
-              duration: 15
-            });
+            const clips = await this.openRouterService.generateVideoClips(
+              `Video processing for content ${job.targetId}`,
+              300, // 5 minute video
+              'tiktok'
+            );
 
             // Create video clips records
             for (const clip of clips) {
               await storage.createVideoClip({
-                userId: job.userId,
+                contentId: job.targetId || 0,
                 title: clip.title,
-                duration: clip.duration,
-                platform: 'tiktok',
-                viralScore: Math.floor(Math.random() * 10) + 1,
-                hooks: clip.hooks,
-                downloadUrl: clip.downloadUrl
+                startTime: clip.startTime,
+                endTime: clip.endTime
               });
             }
 
@@ -164,12 +158,11 @@ export class AutomationScheduler {
             // Create activity record
             await storage.createUserActivity({
               userId: job.userId,
-              type: 'video_processed',
-              description: `Auto-processed video into ${clips.length} viral clips`,
+              activityType: 'video_processed',
+              title: `Auto-processed video into ${clips.length} viral clips`,
+              status: 'completed',
               metadata: {
-                jobId: job.id,
-                clipsGenerated: clips.length,
-                processingType: 'automatic'
+                clips: clips.length.toString()
               }
             });
 
@@ -189,7 +182,7 @@ export class AutomationScheduler {
   }
 
   // 4. Automated posting schedules (suggest optimal posting times)
-  private async generatePostingSchedules() {
+  protected async generatePostingSchedules() {
     console.log('📅 Generating automated posting schedules...');
     
     try {
@@ -204,13 +197,9 @@ export class AutomationScheduler {
         // Create posting schedule recommendations
         await storage.createUserActivity({
           userId: user.id,
-          type: 'posting_schedule',
-          description: 'AI-generated optimal posting schedule',
-          metadata: {
-            optimalTimes: postingTimes,
-            analysisDate: new Date().toISOString(),
-            recommendationType: 'automatic'
-          }
+          activityType: 'posting_schedule',
+          title: 'AI-generated optimal posting schedule',
+          status: 'completed'
         });
 
         console.log(`📋 Generated posting schedule for user ${user.id}`);
@@ -221,7 +210,7 @@ export class AutomationScheduler {
   }
 
   // 5. Check for trending opportunities and alerts
-  private async checkTrendingOpportunities() {
+  protected async checkTrendingOpportunities() {
     console.log('🚨 Checking for trending opportunities...');
     
     try {
@@ -244,13 +233,9 @@ export class AutomationScheduler {
           // Create trending opportunity alert
           await storage.createUserActivity({
             userId: user.id,
-            type: 'trending_alert',
-            description: `🔥 ${hotTrends.length} hot trends detected with high viral potential!`,
-            metadata: {
-              hotTrends: hotTrends.map(t => ({ title: t.title, engagement: t.engagement })),
-              alertType: 'trending_opportunity',
-              priority: 'high'
-            }
+            activityType: 'trending_alert',
+            title: `🔥 ${hotTrends.length} hot trends detected with high viral potential!`,
+            status: 'detected'
           });
 
           console.log(`🔥 Trending alert created for user ${user.id}`);

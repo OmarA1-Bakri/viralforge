@@ -19,8 +19,9 @@ export class NotificationService {
       // Store notification in activity log
       await storage.createUserActivity({
         userId: notification.userId,
-        type: notification.type,
-        description: notification.message,
+        activityType: notification.type,
+        title: notification.title,
+        status: 'sent',
         metadata: {
           ...notification.metadata,
           notificationSent: true,
@@ -132,16 +133,16 @@ export class NotificationService {
       
       // Filter activities that are notifications
       const notifications = activities
-        .filter(a => a.metadata?.notificationSent === true)
+        .filter(a => (a.metadata as any)?.notificationSent === true)
         .sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0))
         .slice(0, limit);
 
       return notifications.map(activity => ({
         id: activity.id,
-        type: activity.type,
-        title: this.getNotificationTitle(activity.type),
-        message: activity.description,
-        priority: activity.metadata?.priority || 'medium',
+        type: activity.activityType,
+        title: this.getNotificationTitle(activity.activityType),
+        message: activity.title,
+        priority: (activity.metadata as any)?.priority || 'medium',
         timestamp: activity.createdAt,
         metadata: activity.metadata
       }));
