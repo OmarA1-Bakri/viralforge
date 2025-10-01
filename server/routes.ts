@@ -15,6 +15,8 @@ import { authenticateToken, optionalAuth, getUserId, AuthRequest } from "./auth"
 import { aiAnalysisLimiter, uploadLimiter } from './middleware/security';
 import { validateRequest, schemas } from './middleware/validation';
 import { logger, logError, logAICall } from './lib/logger';
+import { storageService } from './lib/storage';
+import { uploadImage, uploadVideo } from './middleware/upload';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
@@ -551,44 +553,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/upload/thumbnail', 
     authenticateToken,
     uploadLimiter,
-    async (req, res) => {
+    uploadImage,
+    async (req: AuthRequest, res) => {
     try {
-      // Note: In a full implementation, you'd use multer or similar for file handling
-      // For now, we'll handle base64 encoded images from the frontend
-      const { imageData, fileName, contentType } = req.body;
-      
-      if (!imageData || !fileName) {
-        return res.status(400).json({ error: 'Image data and filename are required' });
+      if (!req.file) {
+        return res.status(400).json({ error: 'No image file provided' });
       }
 
-      console.log(`📸 Uploading thumbnail: ${fileName}...`);
+      logger.info({ 
+        fileName: req.file.originalname, 
+        size: req.file.size,
+        contentType: req.file.mimetype 
+      }, 'Uploading thumbnail');
       
-      // Generate unique filename with timestamp
-      const timestamp = Date.now();
-      const extension = fileName.split('.').pop() || 'jpg';
-      const uniqueFileName = `thumbnail_${timestamp}.${extension}`;
+      // Upload to R2 with thumbnail variants
+      const result = await storageService.uploadImageWithThumbnails(
+        req.file.buffer,
+        req.file.mimetype
+      );
       
-      // Store in private directory for user uploads
-      const filePath = `${process.env.PRIVATE_OBJECT_DIR}/${uniqueFileName}`;
-      
-      // Convert base64 to buffer and store
-      const buffer = Buffer.from(imageData.split(',')[1], 'base64');
-      
-      // In a real implementation, you'd write to object storage here
-      // For now, we'll simulate storage and return a URL
-      const thumbnailUrl = `/api/files/thumbnails/${uniqueFileName}`;
-      
-      console.log(`✅ Thumbnail uploaded: ${uniqueFileName}`);
+      logger.info({ key: result.original.key }, 'Thumbnail uploaded successfully');
       
       res.json({
         success: true,
-        fileName: uniqueFileName,
-        thumbnailUrl,
-        size: buffer.length,
-        contentType: contentType || 'image/jpeg'
+        fileName: req.file.originalname,
+        thumbnailUrl: result.original.cdnUrl || result.original.url,
+        thumbnails: {
+          small: result.thumbnails.small.cdnUrl || result.thumbnails.small.url,
+          medium: result.thumbnails.medium.cdnUrl || result.thumbnails.medium.url,
+          large: result.thumbnails.large.cdnUrl || result.thumbnails.large.url,
+        },
+        size: result.original.size,
+        contentType: result.original.contentType
       });
     } catch (error) {
-      console.error('Error uploading thumbnail:', error);
+      logError(error as Error, { context: 'thumbnail_upload' });
       res.status(500).json({ error: 'Failed to upload thumbnail' });
     }
   });
@@ -597,61 +596,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/upload/video', 
     authenticateToken,
     uploadLimiter,
-    validateRequest({ body: schemas.uploadFile }),
-    async (req, res) => {
+    uploadVideo,
+    async (req: AuthRequest, res) => {
     try {
-      const { fileName, fileSize, contentType } = req.body;
-      
-      if (!fileName) {
-        return res.status(400).json({ error: 'Filename is required' });
+      if (!req.file) {
+        return res.status(400).json({ error: 'No video file provided' });
       }
 
-      console.log(`🎬 Initiating video upload: ${fileName} (${fileSize} bytes)...`);
+      logger.info({
+        fileName: req.file.originalname,
+        size: req.file.size,
+        contentType: req.file.mimetype
+      }, 'Uploading video');
       
-      // Generate unique filename with timestamp
-      const timestamp = Date.now();
-      const extension = fileName.split('.').pop() || 'mp4';
-      const uniqueFileName = `video_${timestamp}.${extension}`;
+      // Upload video to R2
+      const result = await storageService.uploadFile(
+        req.file.buffer,
+        req.file.mimetype,
+        'videos'
+      );
       
-      // Store in private directory for user uploads
-      const filePath = `${process.env.PRIVATE_OBJECT_DIR}/videos/${uniqueFileName}`;
-      
-      // Return upload URL and file info
-      // In a full implementation, you'd provide a signed upload URL for direct browser upload
-      const videoUrl = `/api/files/videos/${uniqueFileName}`;
-      
-      console.log(`✅ Video upload prepared: ${uniqueFileName}`);
+      logger.info({ key: result.key }, 'Video uploaded successfully');
       
       res.json({
         success: true,
-        fileName: uniqueFileName,
-        videoUrl,
-        uploadUrl: `/api/upload/video/${uniqueFileName}`, // For chunked upload if needed
-        contentType: contentType || 'video/mp4'
+        fileName: req.file.originalname,
+        videoUrl: result.cdnUrl || result.url,
+        key: result.key,
+        size: result.size,
+        contentType: result.contentType
       });
     } catch (error) {
-      console.error('Error preparing video upload:', error);
-      res.status(500).json({ error: 'Failed to prepare video upload' });
+      logError(error as Error, { context: 'video_upload' });
+      res.status(500).json({ error: 'Failed to upload video' });
     }
   });
 
-  // Serve uploaded files (thumbnails and videos)
-  app.get('/api/files/:type/:filename', async (req, res) => {
+  // Get signed URL for file access
+  app.get('/api/files/signed/:key', authenticateToken, async (req: AuthRequest, res) => {
     try {
-      const { type, filename } = req.params;
+      const key = decodeURIComponent(req.params.key);
       
-      if (!['thumbnails', 'videos'].includes(type)) {
-        return res.status(400).json({ error: 'Invalid file type' });
-      }
+      logger.info({ key }, 'Generating signed URL');
       
-      console.log(`📁 Serving file: ${type}/${filename}`);
+      const signedUrl = await storageService.getSignedUrl(key, 3600);
       
-      // In a real implementation, you'd fetch from object storage
-      // For now, return a placeholder response
-      res.status(404).json({ error: 'File not found' });
+      res.json({
+        success: true,
+        url: signedUrl,
+        expiresIn: 3600,
+      });
     } catch (error) {
-      console.error('Error serving file:', error);
-      res.status(500).json({ error: 'Failed to serve file' });
+      logError(error as Error, { context: 'signed_url_generation' });
+      res.status(500).json({ error: 'Failed to generate signed URL' });
     }
   });
 
