@@ -51,6 +51,23 @@ export interface ContentAnalysisResult {
     overall: string;
   };
   suggestions: string[];
+  viralPotential: {
+    score: number;
+    reasoning: string;
+    successExamples: string[];
+  };
+  improvements: {
+    priority: 'high' | 'medium' | 'low';
+    change: string;
+    expectedImpact: string;
+    before: string;
+    after: string;
+  }[];
+  abTestSuggestions: {
+    variant: string;
+    hypothesis: string;
+    expectedOutcome: string;
+  }[];
 }
 
 export interface VideoClipSuggestion {
@@ -273,6 +290,30 @@ Make the trends feel authentic and actionable for creators.`;
           "Test emotional hooks like curiosity gaps",
           "Optimize title length for mobile viewing",
           "A/B test different thumbnail styles"
+        ],
+        viralPotential: {
+          score: 65,
+          reasoning: "Content has moderate viral potential based on title structure and emotional appeal.",
+          successExamples: [
+            "Similar content by @creator123 reached 1M views",
+            "Format matches trending pattern on TikTok"
+          ]
+        },
+        improvements: [
+          {
+            priority: 'high',
+            change: 'Add a question to create curiosity',
+            expectedImpact: '+25% click-through rate',
+            before: request.title || 'Your current title',
+            after: `${request.title} - But why?`
+          }
+        ],
+        abTestSuggestions: [
+          {
+            variant: 'Question-based title',
+            hypothesis: 'Questions drive curiosity',
+            expectedOutcome: '+15% engagement'
+          }
         ]
       };
 
@@ -287,30 +328,70 @@ Make the trends feel authentic and actionable for creators.`;
       "Use a brutally honest, roast-style tone. Be direct and humorous about what's wrong." :
       "Be constructive and encouraging while pointing out areas for improvement.";
 
-    const systemPrompt = `You are an expert content optimization specialist who analyzes titles, thumbnails, and content for maximum viral potential.
+    const systemPrompt = `You are an expert viral content analyst who has studied thousands of viral videos. You provide SPECIFIC, ACTIONABLE insights with real examples.
 
 ${roastModeNote}
 
-Analyze the provided content and rate it on these dimensions (0-10 scale):
-- Clickability: How likely people are to click
-- Clarity: How clear and understandable it is  
-- Intrigue: How much curiosity/interest it generates
-- Emotion: How much emotional response it evokes
+Your analysis MUST include:
 
-Provide specific feedback and actionable suggestions for improvement.
+1. **Scores (0-10)**: Clickability, Clarity, Intrigue, Emotion
+
+2. **Viral Potential Analysis**:
+   - Overall viral potential score (0-100)
+   - Specific reasoning citing viral patterns
+   - 2-3 examples of similar content that went viral
+
+3. **Priority Improvements** (ordered by impact):
+   For EACH improvement:
+   - Priority level (high/medium/low)
+   - Exact change to make (be specific!)
+   - Why it will increase virality
+   - Before vs After example
+
+4. **A/B Test Suggestions**:
+   - 3 variations to test
+   - Hypothesis for each
+   - Predicted outcome
+
+5. **Competitor Comparison**:
+   - How does this compare to top performers in the niche?
+   - What are they doing that this content isn't?
+
+Be EXTREMELY SPECIFIC. Instead of "improve thumbnail", say "add close-up of surprised face in left third, increase text size by 40%, change background to high-contrast yellow".
 
 Respond in JSON format with:
 {
-  "clickabilityScore": number (0-10),
-  "clarityScore": number (0-10), 
-  "intrigueScore": number (0-10),
-  "emotionScore": number (0-10),
+  "clickabilityScore": number,
+  "clarityScore": number,
+  "intrigueScore": number,
+  "emotionScore": number,
   "feedback": {
-    "thumbnail": "detailed feedback about thumbnail/visual",
-    "title": "detailed feedback about title",
-    "overall": "overall assessment and key recommendations"
+    "thumbnail": "detailed feedback",
+    "title": "detailed feedback",
+    "overall": "overall assessment"
   },
-  "suggestions": ["specific suggestion 1", "specific suggestion 2", "etc"]
+  "suggestions": ["suggestion 1", "suggestion 2"],
+  "viralPotential": {
+    "score": number (0-100),
+    "reasoning": "why this score, citing specific viral patterns",
+    "successExamples": ["Example 1: Title/channel that went viral", "Example 2", "Example 3"]
+  },
+  "improvements": [
+    {
+      "priority": "high|medium|low",
+      "change": "EXACT change to make",
+      "expectedImpact": "predicted increase in engagement",
+      "before": "current state",
+      "after": "improved state"
+    }
+  ],
+  "abTestSuggestions": [
+    {
+      "variant": "description of test variant",
+      "hypothesis": "what you're testing",
+      "expectedOutcome": "predicted result"
+    }
+  ]
 }`;
 
     const contentToAnalyze = `

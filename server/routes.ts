@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { openRouterService } from "./ai/openrouter";
 import { simplifiedAICache } from "./ai/simplifiedCache";
+import { successPatternService } from "./ai/successPatterns";
 import { analyticsService } from "./analytics";
 import { youtubeService } from "./platforms/youtube";
 import { tiktokService } from "./platforms/tiktok";
@@ -229,6 +230,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'analyzing'
       });
 
+      // Get personalized insights based on user's success patterns
+      const personalizedInsights = await successPatternService.getPersonalizedAnalysis(
+        userId,
+        { title, description: thumbnailDescription }
+      );
+
       // Analyze content using AI
       const analysis = await openRouterService.analyzeContent({
         title,
@@ -236,6 +243,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         platform: platform as 'tiktok' | 'youtube' | 'instagram',
         roastMode: roastMode || false
       });
+
+      // Add personalized insights to suggestions
+      if (personalizedInsights) {
+        analysis.suggestions.unshift(personalizedInsights);
+      }
 
       // Store analysis results
       const storedAnalysis = await storage.createContentAnalysis({

@@ -24,6 +24,23 @@ interface AnalysisResult {
     overall: string;
   };
   suggestions: string[];
+  viralPotential?: {
+    score: number;
+    reasoning: string;
+    successExamples: string[];
+  };
+  improvements?: {
+    priority: 'high' | 'medium' | 'low';
+    change: string;
+    expectedImpact: string;
+    before: string;
+    after: string;
+  }[];
+  abTestSuggestions?: {
+    variant: string;
+    hypothesis: string;
+    expectedOutcome: string;
+  }[];
 }
 
 export default function LaunchPadAnalyzer() {
@@ -484,6 +501,81 @@ export default function LaunchPadAnalyzer() {
                 score={analysisResult.emotionScore}
               />
             </div>
+
+            {/* Viral Potential */}
+            {analysisResult.viralPotential && (
+              <Card className="p-4 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/20">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-medium flex items-center gap-2">
+                    <Zap className="w-5 h-5 text-purple-500" />
+                    Viral Potential
+                  </h3>
+                  <Badge variant="outline" className="text-lg font-bold">
+                    {analysisResult.viralPotential.score}/100
+                  </Badge>
+                </div>
+                <p className="text-sm mb-3">{analysisResult.viralPotential.reasoning}</p>
+                {analysisResult.viralPotential.successExamples.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Similar viral content:</p>
+                    {analysisResult.viralPotential.successExamples.map((example, i) => (
+                      <p key={i} className="text-xs text-muted-foreground pl-2 border-l-2 border-purple-500/30">
+                        {example}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            )}
+
+            {/* Priority Improvements */}
+            {analysisResult.improvements && analysisResult.improvements.length > 0 && (
+              <Card className="p-4">
+                <h3 className="font-medium mb-3">🎯 Priority Improvements</h3>
+                <div className="space-y-3">
+                  {analysisResult.improvements.map((improvement, index) => (
+                    <div key={index} className="border-l-2 border-primary/30 pl-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge 
+                          variant={improvement.priority === 'high' ? 'destructive' : 'outline'}
+                          className="text-xs"
+                        >
+                          {improvement.priority}
+                        </Badge>
+                        <span className="text-sm font-medium">{improvement.expectedImpact}</span>
+                      </div>
+                      <p className="text-sm mb-2">{improvement.change}</p>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="p-2 bg-red-500/10 rounded">
+                          <p className="font-medium text-red-600 dark:text-red-400">Before:</p>
+                          <p className="text-muted-foreground">{improvement.before}</p>
+                        </div>
+                        <div className="p-2 bg-green-500/10 rounded">
+                          <p className="font-medium text-green-600 dark:text-green-400">After:</p>
+                          <p className="text-muted-foreground">{improvement.after}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+
+            {/* A/B Test Suggestions */}
+            {analysisResult.abTestSuggestions && analysisResult.abTestSuggestions.length > 0 && (
+              <Card className="p-4">
+                <h3 className="font-medium mb-3">🧪 A/B Test Ideas</h3>
+                <div className="space-y-3">
+                  {analysisResult.abTestSuggestions.map((test, index) => (
+                    <div key={index} className="p-3 bg-muted/30 rounded-lg">
+                      <p className="font-medium text-sm mb-1">Variant {index + 1}: {test.variant}</p>
+                      <p className="text-xs text-muted-foreground mb-1">Test: {test.hypothesis}</p>
+                      <p className="text-xs text-primary">Expected: {test.expectedOutcome}</p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
 
             {/* Suggestions */}
             <Card className="p-4">
