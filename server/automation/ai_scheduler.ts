@@ -13,7 +13,7 @@ import { log } from '../vite';
  */
 export class AIEnhancedScheduler extends AutomationScheduler {
   private pythonAgentsAvailable: boolean = false;
-  private crewaiPath: string = '/home/omar/viralforge/server/agents/viral_crew.py';
+  private crewaiPath: string = process.env.CREWAI_SCRIPT_PATH || '';
 
   constructor() {
     super();
@@ -25,8 +25,20 @@ export class AIEnhancedScheduler extends AutomationScheduler {
    */
   private async checkPythonAgentsAvailability(): Promise<void> {
     try {
+      if (!this.crewaiPath) {
+        this.pythonAgentsAvailable = false;
+        log('📝 CREWAI_SCRIPT_PATH not set - Python agents disabled');
+        return;
+      }
+      
       const fs = await import('fs');
-      this.pythonAgentsAvailable = fs.existsSync(this.crewaiPath);
+      const path = await import('path');
+      const absolutePath = path.isAbsolute(this.crewaiPath) 
+        ? this.crewaiPath 
+        : path.join(process.cwd(), this.crewaiPath);
+      
+      this.pythonAgentsAvailable = fs.existsSync(absolutePath);
+      this.crewaiPath = absolutePath;
       log(`🔍 Python CrewAI agents available: ${this.pythonAgentsAvailable}`);
     } catch (error) {
       this.pythonAgentsAvailable = false;
