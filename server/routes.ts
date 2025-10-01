@@ -5,14 +5,14 @@ import { openRouterService } from "./ai/openrouter";
 import { simplifiedAICache } from "./ai/simplifiedCache";
 import { successPatternService } from "./ai/successPatterns";
 import { analyticsService } from "./analytics";
-import { youtubeService } from "./platforms/youtube";
-import { youtubeService as ytApiService } from "./lib/platforms/youtube";
+import { youtubeService } from "./lib/platforms/youtube";
 import { tiktokService } from "./platforms/tiktok";
 import { analyzeSuccessPatterns, getUserPreferences, filterTrendsByPreferences } from "./preferences";
 import { insertTrendSchema, insertUserTrendsSchema } from "@shared/schema";
 import authRoutes from "./routes/auth";
 import agentRoutes from "./routes/agents";
 import oauthRoutes from "./routes/oauth";
+import notificationRoutes from "./routes/notifications";
 import { authenticateToken, optionalAuth, getUserId, AuthRequest } from "./auth";
 import { aiAnalysisLimiter, uploadLimiter } from './middleware/security';
 import { validateRequest, schemas } from './middleware/validation';
@@ -30,6 +30,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // OAuth routes
   app.use("/api/oauth", oauthRoutes);
+  
+  // Notification routes
+  app.use("/api/notifications", notificationRoutes);
   
   // Idea Lab Routes - AI Trend Discovery
 
@@ -53,7 +56,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let trends: any[] = [];
       
       if (platform === 'youtube') {
-        const youtubeTrends = await youtubeService.getTrendingVideos('US', '0', 10);
+        const youtubeTrends = await youtubeService.getTrendingVideos('US', category, 10);
         trends = youtubeTrends;
       } else if (platform === 'tiktok') {
         const tiktokTrends = await tiktokService.getTrendingHashtags('US', 10);
@@ -677,7 +680,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`📺 Fetching YouTube analytics for channel: ${channelId}...`);
       
-      const analytics = await youtubeService.getChannelAnalytics(channelId);
+      // Placeholder for OAuth token - in production this would come from stored user tokens
+      const analytics = await youtubeService.getChannelAnalytics('', channelId);
       
       if (!analytics) {
         return res.status(404).json({ error: 'Channel not found or analytics unavailable' });
@@ -1118,17 +1122,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Health check endpoint for monitoring TikTok provider status
+  // Health check endpoint for monitoring provider status
   app.get("/api/health/trends", async (req, res) => {
     try {
       const tiktokStatus = tiktokService.getProviderStatus();
-      const youtubeStatus = youtubeService.getProviderStatus();
       
       res.json({
         success: true,
         providers: {
           tiktok: tiktokStatus,
-          youtube: youtubeStatus
+          youtube: { available: !!process.env.YOUTUBE_API_KEY }
         },
         timestamp: new Date().toISOString()
       });
