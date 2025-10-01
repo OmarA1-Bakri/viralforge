@@ -1,12 +1,32 @@
 import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
+import compression from 'compression';
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { 
+  helmetMiddleware, 
+  corsMiddleware, 
+  generalLimiter, 
+  requestIdMiddleware 
+} from './middleware/security';
 import { validateAuthEnvironment } from "./auth";
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+
+// Security middleware
+app.use(helmetMiddleware);
+app.use(corsMiddleware);
+app.use(requestIdMiddleware);
+
+// Compression
+app.use(compression());
+
+// Body parsing with size limits
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+
+// General rate limiting
+app.use('/api/', generalLimiter);
 
 app.use((req, res, next) => {
   const start = Date.now();

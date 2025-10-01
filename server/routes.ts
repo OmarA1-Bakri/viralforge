@@ -12,6 +12,8 @@ import { insertTrendSchema, insertUserTrendsSchema } from "@shared/schema";
 import authRoutes from "./routes/auth";
 import agentRoutes from "./routes/agents";
 import { authenticateToken, optionalAuth, getUserId, AuthRequest } from "./auth";
+import { aiAnalysisLimiter, uploadLimiter } from './middleware/security';
+import { validateRequest, schemas } from './middleware/validation';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
@@ -23,7 +25,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Idea Lab Routes - AI Trend Discovery
 
   // Discover trends using AI
-  app.post("/api/trends/discover", authenticateToken, async (req: AuthRequest, res) => {
+  app.post("/api/trends/discover", 
+    authenticateToken,
+    aiAnalysisLimiter,
+    validateRequest({ body: schemas.discoverTrends }),
+    async (req: AuthRequest, res) => {
     try {
       const userId = getUserId(req);
       const { platform, category, contentType, targetAudience } = req.body;
@@ -206,7 +212,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Launch Pad Routes - Content Optimization
   
   // Analyze content (title and/or thumbnail)
-  app.post('/api/content/analyze', authenticateToken, async (req: AuthRequest, res) => {
+  app.post('/api/content/analyze', 
+    authenticateToken, 
+    aiAnalysisLimiter,
+    validateRequest({ body: schemas.analyzeContent }),
+    async (req: AuthRequest, res) => {
     try {
       const userId = getUserId(req);
       const { title, thumbnailDescription, platform, roastMode } = req.body;
@@ -320,7 +330,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Multiplier Routes - Video Processing & Clip Generation
   
   // Process video and generate clips
-  app.post('/api/videos/process', authenticateToken, async (req: AuthRequest, res) => {
+  app.post('/api/videos/process', 
+    authenticateToken,
+    aiAnalysisLimiter,
+    validateRequest({ body: schemas.processVideo }),
+    async (req: AuthRequest, res) => {
     try {
       const userId = getUserId(req);
       const { videoUrl, title, description, platform, videoDuration } = req.body;
@@ -533,7 +547,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // File Upload Routes - Content Upload Functionality
   
   // Upload thumbnail for Launch Pad analysis
-  app.post('/api/upload/thumbnail', async (req, res) => {
+  app.post('/api/upload/thumbnail', 
+    authenticateToken,
+    uploadLimiter,
+    async (req, res) => {
     try {
       // Note: In a full implementation, you'd use multer or similar for file handling
       // For now, we'll handle base64 encoded images from the frontend
@@ -576,7 +593,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Upload video file for Multiplier processing
-  app.post('/api/upload/video', async (req, res) => {
+  app.post('/api/upload/video', 
+    authenticateToken,
+    uploadLimiter,
+    validateRequest({ body: schemas.uploadFile }),
+    async (req, res) => {
     try {
       const { fileName, fileSize, contentType } = req.body;
       
