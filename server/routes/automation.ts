@@ -14,7 +14,7 @@ export function registerAutomationRoutes(app: Express) {
       res.json({
         success: true,
         notifications,
-        unreadCount: notifications.filter(n => n.metadata?.priority === 'high').length
+        unreadCount: notifications.filter(n => (n.metadata as any)?.priority === 'high').length
       });
     } catch (error) {
       console.error("❌ Failed to get notifications:", error);

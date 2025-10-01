@@ -28,3 +28,9 @@ Thumbs.db
 # Build artifacts
 build/
 coverage/
+
+# Development artifacts
+.cache/
+server.pid
+*.log
+logs/

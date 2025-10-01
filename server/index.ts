@@ -83,19 +83,19 @@ app.use((req, res, next) => {
     try {
       import('./automation/ai_scheduler').then(({ ai_enhanced_scheduler }) => {
         ai_enhanced_scheduler.start();
-        log('🤖 AI-Enhanced ViralForgeAI automation system started');
-      });
-    } catch (error) {
-      log('❌ Failed to start AI-enhanced automation system:', error);
-      // Fallback to original scheduler
-      try {
+        log('🤖 AI-Enhanced ViralForge automation system started');
+      }).catch((error) => {
+        log('❌ Failed to start AI-enhanced automation system:', String(error));
+        // Fallback to original scheduler
         import('./automation/scheduler').then(({ automationScheduler }) => {
           automationScheduler.start();
           log('🔄 Fallback automation system started');
+        }).catch((fallbackError) => {
+          log('❌ Fallback automation system also failed:', String(fallbackError));
         });
-      } catch (fallbackError) {
-        log('❌ Fallback automation system also failed:', fallbackError);
-      }
+      });
+    } catch (error) {
+      log('❌ Critical error in automation system initialization:', String(error));
     }
   });
 })();

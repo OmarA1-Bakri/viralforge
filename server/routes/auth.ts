@@ -161,7 +161,7 @@ router.get('/me', authenticateToken, async (req: AuthRequest, res: Response) => 
 // Logout endpoint (client-side token removal)
 router.post('/logout', authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
-    console.log(`👋 User logged out: ${req.user?.email}`);
+    console.log(`👋 User logged out: ${req.user?.id}`);
     
     res.json({
       success: true,

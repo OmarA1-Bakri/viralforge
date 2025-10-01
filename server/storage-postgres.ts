@@ -75,13 +75,19 @@ export class PostgresStorage implements IStorage {
   }
 
   async getTrends(platform?: string, limit = 20): Promise<Trend[]> {
-    let query = db.select().from(trends);
-    
     if (platform) {
-      query = query.where(eq(trends.platform, platform));
+      const result = await db.select()
+        .from(trends)
+        .where(eq(trends.platform, platform))
+        .orderBy(desc(trends.createdAt))
+        .limit(limit);
+      return result;
     }
     
-    const result = await query.orderBy(desc(trends.createdAt)).limit(limit);
+    const result = await db.select()
+      .from(trends)
+      .orderBy(desc(trends.createdAt))
+      .limit(limit);
     return result;
   }
 
@@ -106,13 +112,18 @@ export class PostgresStorage implements IStorage {
   }
 
   async getUserTrendActions(userId: string, action?: string): Promise<UserTrends[]> {
-    let query = db.select().from(userTrends).where(eq(userTrends.userId, userId));
-    
     if (action) {
-      query = query.where(and(eq(userTrends.userId, userId), eq(userTrends.action, action)));
+      const result = await db.select()
+        .from(userTrends)
+        .where(and(eq(userTrends.userId, userId), eq(userTrends.action, action)))
+        .orderBy(desc(userTrends.createdAt));
+      return result;
     }
     
-    const result = await query.orderBy(desc(userTrends.createdAt));
+    const result = await db.select()
+      .from(userTrends)
+      .where(eq(userTrends.userId, userId))
+      .orderBy(desc(userTrends.createdAt));
     return result;
   }
 
@@ -320,23 +331,27 @@ export class PostgresStorage implements IStorage {
   }
 
   async getContentAnalysisByUserId(userId: string): Promise<ContentAnalysis[]> {
-    const result = await db.select()
+    const result = await db.select({
+      analysis: contentAnalysis
+    })
       .from(contentAnalysis)
       .innerJoin(userContent, eq(contentAnalysis.contentId, userContent.id))
       .where(eq(userContent.userId, userId))
       .orderBy(desc(contentAnalysis.createdAt));
     
-    return result.map(row => row.content_analysis);
+    return result.map(row => row.analysis);
   }
 
   async getVideoClipsByUserId(userId: string): Promise<VideoClip[]> {
-    const result = await db.select()
+    const result = await db.select({
+      clip: videoClips
+    })
       .from(videoClips)
       .innerJoin(userContent, eq(videoClips.contentId, userContent.id))
       .where(eq(userContent.userId, userId))
       .orderBy(desc(videoClips.createdAt));
     
-    return result.map(row => row.video_clips);
+    return result.map(row => row.clip);
   }
 
   async getUserTrendInteractions(userId: string): Promise<UserTrends[]> {
