@@ -1,0 +1,15 @@
+# CrewAI Multi-Agent System Dependencies
+crewai>=0.201.0
+crewai-tools>=0.12.0
+
+# Core Dependencies
+python-dotenv>=1.0.0
+asyncio>=3.4.3
+
+# Database
+psycopg2-binary>=2.9.9
+
+# Additional Tools (Optional - install as needed)
+# google-search-results>=2.4.2  # For SerperDevTool
+# tavily-python>=0.3.0  # For TavilySearchTool
+# firecrawl-py>=0.0.5  # For FirecrawlTool

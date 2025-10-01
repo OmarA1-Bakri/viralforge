@@ -68,6 +68,25 @@ Python agents in `server/agents/` are integrated with TypeScript via `server/aut
 - Use shadcn/ui components consistently
 - Follow the design guidelines in `design_guidelines.md`
 
+## AI Agent System
+
+### CrewAI Multi-Agent Platform
+The agentic-branch includes a full CrewAI multi-agent system:
+- **5 Specialized Agents**: TrendScout, ContentAnalyzer, ContentCreator, PublishManager, PerformanceTracker
+- **Intelligent Workflows**: Trend discovery, content creation, performance analysis, full pipeline
+- **Knowledge Base**: Domain expertise in viral_patterns.md, platform_guidelines.md, content_strategies.md
+
+### Enabling AI Agents
+1. Install Python dependencies: `pip3 install -r requirements.txt`
+2. Set environment variable: `CREWAI_SCRIPT_PATH=server/agents/viral_crew.py`
+3. Configure API keys (see .env.example)
+4. Restart server - AI workflows will auto-schedule
+
+### Agent Monitoring
+- Status: `GET /api/agents/status`
+- Config: `GET /api/agents/config`
+- Activity: `GET /api/agents/activity`
+
 ## Common Tasks
 
 ### Adding New Features

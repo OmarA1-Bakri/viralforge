@@ -9,11 +9,15 @@ import { tiktokService } from "./platforms/tiktok";
 import { analyzeSuccessPatterns, getUserPreferences, filterTrendsByPreferences } from "./preferences";
 import { insertTrendSchema, insertUserTrendsSchema } from "@shared/schema";
 import authRoutes from "./routes/auth";
+import agentRoutes from "./routes/agents";
 import { authenticateToken, optionalAuth, getUserId, AuthRequest } from "./auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.use("/api/auth", authRoutes);
+  
+  // Agent monitoring routes
+  app.use("/api/agents", agentRoutes);
   
   // Idea Lab Routes - AI Trend Discovery
 
