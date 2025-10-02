@@ -1,4 +1,4 @@
-package com.getcapacitor.myapp;
+package com.viralforge.ai;
 
 import static org.junit.Assert.*;
 

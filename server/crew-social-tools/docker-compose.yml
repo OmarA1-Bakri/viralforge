@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  crew-social-tools:
+    build: .
+    ports:
+      - "8001:8000"
+    environment:
+      - SEARXNG_URL=http://searxng:8080
+      - REDDIT_CLIENT_ID=${REDDIT_CLIENT_ID:-}
+      - REDDIT_CLIENT_SECRET=${REDDIT_CLIENT_SECRET:-}
+      - REDDIT_USER_AGENT=ViralForgeAI/1.0
+    volumes:
+      - ./app:/app/app
+    restart: unless-stopped
+    networks:
+      - viralforge
+
+  searxng:
+    image: searxng/searxng:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - searxng-data:/etc/searxng
+    restart: unless-stopped
+    networks:
+      - viralforge
+
+volumes:
+  searxng-data:
+
+networks:
+  viralforge:
+    driver: bridge

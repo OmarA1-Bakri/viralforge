@@ -13,9 +13,11 @@ import authRoutes from "./routes/auth";
 import agentRoutes from "./routes/agents";
 import oauthRoutes from "./routes/oauth";
 import notificationRoutes from "./routes/notifications";
+import { registerSubscriptionRoutes } from "./routes/subscriptions";
 import { authenticateToken, optionalAuth, getUserId, AuthRequest } from "./auth";
 import { aiAnalysisLimiter, uploadLimiter } from './middleware/security';
 import { validateRequest, schemas } from './middleware/validation';
+import { checkSubscriptionLimit, trackFeatureUsage } from './middleware/subscriptionLimits';
 import { logger, logError, logAICall } from './lib/logger';
 import { storageService } from './lib/storage';
 import { uploadImage, uploadVideo } from './middleware/upload';
@@ -24,21 +26,25 @@ import { videoProcessingQueue } from './lib/queue';
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.use("/api/auth", authRoutes);
-  
+
   // Agent monitoring routes
   app.use("/api/agents", agentRoutes);
-  
+
   // OAuth routes
   app.use("/api/oauth", oauthRoutes);
-  
+
   // Notification routes
   app.use("/api/notifications", notificationRoutes);
+
+  // Subscription routes
+  registerSubscriptionRoutes(app);
   
   // Idea Lab Routes - AI Trend Discovery
 
   // Discover trends using AI
-  app.post("/api/trends/discover", 
+  app.post("/api/trends/discover",
     authenticateToken,
+    checkSubscriptionLimit('videoAnalysis'),
     aiAnalysisLimiter,
     validateRequest({ body: schemas.discoverTrends }),
     async (req: AuthRequest, res) => {
@@ -224,8 +230,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Launch Pad Routes - Content Optimization
   
   // Analyze content (title and/or thumbnail)
-  app.post('/api/content/analyze', 
-    authenticateToken, 
+  app.post('/api/content/analyze',
+    authenticateToken,
+    checkSubscriptionLimit('contentGeneration'),
     aiAnalysisLimiter,
     validateRequest({ body: schemas.analyzeContent }),
     async (req: AuthRequest, res) => {
@@ -342,8 +349,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Multiplier Routes - Video Processing & Clip Generation
   
   // Process video and generate clips
-  app.post('/api/videos/process', 
+  app.post('/api/videos/process',
     authenticateToken,
+    checkSubscriptionLimit('videoClips'),
     aiAnalysisLimiter,
     validateRequest({ body: schemas.processVideo }),
     async (req: AuthRequest, res) => {

@@ -5,17 +5,62 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
-# If your project uses WebView with JS, uncomment the following
-# and specify the fully qualified class name to the JavaScript interface
-# class:
-#-keepclassmembers class fqcn.of.javascript.interface.for.webview {
-#   public *;
-#}
+# Capacitor Core - Essential for JavaScript bridge
+-keep class com.getcapacitor.** { *; }
+-keep interface com.getcapacitor.** { *; }
+-keepclassmembers class * {
+    @com.getcapacitor.annotation.CapacitorPlugin *;
+    @com.getcapacitor.PluginMethod *;
+}
 
-# Uncomment this to preserve the line number information for
-# debugging stack traces.
-#-keepattributes SourceFile,LineNumberTable
+# Cordova - Required for plugin compatibility
+-keep class org.apache.cordova.** { *; }
 
-# If you keep the line number information, uncomment this to
-# hide the original source file name.
-#-renamesourcefileattribute SourceFile
+# JavaScript Interface - Critical for WebView communication
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+# Preserve line numbers for debugging stack traces
+-keepattributes SourceFile,LineNumberTable
+-renamesourcefileattribute SourceFile
+
+# Native methods - Must be preserved
+-keepclasseswithmembernames class * {
+    native <methods>;
+}
+
+# Capacitor Plugins - Preserve all plugin classes
+-keep public class * extends com.getcapacitor.Plugin
+-keepclassmembers class * extends com.getcapacitor.Plugin {
+    public *;
+}
+
+# Biometric Auth Plugin
+-keep class com.aparajita.capacitor.biometric.** { *; }
+
+# Capacitor WebView classes - Essential for app functionality
+-keep class com.getcapacitor.BridgeActivity { *; }
+-keep class com.getcapacitor.Bridge { *; }
+
+# Keep annotations
+-keepattributes *Annotation*
+
+# Keep generic signature (needed for reflection)
+-keepattributes Signature
+
+# Preserve enums
+-keepclassmembers enum * {
+    public static **[] values();
+    public static ** valueOf(java.lang.String);
+}
+
+# Preserve Parcelable classes
+-keepclassmembers class * implements android.os.Parcelable {
+    public static final android.os.Parcelable$Creator *;
+}
+
+# AndroidX and Material Design
+-keep class androidx.** { *; }
+-keep interface androidx.** { *; }
+-dontwarn androidx.**

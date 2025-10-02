@@ -27,6 +27,10 @@ app.use(requestIdMiddleware);
 // Compression
 app.use(compression());
 
+// Register webhook routes BEFORE body parsers (needs raw body)
+import { registerWebhookRoutes } from './routes/webhooks';
+registerWebhookRoutes(app);
+
 // Body parsing with size limits
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));

@@ -17,31 +17,39 @@ router.use(authLimiter);
 // Register endpoint
 router.post('/register', registerLimiter, async (req, res: Response) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, subscriptionTier = 'free' } = req.body;
 
     // Validation
     if (!username || !password) {
-      return res.status(400).json({ 
-        error: 'Username and password are required' 
+      return res.status(400).json({
+        error: 'Username and password are required'
       });
     }
 
     if (username.length < 3) {
-      return res.status(400).json({ 
-        error: 'Username must be at least 3 characters long' 
+      return res.status(400).json({
+        error: 'Username must be at least 3 characters long'
       });
     }
 
     if (password.length < 6) {
-      return res.status(400).json({ 
-        error: 'Password must be at least 6 characters long' 
+      return res.status(400).json({
+        error: 'Password must be at least 6 characters long'
       });
     }
 
-    console.log(`📝 Registration attempt for: ${username}`);
+    // Validate subscription tier - only free tier allowed on registration
+    const allowedRegistrationTiers = ['free'];
+    if (!allowedRegistrationTiers.includes(subscriptionTier)) {
+      return res.status(400).json({
+        error: 'Invalid subscription tier. Only free tier is available during registration.'
+      });
+    }
 
-    // Register user
-    const { user, token } = await neonAuthHelpers.registerUser(username, password);
+    console.log(`📝 Registration attempt for: ${username} (tier: ${subscriptionTier})`);
+
+    // Register user with subscription tier
+    const { user, token } = await neonAuthHelpers.registerUser(username, password, subscriptionTier);
 
     console.log(`✅ User registered successfully: ${user.id}`);
 

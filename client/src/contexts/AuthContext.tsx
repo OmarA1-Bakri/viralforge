@@ -11,7 +11,7 @@ export interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (username: string, password: string, subscriptionTier?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -129,7 +129,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const register = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
+  const register = async (username: string, password: string, subscriptionTier: string = 'free'): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     try {
       const response = await fetch(`${API_BASE_URL}/auth/register`, {
@@ -137,7 +137,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password, subscriptionTier }),
       });
 
       const data = await response.json();

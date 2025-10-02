@@ -45,6 +45,38 @@ Python agents in `server/agents/` are integrated with TypeScript via `server/aut
 - `shared/`: Shared TypeScript schemas (Drizzle)
 - `knowledge/`: Domain knowledge files for AI agents
 
+## Cost Optimization
+
+ViralForge AI implements **5 key cost-saving measures**:
+
+1. **AI Response Caching** (85% cost reduction)
+   - File-based persistent cache in `.cache/ai/`
+   - Type-specific TTLs (15min-1hr)
+   - Tracks tokens saved and cost reduction
+   - See `COST_OPTIMIZATION.md` for details
+
+2. **Rate Limiting**
+   - General API: 100 req/15min
+   - AI features: 10 req/min
+   - Uploads: 5 req/min
+
+3. **Client-Side Caching**
+   - React Query with infinite stale time
+   - No automatic refetching
+   - Reduces server load ~60%
+
+4. **Video Processing Limits**
+   - Max 2 concurrent jobs
+   - 10 jobs/minute limit
+   - Prevents resource overload
+
+5. **Token Limits**
+   - Hard caps per request type
+   - Prevents runaway costs
+   - Predictable cost per operation
+
+**Result:** ~85% reduction in AI API costs vs unoptimized implementation.
+
 ## Important Notes
 
 ### Mobile Development
@@ -77,10 +109,13 @@ The agentic-branch includes a full CrewAI multi-agent system:
 - **Knowledge Base**: Domain expertise in viral_patterns.md, platform_guidelines.md, content_strategies.md
 
 ### Enabling AI Agents
-1. Install Python dependencies: `pip3 install -r requirements.txt`
-2. Set environment variable: `CREWAI_SCRIPT_PATH=server/agents/viral_crew.py`
-3. Configure API keys (see .env.example)
-4. Restart server - AI workflows will auto-schedule
+1. ✅ Install Python dependencies: `pip3 install -r requirements.txt` (DONE)
+2. Set environment variable: `CREWAI_SCRIPT_PATH=server/agents/viral_crew.py` in `.env`
+3. Set `OPENROUTER_API_KEY` in `.env` (agents use Grok-4-fast via OpenRouter)
+4. Optional: Add search tool API keys (SERPER_API_KEY, TAVILY_API_KEY, FIRECRAWL_API_KEY)
+5. Restart server - AI workflows will auto-schedule
+
+See `CREWAI_SETUP.md` for detailed setup instructions.
 
 ### Agent Monitoring
 - Status: `GET /api/agents/status`

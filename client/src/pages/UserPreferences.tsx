@@ -12,10 +12,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { User, Target, Palette, Monitor, Clock, Trophy, Sparkles, LogOut } from "lucide-react";
+import { User, Target, Palette, Monitor, Clock, Trophy, Sparkles, LogOut, CreditCard } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/contexts/AuthContext";
 import { analytics } from "@/lib/analytics";
+import SubscriptionSettings from "@/components/SubscriptionSettings";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const preferencesSchema = z.object({
   niche: z.string().min(1, "Please select your niche"),
@@ -166,13 +168,26 @@ export default function UserPreferences() {
             Logout
           </Button>
         </div>
-        <h1 className="text-3xl font-bold mb-2">Your Creator Preferences</h1>
+        <h1 className="text-3xl font-bold mb-2">Settings & Preferences</h1>
         <p className="text-muted-foreground">
-          Set up your profile to get personalized trending content and recommendations tailored to your niche
+          Manage your subscription, profile, and content preferences
         </p>
       </div>
 
-      <Form {...form}>
+      <Tabs defaultValue="preferences" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="preferences" className="flex items-center gap-2">
+            <Palette className="h-4 w-4" />
+            Preferences
+          </TabsTrigger>
+          <TabsTrigger value="subscription" className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4" />
+            Subscription
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="preferences" className="space-y-6">
+          <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           {/* Basic Info Section */}
           <Card>
@@ -504,6 +519,12 @@ export default function UserPreferences() {
           </CardContent>
         </Card>
       )}
+        </TabsContent>
+
+        <TabsContent value="subscription">
+          <SubscriptionSettings />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

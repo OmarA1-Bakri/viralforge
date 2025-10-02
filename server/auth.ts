@@ -151,30 +151,53 @@ export const getUserId = (req: AuthRequest): string => {
 // Auth integration helpers (now using PostgreSQL storage)
 export const neonAuthHelpers = {
   // Register user
-  async registerUser(username: string, password: string): Promise<{ user: AuthUser; token: string }> {
+  async registerUser(username: string, password: string, subscriptionTier: string = 'free'): Promise<{ user: AuthUser; token: string }> {
     try {
       const { storage } = await import('./storage');
-      
+      const { db } = await import('./db');
+      const { sql } = await import('drizzle-orm');
+
       // Check if user already exists
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
         throw new Error('User already exists');
       }
-      
+
       // Hash password and create user
       const hashedPassword = await hashPassword(password);
       const newUser = await storage.createUser({
         username,
         password: hashedPassword,
       });
-      
+
+      // Create initial subscription for the user
+      const expiresAt = new Date();
+      expiresAt.setMonth(expiresAt.getMonth() + 1); // Default 1 month subscription
+
+      try {
+        await db.execute(sql`
+          INSERT INTO user_subscriptions
+          (user_id, tier_id, billing_cycle, expires_at, status)
+          VALUES (${newUser.id}, ${subscriptionTier}, 'monthly', ${expiresAt.toISOString()}, 'active')
+        `);
+
+        await db.execute(sql`
+          UPDATE users
+          SET subscription_tier_id = ${subscriptionTier}
+          WHERE id = ${newUser.id}
+        `);
+      } catch (subError) {
+        console.error('Subscription creation error during registration:', subError);
+        // Don't fail registration if subscription creation fails
+      }
+
       const authUser: AuthUser = {
         id: newUser.id,
         username: newUser.username,
       };
-      
+
       const token = generateToken(authUser);
-      
+
       return { user: authUser, token };
     } catch (error) {
       console.error('Registration error:', error);

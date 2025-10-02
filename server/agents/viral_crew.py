@@ -19,9 +19,10 @@ import os
 import asyncio
 from typing import Dict, List, Any, Optional
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from crewai import Agent, Task, Crew, Process, LLM
-from crewai.knowledge import Knowledge
+from crewai.knowledge.source.string_knowledge_source import StringKnowledgeSource
 from crewai_tools import (
     YoutubeChannelSearchTool, YoutubeVideoSearchTool, ScrapeWebsiteTool,
     SerperDevTool, VisionTool, FileWriterTool, CSVSearchTool, 
@@ -29,16 +30,8 @@ from crewai_tools import (
     ZapierActionTool, FirecrawlCrawlWebsiteTool, TavilySearchTool
 )
 
-# Import your existing storage and AI services
-import sys
-from pathlib import Path
-
-# Add project root to path using relative imports
-project_root = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(project_root / 'server'))
-
-from storage import storage
-from ai.openrouter import OpenRouterService
+# Storage will be injected from TypeScript side when needed
+# No need to import here as this causes module errors
 
 
 class ViralForgeAgentSystem:
@@ -54,34 +47,40 @@ class ViralForgeAgentSystem:
         self.tools = self._setup_tools()
         self.agents = self._create_agents()
         self.crews = self._create_crews()
-        self.openrouter_service = OpenRouterService()
         
     def _setup_llm(self) -> LLM:
-        """Configure the LLM for all agents."""
+        """Configure the LLM for all agents using OpenRouter."""
         return LLM(
-            model="gpt-4o",  # Use the best model for reasoning
-            api_key=os.getenv("OPENAI_API_KEY"),
+            model="x-ai/grok-4-fast:free",  # Using Grok-4-fast via OpenRouter
+            api_key=os.getenv("OPENROUTER_API_KEY"),
+            base_url="https://openrouter.ai/api/v1",
             temperature=0.7,
             max_tokens=4000
         )
     
-    def _setup_knowledge(self) -> Knowledge:
+    def _setup_knowledge(self) -> List[StringKnowledgeSource]:
         """Set up persistent knowledge storage for agents."""
         # Get knowledge directory relative to this script
         script_dir = Path(__file__).parent.parent.parent
         knowledge_dir = script_dir / 'knowledge'
         
-        return Knowledge(
-            sources=[
-                str(knowledge_dir / 'viral_patterns.md'),
-                str(knowledge_dir / 'platform_guidelines.md'),
-                str(knowledge_dir / 'content_strategies.md')
-            ],
-            embedder_config={
-                "provider": "openai",
-                "config": {"model": "text-embedding-3-large"}
-            }
-        )
+        knowledge_sources = []
+        knowledge_files = [
+            'viral_patterns.md',
+            'platform_guidelines.md', 
+            'content_strategies.md'
+        ]
+        
+        for filename in knowledge_files:
+            filepath = knowledge_dir / filename
+            if filepath.exists():
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                    knowledge_sources.append(
+                        StringKnowledgeSource(content=content, metadata={"source": filename})
+                    )
+        
+        return knowledge_sources
     
     def _setup_tools(self) -> Dict[str, Any]:
         """Initialize all tools needed by agents."""
@@ -125,7 +124,6 @@ class ViralForgeAgentSystem:
             content shareable, and identify untapped opportunities in the viral content landscape. 
             You constantly monitor YouTube, TikTok, Instagram, and emerging platforms for signals.""",
             llm=self.llm,
-            knowledge=self.knowledge,
             tools=[
                 self.tools["youtube_search"],
                 self.tools["youtube_video"], 
@@ -151,7 +149,6 @@ class ViralForgeAgentSystem:
             with engagement metrics, timing data, and audience demographics to provide 
             actionable insights.""",
             llm=self.llm,
-            knowledge=self.knowledge,
             tools=[
                 self.tools["csv_analyzer"],
                 self.tools["code_interpreter"],
@@ -175,7 +172,6 @@ class ViralForgeAgentSystem:
             science of engagement. You can adapt any trending format, create original viral 
             concepts, and optimize content for maximum reach across platforms.""",
             llm=self.llm,
-            knowledge=self.knowledge,
             tools=[
                 self.tools["image_generator"],
                 self.tools["file_writer"],
@@ -198,7 +194,6 @@ class ViralForgeAgentSystem:
             adapt content format for maximum performance. You manage the entire publication 
             pipeline from scheduling to cross-platform optimization.""",
             llm=self.llm,
-            knowledge=self.knowledge,
             tools=[
                 self.tools["zapier"],
                 self.tools["file_writer"],
@@ -221,7 +216,6 @@ class ViralForgeAgentSystem:
             and provide specific recommendations for improvement. You understand the correlation 
             between different engagement signals and long-term viral success.""",
             llm=self.llm,
-            knowledge=self.knowledge,
             tools=[
                 self.tools["code_interpreter"],
                 self.tools["csv_analyzer"],
@@ -249,7 +243,7 @@ class ViralForgeAgentSystem:
             process=Process.sequential,
             verbose=True,
             memory=True,
-            knowledge=self.knowledge,
+            knowledge_sources=self.knowledge,
             max_rpm=30,
             embedder={
                 "provider": "openai",
@@ -531,23 +525,19 @@ class ViralForgeAgentSystem:
     
     async def _store_pipeline_results(self, user_id: int, result: Any, config: Dict[str, Any]) -> None:
         """Store pipeline execution results in the database."""
-        try:
-            await storage.createUserActivity({
-                "userId": user_id,
-                "activityType": "ai_pipeline_execution",
-                "title": "Multi-Agent Pipeline Completed",
-                "description": "CrewAI multi-agent pipeline executed successfully",
-                "status": "completed",
-                "metadata": {
-                    "result_summary": str(result)[:1000],  # Truncate for storage
-                    "config": config,
-                    "agents_used": list(self.agents.keys()),
-                    "execution_timestamp": datetime.now().isoformat()
-                }
-            })
-        except Exception as e:
-            print(f"Error storing pipeline results: {e}")
+        # Results will be stored by the TypeScript layer that calls this
+        # Just log the completion here
+        print(f"✅ Pipeline completed for user {user_id}")
+        print(f"📊 Agents used: {list(self.agents.keys())}")
+        print(f"📅 Timestamp: {datetime.now().isoformat()}")
 
 
-# Global instance for use throughout the application
-viral_agent_system = ViralForgeAgentSystem()
+# Global instance - will be lazily initialized on first use
+viral_agent_system = None
+
+def get_agent_system() -> ViralForgeAgentSystem:
+    """Get or create the global agent system instance."""
+    global viral_agent_system
+    if viral_agent_system is None:
+        viral_agent_system = ViralForgeAgentSystem()
+    return viral_agent_system

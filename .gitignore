@@ -34,3 +34,8 @@ coverage/
 server.pid
 *.log
 logs/
+
+# Android signing keys - NEVER COMMIT
+android/keystore.properties
+android/*.jks
+android/*.keystore
