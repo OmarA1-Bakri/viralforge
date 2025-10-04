@@ -65,6 +65,12 @@ interface UserActivity {
     score?: string;
     clips?: string;
     url?: string;
+    // Trend-specific metadata
+    trendTitle?: string;
+    trendDescription?: string;
+    trendExamples?: string[];
+    platform?: string;
+    category?: string;
   };
   createdAt: string;
 }
@@ -229,34 +235,66 @@ export default function CreatorDashboard({ onNavigate }: CreatorDashboardProps =
             handleClick();
           }
         }}
-        className="flex items-center gap-3 p-3 bg-card/50 rounded-lg border border-border cursor-pointer hover:bg-card/70 transition-colors active:scale-[0.98] touch-manipulation">
-        <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", config.color)}>
-          <Icon className="w-5 h-5" />
+        className="flex flex-col gap-2 p-3 bg-card/50 rounded-lg border border-border cursor-pointer hover:bg-card/70 transition-colors active:scale-[0.98] touch-manipulation">
+        <div className="flex items-center gap-3">
+          <div className={cn("w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0", config.color)}>
+            <Icon className="w-5 h-5" />
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <h4 className="font-medium text-sm text-foreground truncate">{item.title}</h4>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>{formatTimeAgo(item.createdAt)}</span>
+              {item.metadata && (item.metadata.platform || item.metadata.category) && (
+                <>
+                  <span>•</span>
+                  <span>{item.metadata.platform || item.metadata.category}</span>
+                </>
+              )}
+              {item.metadata && (item.metadata.views || item.metadata.engagement || item.metadata.score || item.metadata.clips) && (
+                <>
+                  <span>•</span>
+                  <span className={cn(
+                    item.status === "viral" ? "text-green-400" :
+                    item.status === "ready" ? "text-blue-400" :
+                    item.status === "improved" ? "text-primary" :
+                    "text-foreground"
+                  )}>
+                    {item.metadata.views || item.metadata.engagement || item.metadata.score || item.metadata.clips}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+
+          <Badge variant="outline" className="text-xs">
+            {item.status}
+          </Badge>
         </div>
 
-        <div className="flex-1 min-w-0">
-          <h4 className="font-medium text-sm text-foreground truncate">{item.title}</h4>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{formatTimeAgo(item.createdAt)}</span>
-            {item.metadata && (
-              <>
-                <span>•</span>
-                <span className={cn(
-                  item.status === "viral" ? "text-green-400" :
-                  item.status === "ready" ? "text-blue-400" :
-                  item.status === "improved" ? "text-primary" :
-                  "text-foreground"
-                )}>
-                  {item.metadata.views || item.metadata.engagement || item.metadata.score || item.metadata.clips}
-                </span>
-              </>
+        {/* Trend Details - Show trend description and examples */}
+        {item.activityType === 'trend' && item.metadata && (
+          <div className="pl-[52px] space-y-2">
+            {item.metadata.trendTitle && (
+              <p className="text-sm font-medium text-primary">{item.metadata.trendTitle}</p>
+            )}
+            {item.metadata.trendDescription && (
+              <p className="text-xs text-muted-foreground">{item.metadata.trendDescription}</p>
+            )}
+            {item.metadata.trendExamples && item.metadata.trendExamples.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-foreground">Examples:</p>
+                <ul className="space-y-1">
+                  {item.metadata.trendExamples.slice(0, 2).map((example, idx) => (
+                    <li key={idx} className="text-xs text-muted-foreground pl-3 border-l-2 border-primary/30">
+                      {example}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
-        </div>
-
-        <Badge variant="outline" className="text-xs">
-          {item.status}
-        </Badge>
+        )}
       </div>
     );
   };

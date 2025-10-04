@@ -145,7 +145,15 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix, onNavigate }: I
 
   const trends = existingTrends?.trends || [];
   const isRefreshing = discoverTrendsMutation.isPending;
-  
+
+  // Auto-refresh trends when component mounts or preferences change
+  useEffect(() => {
+    if (userPrefs?.preferredCategories?.length > 0) {
+      console.log('[IdeaLab] Auto-refreshing trends with categories:', userPrefs.preferredCategories);
+      discoverTrendsMutation.mutate();
+    }
+  }, [userPrefs?.preferredCategories?.join(',')]); // Only trigger when categories actually change
+
   // Show mock data only if no API key is configured and no trends exist
   const showMockData = trends.length === 0 && !isLoadingTrends && !isRefreshing;
   const displayTrends = showMockData ? mockTrends : trends;

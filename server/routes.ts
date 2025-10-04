@@ -135,42 +135,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get AI-curated trends personalized to user's niche/preferences
   app.get("/api/trends", async (req, res) => {
+    const startTime = Date.now();
     try {
       const { platform, limit, categories } = req.query;
       const userId = (req as any).userId || 'anonymous';
 
-      console.log(`🎯 Getting AI-curated trends for user preferences...`);
+      logger.info({
+        platform,
+        limit,
+        categories,
+        userId,
+        requestId: (req as any).id
+      }, '🎯 GET /api/trends - Starting AI trend discovery');
 
       // Get user preferences for AI curation
       let userPrefs = null;
       try {
         userPrefs = await getUserPreferences(userId);
+        logger.debug({ userPrefs }, 'User preferences loaded');
       } catch (error) {
-        console.log('No user preferences found, using category filters');
+        logger.debug('No user preferences found, using category filters');
       }
 
       let trends = [];
       const categoryList = categories ? (categories as string).split(',') : userPrefs?.preferredCategories || [];
+      logger.debug({ categoryList, categoriesFromQuery: categories, categoriesFromPrefs: userPrefs?.preferredCategories }, 'Category list determined');
 
-      // CRITICAL FIX: Return cached/DB data immediately, refresh in background
-      if (categoryList.length > 0) {
-        console.log(`🤖 Checking cache for AI trends for niches: ${categoryList.join(', ')}`);
+      // PRODUCTION FIX: Response immediately, generate AI ideas in background
+      // This prevents Vite HMR crashes during development
 
-        // Try to get from database first (instant response)
-        const dbTrends = await storage.getTrends(
-          (platform as string) || 'tiktok',
-          limit ? parseInt(limit as string) : 20
-        );
+      // Step 1: Return any existing trends immediately (< 100ms)
+      const dbTrends = await storage.getTrends(
+        (platform as string) || 'tiktok',
+        limit ? parseInt(limit as string) : 20
+      );
 
-        // Return DB trends immediately if available
-        if (dbTrends.length > 0) {
-          console.log(`✅ Returning ${dbTrends.length} cached trends from database`);
-          res.json({ trends: dbTrends, cached: true });
+      if (dbTrends.length > 0) {
+        logger.info({ trendsCount: dbTrends.length }, '✅ Returning cached trends immediately');
+        res.json({ trends: dbTrends, cached: true, refreshing: true });
 
-          // Refresh in background (fire-and-forget)
+        // Step 2: Refresh with fresh AI ideas in background (non-blocking)
+        if (categoryList.length > 0) {
           setImmediate(async () => {
             try {
-              console.log(`🔄 Background: Refreshing AI trends for ${categoryList.join(', ')}`);
+              logger.info({ categoryList }, '🔄 Background: Generating fresh AI trend ideas');
+              const aiStartTime = Date.now();
+
               const freshTrends = await Promise.race([
                 openRouterService.discoverTrends({
                   platform: (platform as string) || 'tiktok',
@@ -179,31 +189,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   targetAudience: userPrefs?.targetAudience || 'creators'
                 }, userId),
                 new Promise<never>((_, reject) =>
-                  setTimeout(() => reject(new Error('AI timeout in background')), 15000)
+                  setTimeout(() => reject(new Error('Background AI timeout after 15s')), 15000)
                 )
               ]);
 
-              // Store fresh trends for next request
+              const aiDuration = Date.now() - aiStartTime;
+              logger.info({
+                trendsCount: freshTrends.length,
+                duration: aiDuration,
+                categories: categoryList
+              }, '✅ Background: AI generated fresh ideas, storing for next request');
+
+              // Store for next request
               for (const trendData of freshTrends) {
                 try {
                   const validatedTrend = insertTrendSchema.parse(trendData);
                   await storage.createTrend(validatedTrend);
                 } catch (e) {
-                  console.warn('Background trend store failed:', e);
+                  logger.warn({ error: e }, 'Background: Failed to store trend');
                 }
               }
-              console.log(`✅ Background: Refreshed ${freshTrends.length} AI trends`);
-            } catch (bgError) {
-              console.log(`⚠️ Background AI refresh failed (non-critical):`, bgError);
+            } catch (bgError: any) {
+              logger.warn({ error: bgError.message }, '⚠️ Background AI generation failed (non-critical)');
             }
           });
-
-          return; // Already sent response
         }
 
-        // No DB trends - try AI with strict timeout
-        console.log(`🤖 No cached trends, calling AI with 8s timeout...`);
+        return; // Already sent response
+      }
+
+      // Step 3: No cached trends - MUST generate now but with strict timeout
+      if (categoryList.length > 0) {
+        logger.info({ categoryList }, '🤖 No cache, calling AI with 5s timeout (first-time load)');
+
         try {
+          const aiStartTime = Date.now();
           trends = await Promise.race([
             openRouterService.discoverTrends({
               platform: (platform as string) || 'tiktok',
@@ -212,33 +232,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
               targetAudience: userPrefs?.targetAudience || 'creators'
             }, userId),
             new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error('AI call timeout - using fallback')), 8000)
+              setTimeout(() => reject(new Error('AI timeout after 5s')), 5000)
             )
           ]);
 
-          console.log(`✅ AI curated ${trends.length} personalized ideas`);
-        } catch (aiError) {
-          console.log(`⚠️ AI call timed out or failed, using platform fallback`);
-          // Fallback to platform trends
+          const aiDuration = Date.now() - aiStartTime;
+          logger.info({
+            trendsCount: trends.length,
+            duration: aiDuration
+          }, '✅ AI generated ideas in time');
+        } catch (aiError: any) {
+          logger.error({
+            error: aiError.message,
+            duration: Date.now() - startTime
+          }, '❌ AI timed out, using platform fallback');
+
+          // Platform fallback
           if (platform === 'tiktok' || !platform) {
             trends = await tiktokService.getTrendingHashtags('US', limit ? parseInt(limit as string) : 20);
           }
         }
       } else {
-        // No preferences - use template-based trends
-        console.log(`📋 No user preferences, using template trends`);
+        // No categories - platform trends
+        logger.info('📋 No categories, using platform trends');
         if (platform === 'tiktok' || !platform) {
           trends = await tiktokService.getTrendingHashtags('US', limit ? parseInt(limit as string) : 20);
         }
       }
 
-      // Final fallback to DB if still empty
-      if (trends.length === 0) {
-        trends = await storage.getTrends(
-          platform as string,
-          limit ? parseInt(limit as string) : undefined
-        );
-      }
+      const totalDuration = Date.now() - startTime;
+      logger.info({
+        trendsCount: trends.length,
+        totalDuration,
+        requestId: (req as any).id
+      }, '✅ GET /api/trends completed');
 
       res.json({ trends, cached: false });
     } catch (error) {

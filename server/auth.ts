@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
 import { env } from './config/env';
+import { logger } from './lib/logger';
 
 // Use centralized environment configuration
 const JWT_SECRET = env.JWT_SECRET;
@@ -210,7 +211,22 @@ export const neonAuthHelpers = {
       }
 
       // Verify password
+      logger.debug({
+        username,
+        passwordLength: password?.length,
+        passwordProvided: !!password,
+        hashLength: user.password?.length,
+        hashProvided: !!user.password
+      }, 'Password verification attempt');
+
       const isValidPassword = await verifyPassword(password, user.password);
+
+      logger.debug({
+        username,
+        isValidPassword,
+        verificationResult: isValidPassword ? 'SUCCESS' : 'FAILED'
+      }, 'Password verification result');
+
       if (!isValidPassword) {
         throw new Error('Invalid credentials');
       }
