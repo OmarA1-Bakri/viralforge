@@ -13,7 +13,8 @@ import authRoutes from "./routes/auth";
 import agentRoutes from "./routes/agents";
 import oauthRoutes from "./routes/oauth";
 import notificationRoutes from "./routes/notifications";
-import { registerSubscriptionRoutes } from "./routes/subscriptions";
+import versionRoutes from "./routes/version";
+import { registerSubscriptionRoutes, registerRevenueCatSyncRoute } from "./routes/subscriptions";
 import { authenticateToken, optionalAuth, getUserId, AuthRequest } from "./auth";
 import { aiAnalysisLimiter, uploadLimiter } from './middleware/security';
 import { validateRequest, schemas } from './middleware/validation';
@@ -24,6 +25,9 @@ import { uploadImage, uploadVideo } from './middleware/upload';
 import { videoProcessingQueue } from './lib/queue';
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Version endpoint (public)
+  app.use("/api", versionRoutes);
+
   // Auth routes
   app.use("/api/auth", authRoutes);
 
@@ -38,6 +42,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Subscription routes
   registerSubscriptionRoutes(app);
+  registerRevenueCatSyncRoute(app);
   
   // Idea Lab Routes - AI Trend Discovery
 
@@ -128,20 +133,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get trends (cached or fresh)
+  // Get AI-curated trends personalized to user's niche/preferences
   app.get("/api/trends", async (req, res) => {
     try {
-      const { platform, limit } = req.query;
-      
-      const trends = await storage.getTrends(
-        platform as string, 
-        limit ? parseInt(limit as string) : undefined
-      );
-      
-      res.json({ trends });
+      const { platform, limit, categories } = req.query;
+      const userId = (req as any).userId || 'anonymous';
+
+      console.log(`🎯 Getting AI-curated trends for user preferences...`);
+
+      // Get user preferences for AI curation
+      let userPrefs = null;
+      try {
+        userPrefs = await getUserPreferences(userId);
+      } catch (error) {
+        console.log('No user preferences found, using category filters');
+      }
+
+      let trends = [];
+      const categoryList = categories ? (categories as string).split(',') : userPrefs?.preferredCategories || [];
+
+      // CRITICAL FIX: Return cached/DB data immediately, refresh in background
+      if (categoryList.length > 0) {
+        console.log(`🤖 Checking cache for AI trends for niches: ${categoryList.join(', ')}`);
+
+        // Try to get from database first (instant response)
+        const dbTrends = await storage.getTrends(
+          (platform as string) || 'tiktok',
+          limit ? parseInt(limit as string) : 20
+        );
+
+        // Return DB trends immediately if available
+        if (dbTrends.length > 0) {
+          console.log(`✅ Returning ${dbTrends.length} cached trends from database`);
+          res.json({ trends: dbTrends, cached: true });
+
+          // Refresh in background (fire-and-forget)
+          setImmediate(async () => {
+            try {
+              console.log(`🔄 Background: Refreshing AI trends for ${categoryList.join(', ')}`);
+              const freshTrends = await Promise.race([
+                openRouterService.discoverTrends({
+                  platform: (platform as string) || 'tiktok',
+                  category: categoryList.join(', '),
+                  contentType: 'viral',
+                  targetAudience: userPrefs?.targetAudience || 'creators'
+                }, userId),
+                new Promise<never>((_, reject) =>
+                  setTimeout(() => reject(new Error('AI timeout in background')), 15000)
+                )
+              ]);
+
+              // Store fresh trends for next request
+              for (const trendData of freshTrends) {
+                try {
+                  const validatedTrend = insertTrendSchema.parse(trendData);
+                  await storage.createTrend(validatedTrend);
+                } catch (e) {
+                  console.warn('Background trend store failed:', e);
+                }
+              }
+              console.log(`✅ Background: Refreshed ${freshTrends.length} AI trends`);
+            } catch (bgError) {
+              console.log(`⚠️ Background AI refresh failed (non-critical):`, bgError);
+            }
+          });
+
+          return; // Already sent response
+        }
+
+        // No DB trends - try AI with strict timeout
+        console.log(`🤖 No cached trends, calling AI with 8s timeout...`);
+        try {
+          trends = await Promise.race([
+            openRouterService.discoverTrends({
+              platform: (platform as string) || 'tiktok',
+              category: categoryList.join(', '),
+              contentType: 'viral',
+              targetAudience: userPrefs?.targetAudience || 'creators'
+            }, userId),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('AI call timeout - using fallback')), 8000)
+            )
+          ]);
+
+          console.log(`✅ AI curated ${trends.length} personalized ideas`);
+        } catch (aiError) {
+          console.log(`⚠️ AI call timed out or failed, using platform fallback`);
+          // Fallback to platform trends
+          if (platform === 'tiktok' || !platform) {
+            trends = await tiktokService.getTrendingHashtags('US', limit ? parseInt(limit as string) : 20);
+          }
+        }
+      } else {
+        // No preferences - use template-based trends
+        console.log(`📋 No user preferences, using template trends`);
+        if (platform === 'tiktok' || !platform) {
+          trends = await tiktokService.getTrendingHashtags('US', limit ? parseInt(limit as string) : 20);
+        }
+      }
+
+      // Final fallback to DB if still empty
+      if (trends.length === 0) {
+        trends = await storage.getTrends(
+          platform as string,
+          limit ? parseInt(limit as string) : undefined
+        );
+      }
+
+      res.json({ trends, cached: false });
     } catch (error) {
       console.error("Error getting trends:", error);
-      res.status(500).json({ error: "Failed to get trends" });
+
+      // Emergency fallback - return mock data instead of crashing
+      res.status(200).json({
+        trends: [
+          {
+            id: "fallback-1",
+            title: "Pet React Challenge",
+            description: "Film your pet's reaction to trending sounds",
+            category: "Comedy",
+            platform: "tiktok",
+            hotness: "hot",
+            engagement: 23400,
+            hashtags: ["petreaction", "viral"],
+            suggestion: "Use close-up shots with trending audio",
+            timeAgo: "2h ago"
+          }
+        ],
+        fallback: true,
+        message: "Using fallback data - refresh to try again"
+      });
     }
   });
 
@@ -832,84 +953,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get user's content preferences and niche
-  app.get('/api/preferences/:userId', async (req, res) => {
-    try {
-      const { userId } = req.params;
-      
-      const preferences = await getUserPreferences(userId);
-      
-      if (!preferences) {
-        return res.json({
-          success: true,
-          preferences: null,
-          message: 'No preferences learned yet - create some content to get personalized recommendations'
-        });
-      }
-      
-      res.json({
-        success: true,
-        preferences
-      });
-    } catch (error) {
-      console.error('Get preferences error:', error);
-      res.status(500).json({ error: 'Failed to get user preferences' });
-    }
-  });
-
-  // Save/update user preferences manually
-  app.post('/api/preferences/save', authenticateToken, async (req: AuthRequest, res) => {
-    try {
-      const userId = getUserId(req);
-      const { 
-        niche, 
-        targetAudience, 
-        contentStyle, 
-        preferredPlatforms, 
-        preferredCategories,
-        bio,
-        contentLength,
-        postingSchedule,
-        goals
-      } = req.body;
-      
-      if (!niche) {
-        return res.status(400).json({ error: 'Niche is required' });
-      }
-      
-      console.log(`💾 Saving user preferences for ${userId}...`);
-      
-      const userPreferences = {
-        userId,
-        niche,
-        targetAudience: targetAudience || 'gen-z',
-        contentStyle: contentStyle || 'entertainment',
-        bestPerformingPlatforms: preferredPlatforms || ['tiktok'],
-        preferredCategories: preferredCategories || [niche],
-        bio: bio || '',
-        preferredContentLength: contentLength || 'short',
-        optimizedPostTimes: postingSchedule || ['18:00', '21:00'],
-        goals: goals || 'grow_followers',
-        avgSuccessfulEngagement: 0.05, // Default
-        successfulHashtags: [], // Will be learned
-        lastUpdated: new Date()
-      };
-      
-      // TODO: Store in database - for now we'll just return the preferences
-      console.log(`✅ User preferences saved:`, userPreferences);
-      
-      res.json({
-        success: true,
-        preferences: userPreferences,
-        message: 'Preferences saved successfully! You\'ll now get personalized trend recommendations.'
-      });
-    } catch (error) {
-      console.error('Save preferences error:', error);
-      res.status(500).json({ error: 'Failed to save user preferences' });
-    }
-  });
-
-  // Get available options for preferences form
+  // Get available options for preferences form (MUST come before /:userId route!)
   app.get('/api/preferences/options', async (req, res) => {
     try {
       const options = {
@@ -935,7 +979,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'grow_followers', 'increase_engagement', 'monetize', 'brand_awareness', 'thought_leadership'
         ]
       };
-      
+
       res.json({
         success: true,
         options
@@ -943,6 +987,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Get options error:', error);
       res.status(500).json({ error: 'Failed to get preference options' });
+    }
+  });
+
+  // Get user's content preferences and niche
+  app.get('/api/preferences/:userId', async (req, res) => {
+    try {
+      const { userId } = req.params;
+
+      const preferences = await getUserPreferences(userId);
+
+      if (!preferences) {
+        return res.json({
+          success: true,
+          preferences: null,
+          message: 'No preferences learned yet - create some content to get personalized recommendations'
+        });
+      }
+
+      res.json({
+        success: true,
+        preferences
+      });
+    } catch (error) {
+      console.error('Get preferences error:', error);
+      res.status(500).json({ error: 'Failed to get user preferences' });
+    }
+  });
+
+  // Save/update user preferences manually
+  app.post('/api/preferences/save', authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = getUserId(req);
+      const {
+        niche,
+        targetAudience,
+        contentStyle,
+        preferredPlatforms,
+        preferredCategories,
+        bio,
+        contentLength,
+        postingSchedule,
+        goals
+      } = req.body;
+
+      if (!niche) {
+        return res.status(400).json({ error: 'Niche is required' });
+      }
+
+      console.log(`💾 Saving user preferences for ${userId}...`);
+
+      const userPreferences = {
+        userId,
+        niche,
+        targetAudience: targetAudience || 'gen-z',
+        contentStyle: contentStyle || 'entertainment',
+        bestPerformingPlatforms: preferredPlatforms || ['tiktok'],
+        preferredCategories: preferredCategories || [niche],
+        bio: bio || '',
+        preferredContentLength: contentLength || 'short',
+        optimizedPostTimes: postingSchedule || ['18:00', '21:00'],
+        goals: goals || 'grow_followers',
+        avgSuccessfulEngagement: 0.05, // Default
+        successfulHashtags: [], // Will be learned
+        lastUpdated: new Date()
+      };
+
+      // TODO: Store in database - for now we'll just return the preferences
+      console.log(`✅ User preferences saved:`, userPreferences);
+
+      res.json({
+        success: true,
+        preferences: userPreferences,
+        message: 'Preferences saved successfully! You\'ll now get personalized trend recommendations.'
+      });
+    } catch (error) {
+      console.error('Save preferences error:', error);
+      res.status(500).json({ error: 'Failed to save user preferences' });
     }
   });
 

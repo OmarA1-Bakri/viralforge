@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -56,11 +57,14 @@ interface UserActivity {
   activityType: string;
   title: string;
   status: string;
+  contentId?: number;
+  trendId?: number;
   metadata?: {
     views?: string;
     engagement?: string;
     score?: string;
     clips?: string;
+    url?: string;
   };
   createdAt: string;
 }
@@ -91,10 +95,7 @@ export default function CreatorDashboard({ onNavigate }: CreatorDashboardProps =
   const { data: statsData, isLoading: statsLoading, error: statsError } = useQuery({
     queryKey: ['/api/dashboard/stats', timeframe],
     queryFn: async () => {
-      const response = await fetch(`/api/dashboard/stats?timeframe=${timeframe}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch dashboard stats');
-      }
+      const response = await apiRequest('GET', `/api/dashboard/stats?timeframe=${timeframe}`);
       return response.json();
     },
     refetchInterval: 30000, // Refresh every 30 seconds
@@ -105,10 +106,7 @@ export default function CreatorDashboard({ onNavigate }: CreatorDashboardProps =
     queryKey: ['/api/dashboard/activity', timeframe],
     queryFn: async () => {
       try {
-        const response = await fetch(`/api/dashboard/activity?limit=10&timeframe=${timeframe}`);
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: Failed to fetch activity`);
-        }
+        const response = await apiRequest('GET', `/api/dashboard/activity?limit=10&timeframe=${timeframe}`);
         return await response.json();
       } catch (error) {
         throw error;
@@ -123,10 +121,7 @@ export default function CreatorDashboard({ onNavigate }: CreatorDashboardProps =
   const { data: insightsData, isLoading: insightsLoading, error: insightsError } = useQuery({
     queryKey: ['/api/dashboard/insights', timeframe],
     queryFn: async () => {
-      const response = await fetch(`/api/dashboard/insights?timeframe=${timeframe}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch performance insights');
-      }
+      const response = await apiRequest('GET', `/api/dashboard/insights?timeframe=${timeframe}`);
       return response.json();
     },
     refetchInterval: 120000, // Refresh every 2 minutes (insights change less frequently)
@@ -206,8 +201,35 @@ export default function CreatorDashboard({ onNavigate }: CreatorDashboardProps =
     const config = typeConfig[item.activityType as keyof typeof typeConfig] || typeConfig.video;
     const Icon = config.icon;
 
+    const handleClick = () => {
+      // If there's a URL in metadata, open it
+      if (item.metadata?.url) {
+        window.open(item.metadata.url, '_blank');
+        return;
+      }
+
+      // Navigate based on activity type
+      if (item.activityType === 'trend' && item.trendId) {
+        onNavigate?.("idea-lab");
+      } else if (item.activityType === 'video' || item.activityType === 'clip') {
+        onNavigate?.("multiplier");
+      } else if (item.activityType === 'optimization') {
+        onNavigate?.("launch-pad");
+      }
+    };
+
     return (
-      <div className="flex items-center gap-3 p-3 bg-card/50 rounded-lg border border-border">
+      <div
+        onClick={handleClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleClick();
+          }
+        }}
+        className="flex items-center gap-3 p-3 bg-card/50 rounded-lg border border-border cursor-pointer hover:bg-card/70 transition-colors active:scale-[0.98] touch-manipulation">
         <div className={cn("w-10 h-10 rounded-full flex items-center justify-center", config.color)}>
           <Icon className="w-5 h-5" />
         </div>
@@ -240,9 +262,9 @@ export default function CreatorDashboard({ onNavigate }: CreatorDashboardProps =
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="bg-background pb-32">
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
+      <div style={{ paddingTop: '56px' }} className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border px-4 pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img 
@@ -418,7 +440,15 @@ export default function CreatorDashboard({ onNavigate }: CreatorDashboardProps =
               <Clock className="w-5 h-5 text-muted-foreground" />
               <h2 className="font-semibold">Recent Activity</h2>
             </div>
-            <Button size="sm" variant="ghost" className="text-xs">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="text-xs"
+              onClick={() => {
+                // TODO: Navigate to full activity page or show modal
+                console.log("View All activity clicked");
+              }}
+            >
               View All
             </Button>
           </div>
@@ -447,7 +477,7 @@ export default function CreatorDashboard({ onNavigate }: CreatorDashboardProps =
         </div>
 
         {/* Quick Actions */}
-        <Card className="p-4 rounded-xl hover-elevate hover-cyan-glow interactive">
+        <Card className="p-4 rounded-xl hover-elevate hover-cyan-glow interactive mb-8">
           <h2 className="font-semibold text-lg mb-3 improved-line-height">Quick Actions</h2>
           <div className="grid grid-cols-2 gap-2">
             <Button 

@@ -5,15 +5,19 @@ const config: CapacitorConfig = {
   appName: 'ViralForgeAI',
   webDir: 'dist/public',
   server: {
-    androidScheme: 'https',
-    // Development server URL - will be set during mobile dev
-    // url: 'https://your-tunnel-url.ngrok.io',
-    cleartext: true
+    // Use HTTP for development to avoid mixed content issues with localhost API
+    androidScheme: 'http',
+    // NOTE: url is commented out so app loads from bundled files
+    // Only uncomment for live reload development: url: 'http://10.0.2.2:5000',
+    cleartext: true,
+    // Allow cleartext (HTTP) traffic for development
+    allowNavigation: ['http://10.0.2.2:5000', 'http://localhost:5000']
   },
   plugins: {
     StatusBar: {
       style: 'dark',
-      backgroundColor: '#000000'
+      backgroundColor: '#000000',
+      overlaysWebView: false  // Changed to false to test if this fixes touch events
     },
     SplashScreen: {
       launchShowDuration: 2000,

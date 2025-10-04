@@ -76,6 +76,181 @@ export function registerWebhookRoutes(app: Express) {
 }
 
 /**
+ * RevenueCat webhook endpoint
+ * Handles subscription events from RevenueCat
+ */
+export function registerRevenueCatWebhook(app: Express) {
+  app.post("/api/webhooks/revenuecat", express.json(), async (req, res) => {
+    try {
+      // Verify webhook signature
+      const authHeader = req.headers.authorization;
+      const webhookSecret = process.env.REVENUECAT_WEBHOOK_SECRET;
+
+      if (webhookSecret && authHeader !== `Bearer ${webhookSecret}`) {
+        console.error("⚠️  RevenueCat webhook authentication failed");
+        return res.status(401).send("Unauthorized");
+      }
+
+      const event = req.body;
+      console.log(`✅ Received RevenueCat webhook: ${event.type}`);
+
+      // Handle different event types
+      switch (event.type) {
+        case "INITIAL_PURCHASE":
+        case "RENEWAL":
+        case "PRODUCT_CHANGE":
+          await handleRevenueCatPurchase(event);
+          break;
+
+        case "CANCELLATION":
+          await handleRevenueCatCancellation(event);
+          break;
+
+        case "EXPIRATION":
+          await handleRevenueCatExpiration(event);
+          break;
+
+        case "BILLING_ISSUE":
+          await handleRevenueCatBillingIssue(event);
+          break;
+
+        default:
+          console.log(`ℹ️  Unhandled RevenueCat event type: ${event.type}`);
+      }
+
+      res.json({ received: true });
+    } catch (error) {
+      console.error("❌ Error processing RevenueCat webhook:", error);
+      res.status(500).json({ error: "Webhook processing failed" });
+    }
+  });
+}
+
+/**
+ * Handle RevenueCat purchase events (initial purchase, renewal, product change)
+ */
+async function handleRevenueCatPurchase(event: any) {
+  const { app_user_id, product_id, entitlement_ids, purchased_at_ms, expiration_at_ms } = event.event;
+
+  console.log(`✅ Purchase event for user ${app_user_id}`);
+
+  // Map product ID to tier
+  let tierId = 'free';
+  if (entitlement_ids?.includes('pro')) {
+    tierId = 'pro';
+  } else if (entitlement_ids?.includes('creator')) {
+    tierId = 'creator';
+  }
+
+  // Map product ID to billing cycle
+  const billingCycle = product_id?.includes('yearly') ? 'yearly' : 'monthly';
+
+  await db.transaction(async (tx) => {
+    // Deactivate any existing active subscriptions
+    await tx.execute(sql`
+      UPDATE user_subscriptions
+      SET status = 'cancelled', auto_renew = false
+      WHERE user_id = ${app_user_id} AND status = 'active'
+    `);
+
+    // Create or update subscription
+    await tx.execute(sql`
+      INSERT INTO user_subscriptions
+      (user_id, tier_id, billing_cycle, revenuecat_product_id, status, expires_at, auto_renew)
+      VALUES (
+        ${app_user_id},
+        ${tierId},
+        ${billingCycle},
+        ${product_id},
+        'active',
+        ${new Date(expiration_at_ms).toISOString()},
+        true
+      )
+      ON CONFLICT (user_id, revenuecat_product_id)
+      DO UPDATE SET
+        status = 'active',
+        expires_at = ${new Date(expiration_at_ms).toISOString()},
+        auto_renew = true,
+        updated_at = now()
+    `);
+
+    // Update user's subscription tier
+    await tx.execute(sql`
+      UPDATE users
+      SET subscription_tier_id = ${tierId}
+      WHERE id = ${app_user_id}
+    `);
+  });
+
+  console.log(`✅ Subscription updated for user ${app_user_id} to tier ${tierId}`);
+}
+
+/**
+ * Handle RevenueCat cancellation events
+ */
+async function handleRevenueCatCancellation(event: any) {
+  const { app_user_id, expiration_at_ms } = event.event;
+
+  console.log(`✅ Cancellation event for user ${app_user_id}`);
+
+  await db.execute(sql`
+    UPDATE user_subscriptions
+    SET auto_renew = false,
+        cancelled_at = now(),
+        updated_at = now()
+    WHERE user_id = ${app_user_id} AND status = 'active'
+  `);
+
+  console.log(`✅ Subscription cancelled for user ${app_user_id} (expires at ${new Date(expiration_at_ms).toISOString()})`);
+}
+
+/**
+ * Handle RevenueCat expiration events
+ */
+async function handleRevenueCatExpiration(event: any) {
+  const { app_user_id } = event.event;
+
+  console.log(`✅ Expiration event for user ${app_user_id}`);
+
+  await db.transaction(async (tx) => {
+    // Mark subscription as expired
+    await tx.execute(sql`
+      UPDATE user_subscriptions
+      SET status = 'expired',
+          updated_at = now()
+      WHERE user_id = ${app_user_id} AND status = 'active'
+    `);
+
+    // Downgrade user to free tier
+    await tx.execute(sql`
+      UPDATE users
+      SET subscription_tier_id = 'free'
+      WHERE id = ${app_user_id}
+    `);
+  });
+
+  console.log(`✅ User ${app_user_id} downgraded to free tier after expiration`);
+}
+
+/**
+ * Handle RevenueCat billing issue events
+ */
+async function handleRevenueCatBillingIssue(event: any) {
+  const { app_user_id } = event.event;
+
+  console.log(`⚠️  Billing issue for user ${app_user_id}`);
+
+  await db.execute(sql`
+    UPDATE user_subscriptions
+    SET status = 'past_due',
+        updated_at = now()
+    WHERE user_id = ${app_user_id} AND status = 'active'
+  `);
+
+  console.log(`⚠️  Subscription marked as past_due for user ${app_user_id}`);
+}
+
+/**
  * Handle successful checkout session
  */
 async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) {

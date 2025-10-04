@@ -187,6 +187,138 @@ export type UserActivity = typeof userActivity.$inferSelect;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertTrend = z.infer<typeof insertTrendSchema>;
+// ============================================================================
+// DATA WAREHOUSE TABLES (Added 2025-10-03)
+// ============================================================================
+
+// Raw scraped social media posts
+export const scrapedPosts = pgTable("scraped_posts", {
+  id: serial("id").primaryKey(),
+  platform: text("platform").notNull(),
+  externalId: text("external_id").notNull(),
+  url: text("url"),
+  title: text("title"),
+  description: text("description"),
+  author: text("author"),
+  authorId: text("author_id"),
+  publishedAt: timestamp("published_at"),
+  contentType: text("content_type"),
+  language: text("language"),
+
+  views: integer("views").default(0),
+  likes: integer("likes").default(0),
+  comments: integer("comments").default(0),
+  shares: integer("shares").default(0),
+  retweets: integer("retweets").default(0),
+  saves: integer("saves").default(0),
+
+  thumbnailUrl: text("thumbnail_url"),
+  videoUrl: text("video_url"),
+  mediaUrls: text("media_urls").array(),
+
+  hashtags: text("hashtags").array().default([]),
+  mentions: text("mentions").array().default([]),
+  keywords: text("keywords").array().default([]),
+  durationSeconds: real("duration_seconds"),
+
+  category: text("category"),
+  niche: text("niche"),
+  detectedTopics: text("detected_topics").array().default([]),
+
+  rawJson: json("raw_json"),
+
+  scrapedAt: timestamp("scraped_at").defaultNow().notNull(),
+  scrapeSource: text("scrape_source"),
+  scrapeJobId: integer("scrape_job_id"),
+}, (table) => ({
+  platformExternalIdUnique: unique().on(table.platform, table.externalId),
+}));
+
+// Time-series metrics tracking
+export const postMetricsHistory = pgTable("post_metrics_history", {
+  id: serial("id").primaryKey(),
+  scrapedPostId: integer("scraped_post_id").references(() => scrapedPosts.id, { onDelete: "cascade" }).notNull(),
+  views: integer("views").default(0),
+  likes: integer("likes").default(0),
+  comments: integer("comments").default(0),
+  shares: integer("shares").default(0),
+  engagementRate: real("engagement_rate"),
+  velocityScore: real("velocity_score"),
+  recordedAt: timestamp("recorded_at").defaultNow().notNull(),
+});
+
+// Link trends to source scraped posts
+export const trendSources = pgTable("trend_sources", {
+  id: serial("id").primaryKey(),
+  trendId: integer("trend_id").references(() => trends.id, { onDelete: "cascade" }).notNull(),
+  scrapedPostId: integer("scraped_post_id").references(() => scrapedPosts.id, { onDelete: "cascade" }).notNull(),
+  relevanceScore: real("relevance_score"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  trendPostUnique: unique().on(table.trendId, table.scrapedPostId),
+}));
+
+// App usage events and telemetry
+export const appEvents = pgTable("app_events", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id),
+  sessionId: text("session_id"),
+  eventName: text("event_name").notNull(),
+  eventType: text("event_type").notNull(),
+  platform: text("platform"),
+  properties: json("properties"),
+  userAgent: text("user_agent"),
+  ipAddress: text("ip_address"),
+  country: text("country"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// CrewAI execution logs
+export const crewExecutions = pgTable("crew_executions", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id),
+  crewType: text("crew_type").notNull(),
+  status: text("status").notNull(),
+  platforms: text("platforms").array(),
+  niches: text("niches").array(),
+
+  startTime: timestamp("start_time").notNull(),
+  endTime: timestamp("end_time"),
+  durationMs: integer("duration_ms"),
+  llmCalls: integer("llm_calls").default(0),
+  toolCalls: integer("tool_calls").default(0),
+  tokensUsed: integer("tokens_used").default(0),
+  costUsd: real("cost_usd").default(0),
+
+  trendsDiscovered: integer("trends_discovered").default(0),
+  postsScraped: integer("posts_scraped").default(0),
+  outputData: json("output_data"),
+  errorMessage: text("error_message"),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Zod schemas for data warehouse tables
+export const insertScrapedPostSchema = createInsertSchema(scrapedPosts);
+export const insertPostMetricsHistorySchema = createInsertSchema(postMetricsHistory);
+export const insertTrendSourcesSchema = createInsertSchema(trendSources);
+export const insertAppEventsSchema = createInsertSchema(appEvents);
+export const insertCrewExecutionsSchema = createInsertSchema(crewExecutions);
+
+// Types
+export type ScrapedPost = typeof scrapedPosts.$inferSelect;
+export type PostMetricsHistory = typeof postMetricsHistory.$inferSelect;
+export type TrendSource = typeof trendSources.$inferSelect;
+export type AppEvent = typeof appEvents.$inferSelect;
+export type CrewExecution = typeof crewExecutions.$inferSelect;
+
+export type InsertScrapedPost = z.infer<typeof insertScrapedPostSchema>;
+export type InsertPostMetricsHistory = z.infer<typeof insertPostMetricsHistorySchema>;
+export type InsertTrendSource = z.infer<typeof insertTrendSourcesSchema>;
+export type InsertAppEvent = z.infer<typeof insertAppEventsSchema>;
+export type InsertCrewExecution = z.infer<typeof insertCrewExecutionsSchema>;
+
+// Export original types
 export type InsertUserTrends = z.infer<typeof insertUserTrendsSchema>;
 export type InsertUserContent = z.infer<typeof insertUserContentSchema>;
 export type InsertContentAnalysis = z.infer<typeof insertContentAnalysisSchema>;
@@ -194,3 +326,68 @@ export type InsertVideoClip = z.infer<typeof insertVideoClipSchema>;
 export type InsertUserAnalytics = z.infer<typeof insertUserAnalyticsSchema>;
 export type InsertProcessingJob = z.infer<typeof insertProcessingJobSchema>;
 export type InsertUserActivity = z.infer<typeof insertUserActivitySchema>;
+
+// Subscription tiers
+export const subscriptionTiers = pgTable("subscription_tiers", {
+  id: varchar("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  displayName: text("display_name").notNull(),
+  description: text("description").notNull(),
+  priceMonthly: integer("price_monthly").notNull(),
+  priceYearly: integer("price_yearly").notNull(),
+  features: json("features").notNull().$type<string[]>(),
+  limits: json("limits").notNull().$type<{
+    videoAnalysis: number;
+    contentGeneration: number;
+    trendBookmarks: number;
+    videoClips: number;
+  }>(),
+  isActive: boolean("is_active").default(true).notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// User subscriptions
+export const userSubscriptions = pgTable("user_subscriptions", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  tierId: varchar("tier_id").references(() => subscriptionTiers.id).notNull(),
+  status: text("status").default("active").notNull(),
+  billingCycle: text("billing_cycle").default("monthly").notNull(),
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at"),
+  autoRenew: boolean("auto_renew").default(true).notNull(),
+  paymentMethod: text("payment_method"),
+  stripeSubscriptionId: varchar("stripe_subscription_id"),
+  stripeCustomerId: varchar("stripe_customer_id"),
+  cancelledAt: timestamp("cancelled_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// User usage tracking
+export const userUsage = pgTable("user_usage", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  feature: text("feature").notNull(),
+  count: integer("count").default(1).notNull(),
+  periodStart: timestamp("period_start").default(sql`date_trunc('month', now())`).notNull(),
+  periodEnd: timestamp("period_end").default(sql`date_trunc('month', now()) + interval '1 month'`).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  userFeaturePeriodUnique: unique().on(table.userId, table.feature, table.periodStart),
+}));
+
+// Zod schemas for subscriptions
+export const insertSubscriptionTierSchema = createInsertSchema(subscriptionTiers);
+export const insertUserSubscriptionSchema = createInsertSchema(userSubscriptions);
+export const insertUserUsageSchema = createInsertSchema(userUsage);
+
+// Types for subscriptions
+export type SubscriptionTier = typeof subscriptionTiers.$inferSelect;
+export type UserSubscription = typeof userSubscriptions.$inferSelect;
+export type UserUsage = typeof userUsage.$inferSelect;
+
+export type InsertSubscriptionTier = z.infer<typeof insertSubscriptionTierSchema>;
+export type InsertUserSubscription = z.infer<typeof insertUserSubscriptionSchema>;
+export type InsertUserUsage = z.infer<typeof insertUserUsageSchema>;

@@ -31,28 +31,19 @@ import { randomUUID } from "crypto";
 import { db } from "./db";
 import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 import { IStorage } from "./storage";
+import { logger } from "./lib/logger";
 
 export class PostgresStorage implements IStorage {
   
   // User methods
   async getUser(id: string): Promise<User | undefined> {
-    try {
-      const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
-      return result[0];
-    } catch (error) {
-      console.error('Error getting user:', error);
-      return undefined;
-    }
+    const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+    return result[0];
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    try {
-      const result = await db.select().from(users).where(eq(users.username, username)).limit(1);
-      return result[0];
-    } catch (error) {
-      console.error('Error getting user by username:', error);
-      return undefined;
-    }
+    const result = await db.select().from(users).where(eq(users.username, username)).limit(1);
+    return result[0];
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
@@ -92,13 +83,8 @@ export class PostgresStorage implements IStorage {
   }
 
   async getTrend(id: number): Promise<Trend | undefined> {
-    try {
-      const result = await db.select().from(trends).where(eq(trends.id, id)).limit(1);
-      return result[0];
-    } catch (error) {
-      console.error('Error getting trend:', error);
-      return undefined;
-    }
+    const result = await db.select().from(trends).where(eq(trends.id, id)).limit(1);
+    return result[0];
   }
 
   // User-trend interactions
@@ -148,13 +134,8 @@ export class PostgresStorage implements IStorage {
   }
 
   async getContentById(id: number): Promise<UserContent | undefined> {
-    try {
-      const result = await db.select().from(userContent).where(eq(userContent.id, id)).limit(1);
-      return result[0];
-    } catch (error) {
-      console.error('Error getting content by id:', error);
-      return undefined;
-    }
+    const result = await db.select().from(userContent).where(eq(userContent.id, id)).limit(1);
+    return result[0];
   }
 
   async updateUserContent(id: number, updates: Partial<UserContent>): Promise<UserContent> {
@@ -181,17 +162,12 @@ export class PostgresStorage implements IStorage {
   }
 
   async getContentAnalysis(contentId: number): Promise<ContentAnalysis | undefined> {
-    try {
-      const result = await db.select()
-        .from(contentAnalysis)
-        .where(eq(contentAnalysis.contentId, contentId))
-        .limit(1);
-      
-      return result[0];
-    } catch (error) {
-      console.error('Error getting content analysis:', error);
-      return undefined;
-    }
+    const result = await db.select()
+      .from(contentAnalysis)
+      .where(eq(contentAnalysis.contentId, contentId))
+      .limit(1);
+    
+    return result[0];
   }
 
   // Video clips
@@ -214,27 +190,17 @@ export class PostgresStorage implements IStorage {
   }
 
   async getClipById(id: number): Promise<VideoClip | undefined> {
-    try {
-      const result = await db.select().from(videoClips).where(eq(videoClips.id, id)).limit(1);
-      return result[0];
-    } catch (error) {
-      console.error('Error getting clip by id:', error);
-      return undefined;
-    }
+    const result = await db.select().from(videoClips).where(eq(videoClips.id, id)).limit(1);
+    return result[0];
   }
 
   async updateVideoClip(id: number, updates: Partial<InsertVideoClip>): Promise<VideoClip | undefined> {
-    try {
-      const result = await db.update(videoClips)
-        .set(updates)
-        .where(eq(videoClips.id, id))
-        .returning();
-      
-      return result[0];
-    } catch (error) {
-      console.error('Error updating video clip:', error);
-      return undefined;
-    }
+    const result = await db.update(videoClips)
+      .set(updates)
+      .where(eq(videoClips.id, id))
+      .returning();
+    
+    return result[0];
   }
 
   // Processing jobs

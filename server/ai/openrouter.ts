@@ -1,6 +1,8 @@
 // OpenRouter AI service for CreatorKit - using OpenAI-compatible API with caching
 import OpenAI from "openai";
 import { simplifiedAICache } from "./simplifiedCache.js";
+import { Sentry } from '../lib/sentry';
+import { logger } from '../lib/logger';
 
 const openai = new OpenAI({
   baseURL: "https://openrouter.ai/api/v1",
@@ -10,6 +12,57 @@ const openai = new OpenAI({
     "X-Title": "ViralForgeAI",
   }
 });
+
+// Helper function: AI call with timeout and retry logic
+async function callOpenAIWithRetry<T>(
+  operation: () => Promise<T>,
+  operationName: string,
+  maxRetries: number = 2
+): Promise<T> {
+  const TIMEOUT_MS = 8000; // 8 seconds - Android WebView can't wait 30s
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      // Race between the operation and a timeout
+      const result = await Promise.race([
+        operation(),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`OpenAI timeout after ${TIMEOUT_MS}ms`)), TIMEOUT_MS)
+        )
+      ]);
+
+      return result;
+    } catch (error: any) {
+      const isLastAttempt = attempt === maxRetries;
+
+      logger.error({
+        error,
+        operationName,
+        attempt: attempt + 1,
+        maxRetries: maxRetries + 1,
+        isLastAttempt
+      }, `OpenAI ${operationName} failed`);
+
+      if (isLastAttempt) {
+        // Track final failure in Sentry
+        Sentry.captureException(error, {
+          tags: {
+            operation: operationName,
+            attempts: maxRetries + 1
+          }
+        });
+        throw error;
+      }
+
+      // Exponential backoff: wait before retry
+      const backoffMs = Math.min(1000 * Math.pow(2, attempt), 5000);
+      logger.info({ backoffMs, nextAttempt: attempt + 2 }, `Retrying ${operationName}`);
+      await new Promise(resolve => setTimeout(resolve, backoffMs));
+    }
+  }
+
+  throw new Error(`Failed ${operationName} after ${maxRetries + 1} attempts`);
+}
 
 export interface TrendDiscoveryRequest {
   platform: "tiktok" | "youtube" | "instagram";
@@ -150,54 +203,60 @@ export class OpenRouterService {
       return mockTrends;
     }
 
-    const systemPrompt = `You are a viral content expert and social media trend analyst. Your job is to discover and analyze trending content opportunities for creators.
+    const systemPrompt = `You are a viral content expert and social media trend analyst with access to real-time trending data. Your job is to curate the BEST content ideas for creators based on their specific niche.
 
-Generate realistic, current trending content ideas for ${request.platform}. Focus on trends that are:
-- Currently popular or emerging
-- Engaging and likely to get high interaction
-- Suitable for content creators
-- Based on real social media patterns
+Analyze current trends and generate highly personalized, actionable content ideas for ${request.platform}. Each idea should be:
+- Tailored specifically to the creator's niche: ${request.category || 'general'}
+- Currently trending or emerging (not generic templates)
+- High potential for virality and engagement
+- Backed by real trending hashtags/topics
+- Creatively adapted to the creator's style
 
-${request.category ? `Focus on the ${request.category} category.` : ''}
-${request.contentType ? `Content should be ${request.contentType} style.` : ''}
-${request.targetAudience ? `Target audience: ${request.targetAudience}.` : ''}
+${request.category ? `CRITICAL: All ideas MUST be highly relevant to ${request.category}. Don't just filter generic trends - CREATE unique ideas that blend current viral formats with ${request.category} content.` : ''}
+${request.contentType ? `Content style: ${request.contentType}` : ''}
+${request.targetAudience ? `Target audience: ${request.targetAudience}` : ''}
 
-Respond with a JSON object containing a "trends" array of 8-12 trend objects: { "trends": [...] }. Each trend should have:
-- title: Catchy, trend-worthy title
-- description: Brief explanation of the trend
-- category: Content category (e.g., "Comedy", "Education", "Lifestyle", "Tech")
+Respond with a JSON object containing a "trends" array of 8-12 curated trend objects: { "trends": [...] }. Each trend MUST have:
+- title: Catchy, niche-specific title (not generic)
+- description: How this trend applies to ${request.category || 'the creator\'s niche'}
+- category: "${request.category || 'Content'}"
 - platform: "${request.platform}"
-- hotness: "hot", "rising", or "relevant" 
-- engagement: Estimated engagement number (1000-50000)
-- hashtags: Array of 3-6 relevant hashtags (without # symbol)
+- hotness: "hot", "rising", or "relevant"
+- engagement: Realistic engagement number (1000-500000)
+- hashtags: Array of 3-6 REAL trending hashtags relevant to this niche (without # symbol)
 - sound: Optional trending sound/audio name
-- suggestion: Specific AI suggestion for how to use this trend
-- timeAgo: How long ago this trend started (e.g., "2h ago", "1d ago", "3h ago")
+- suggestion: Specific, actionable steps to execute this idea in ${request.category || 'their niche'}
+- timeAgo: How recently this trend emerged (e.g., "2h ago", "1d ago")
+- source: Where this trend was discovered (e.g., "Trending on TikTok • #hashtag • 250K videos", "Viral on Instagram Reels • #hashtag • 180K posts")
 
-Make the trends feel authentic and actionable for creators.`;
+BE CREATIVE: Don't just list obvious trends. Combine trending formats with niche-specific angles. Example: If niche is "fitness", don't say "workout videos" - say "5-second form check transitions" or "gym fails that teach proper technique".`;
 
     try {
-      const response = await openai.chat.completions.create({
-        model: "x-ai/grok-4-fast:free", // Using Grok model for trend discovery
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Discover trending content ideas for ${request.platform}` }
-        ],
-        response_format: { type: "json_object" },
-        max_tokens: 2000,
-      });
+      const response = await callOpenAIWithRetry(
+        () => openai.chat.completions.create({
+          model: "x-ai/grok-4-fast", // Using Grok-4-fast for trend discovery
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Discover trending content ideas for ${request.platform}` }
+          ],
+          response_format: { type: "json_object" },
+          max_tokens: 2000,
+        }),
+        'discoverTrends'
+      );
 
       const result = JSON.parse(response.choices[0].message.content || "{}");
       const trends = result.trends || [];
-      
+
       // Cache the successful result
       await simplifiedAICache.setCachedWithUserContext('trends', request, trends, userId);
-      
-      console.log(`✅ AI model used: ${response.model} (via OpenRouter) - cached for 15 minutes`);
+
+      logger.info({ model: response.model, trendsCount: trends.length }, 'AI trends discovered and cached');
       return trends;
     } catch (error) {
-      console.error("Error discovering trends:", error);
-      
+      logger.error({ error, request }, 'Trend discovery failed, using fallback data');
+      Sentry.captureException(error, { tags: { operation: 'discoverTrends' } });
+
       // Fall back to mock data if API fails (development safety)
       console.log("⚠️ OpenRouter API failed, using mock trends for development");
       const mockTrends: TrendResult[] = [
@@ -402,27 +461,61 @@ Platform: ${request.platform}
     `.trim();
 
     try {
-      const response = await openai.chat.completions.create({
-        model: "x-ai/grok-4-fast:free",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: contentToAnalyze }
-        ],
-        response_format: { type: "json_object" },
-        max_tokens: 1500,
-      });
+      const response = await callOpenAIWithRetry(
+        () => openai.chat.completions.create({
+          model: "x-ai/grok-4-fast",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: contentToAnalyze }
+          ],
+          response_format: { type: "json_object" },
+          max_tokens: 1500,
+        }),
+        'analyzeContent'
+      );
 
       const result = JSON.parse(response.choices[0].message.content || "{}");
-      
+
       // Cache the successful result
       await simplifiedAICache.setCachedWithUserContext('content', request, result, userId);
-      
-      console.log(`✅ AI content analysis completed and cached for 1 hour`);
+
+      logger.info({ model: response.model }, 'AI content analysis completed and cached');
       return result;
     } catch (error) {
-      console.error("Error analyzing content:", error);
-      throw new Error("Failed to analyze content");
+      logger.error({ error, request }, 'Content analysis failed');
+      Sentry.captureException(error, { tags: { operation: 'analyzeContent' } });
+
+      // Return fallback analysis instead of crashing
+      return this.getFallbackAnalysis(request);
     }
+  }
+
+  // Fallback analysis when AI fails
+  private getFallbackAnalysis(request: ContentAnalysisRequest): ContentAnalysisResult {
+    return {
+      clickabilityScore: 6,
+      clarityScore: 6,
+      intrigueScore: 6,
+      emotionScore: 6,
+      feedback: {
+        thumbnail: "Unable to analyze - AI service temporarily unavailable",
+        title: "Unable to analyze - AI service temporarily unavailable",
+        overall: "Analysis unavailable. Please try again later."
+      },
+      suggestions: ["Please try again in a few moments"],
+      viralPotential: {
+        score: 50,
+        reasoning: "Analysis unavailable",
+        successExamples: []
+      },
+      improvements: [],
+      abTestSuggestions: [],
+      competitorComparison: {
+        strengths: [],
+        gaps: [],
+        opportunities: []
+      }
+    };
   }
 
   // Generate video clip suggestions (Multiplier) with caching
@@ -540,27 +633,33 @@ Respond with a JSON array of clip suggestions:
 Suggest 3-5 of the best clips with high viral potential.`;
 
     try {
-      const response = await openai.chat.completions.create({
-        model: "x-ai/grok-4-fast:free",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Video content: ${videoDescription}` }
-        ],
-        response_format: { type: "json_object" },
-        max_tokens: 1200,
-      });
+      const response = await callOpenAIWithRetry(
+        () => openai.chat.completions.create({
+          model: "x-ai/grok-4-fast",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `Video content: ${videoDescription}` }
+          ],
+          response_format: { type: "json_object" },
+          max_tokens: 1200,
+        }),
+        'generateVideoClips'
+      );
 
       const result = JSON.parse(response.choices[0].message.content || "{}");
       const clips = result.clips || [];
-      
+
       // Cache the successful result
       await simplifiedAICache.setCachedWithUserContext('videoProcessing', clipRequest, clips, userId);
-      
-      console.log(`✅ AI generated ${clips.length} video clips and cached for 45 minutes`);
+
+      logger.info({ model: response.model, clipsCount: clips.length }, 'AI video clips generated and cached');
       return clips;
     } catch (error) {
-      console.error("Error generating video clips:", error);
-      throw new Error("Failed to generate video clips");
+      logger.error({ error, videoDescription }, 'Video clip generation failed, using fallback');
+      Sentry.captureException(error, { tags: { operation: 'generateVideoClips' } });
+
+      // Return empty array instead of crashing
+      return [];
     }
   }
 }

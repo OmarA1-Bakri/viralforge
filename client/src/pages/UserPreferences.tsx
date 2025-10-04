@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -93,26 +94,15 @@ export default function UserPreferences() {
 
   const savePreferences = useMutation({
     mutationFn: async (data: PreferencesData) => {
-      const response = await fetch('/api/preferences/save', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data)
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to save preferences');
-      }
-      
+      const response = await apiRequest('POST', '/api/preferences/save', data);
       return response.json();
     },
-    onSuccess: (data: any) => {
+    onSuccess: async (data: any) => {
       toast({
         title: "Preferences Saved!",
         description: data?.message || "Your preferences have been updated successfully.",
       });
-      
+
       // Track preferences save event
       analytics.trackPreferencesSave({
         niche: form.getValues('niche'),
@@ -121,7 +111,10 @@ export default function UserPreferences() {
         platforms: form.getValues('preferredPlatforms')?.length || 0,
         categories: form.getValues('preferredCategories')?.length || 0
       });
-      
+
+      // Invalidate and refetch to update the "Current Preferences" section
+      await queryClient.invalidateQueries({ queryKey: ['/api/preferences/demo-user'] });
+      await queryClient.refetchQueries({ queryKey: ['/api/preferences/demo-user'] });
       queryClient.invalidateQueries({ queryKey: ['/api/preferences'] });
       queryClient.invalidateQueries({ queryKey: ['/api/trends'] });
     },

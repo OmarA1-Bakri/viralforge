@@ -41,7 +41,7 @@ export default function BottomTabNavigation({ activeTab, onTabChange }: BottomTa
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-lg border-t border-primary/20 px-2 py-2 safe-area-bottom z-50 shadow-2xl">
+    <div style={{ paddingBottom: '48px' }} className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-lg border-t border-primary/20 px-2 py-2 z-50 shadow-2xl">
       <div className="flex justify-around items-center max-w-lg mx-auto">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -51,9 +51,20 @@ export default function BottomTabNavigation({ activeTab, onTabChange }: BottomTa
             <button
               key={tab.id}
               data-testid={`tab-${tab.id}`}
-              onClick={() => onTabChange(tab.id)}
+              onClick={(e) => {
+                console.log('[BottomNav] Click event:', {
+                  tab: tab.id,
+                  currentActive: activeTab,
+                  timestamp: new Date().toISOString()
+                });
+                onTabChange(tab.id);
+                console.log('[BottomNav] onTabChange called for:', tab.id);
+              }}
+              onTouchStart={(e) => {
+                console.log('[BottomNav] Touch detected on:', tab.id);
+              }}
               className={cn(
-                "flex flex-col items-center gap-1 px-2 py-2 rounded-lg tab-transition hover-elevate active-elevate-2 min-w-0 hover-cyan-glow",
+                "flex flex-col items-center gap-1 px-3 py-3 rounded-lg tab-transition hover-elevate active-elevate-2 min-w-[64px] min-h-[64px] hover-cyan-glow touch-manipulation",
                 isActive 
                   ? "text-primary bg-primary/10 shadow-lg shadow-primary/20" 
                   : "text-muted-foreground hover:text-primary"

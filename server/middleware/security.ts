@@ -87,7 +87,7 @@ export const helmetMiddleware = helmet({
 export const corsMiddleware = cors({
   origin: process.env.NODE_ENV === 'production'
     ? [process.env.FRONTEND_URL || 'https://viralforge.ai']
-    : ['http://localhost:5000', 'http://localhost:5173', 'capacitor://localhost', 'http://localhost'],
+    : ['http://localhost:5000', 'http://localhost:5173', 'capacitor://localhost', 'http://localhost', 'http://10.0.2.2:5000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],

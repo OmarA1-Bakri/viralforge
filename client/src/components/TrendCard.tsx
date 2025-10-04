@@ -20,6 +20,7 @@ interface TrendCardProps {
     sound?: string;
     soundUrl?: string;
     duration?: string;
+    source?: string; // Where the trend was found (e.g., "Trending on TikTok • #viral • 250K videos")
   };
   onSave?: (id: string) => void;
   onRemix?: (id: string) => void;
@@ -58,13 +59,15 @@ export default function TrendCard({ trend, onSave, onRemix, onNavigate }: TrendC
     relevant: { label: "For You", className: "bg-gradient-to-r from-primary to-accent text-black shadow-lg shadow-primary/30" }
   };
 
+  const hotness = hotnessConfig[trend.hotness] || hotnessConfig.hot;
+
   return (
     <Card className="relative overflow-hidden hover-elevate transition-all duration-300 group border border-border/50 hover:border-primary/30 bg-transparent">
       {/* Hotness indicator */}
       <div className="absolute top-4 right-4 z-10">
-        <Badge className={cn("text-xs font-medium", hotnessConfig[trend.hotness].className)}>
+        <Badge className={cn("text-xs font-medium", hotness.className)}>
           <TrendingUp className="w-3 h-3 mr-1" />
-          {hotnessConfig[trend.hotness].label}
+          {hotness.label}
         </Badge>
       </div>
 
@@ -75,6 +78,14 @@ export default function TrendCard({ trend, onSave, onRemix, onNavigate }: TrendC
             {trend.title}
           </h3>
           <p className="text-muted-foreground text-sm leading-relaxed">{trend.description}</p>
+
+          {/* Source Attribution */}
+          {trend.source && (
+            <p className="text-xs text-muted-foreground/70 mt-2 flex items-center gap-1">
+              <TrendingUp className="w-3 h-3" />
+              {trend.source}
+            </p>
+          )}
         </div>
 
         {/* Key Info Row */}

@@ -1,0 +1,8 @@
+Metadata-Version: 2.4
+Name: crew-social-tools-mcp
+Version: 1.0.0
+Summary: MCP Server for Crew Social Tools - Social media scraping for AI agents
+Requires-Python: >=3.10
+Requires-Dist: mcp>=0.9.0
+Requires-Dist: httpx>=0.27.0
+Requires-Dist: pydantic>=2.10.0

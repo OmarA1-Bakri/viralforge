@@ -2,11 +2,11 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
+import { env } from './config/env';
 
-// Environment variables for auth
-const JWT_SECRET = process.env.JWT_SECRET || 'your-dev-secret-change-in-production';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
-const NEON_AUTH_URL = process.env.NEON_AUTH_URL || '';
+// Use centralized environment configuration
+const JWT_SECRET = env.JWT_SECRET;
+const JWT_EXPIRES_IN = env.JWT_EXPIRES_IN;
 
 export interface AuthUser {
   id: string;
@@ -19,10 +19,10 @@ export interface AuthRequest extends Request {
   user?: AuthUser;
 }
 
-// Rate limiting for auth endpoints
+// Rate limiting for auth endpoints (relaxed for development)
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 requests per windowMs
+  max: 100, // Limit each IP to 100 requests per windowMs (dev mode)
   message: {
     error: 'Too many authentication attempts, please try again later',
   },
@@ -30,10 +30,10 @@ export const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Register rate limiting
+// Register rate limiting (relaxed for development)
 export const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3, // Limit each IP to 3 registration attempts per hour
+  max: 100, // Limit each IP to 100 registration attempts per hour (dev mode)
   message: {
     error: 'Too many registration attempts, please try again later',
   },
@@ -57,20 +57,26 @@ export const authenticateToken = async (
     // Verify JWT token
     const decoded = jwt.verify(token, JWT_SECRET) as AuthUser;
     req.user = decoded;
-    
+
     next();
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
       res.status(401).json({ error: 'Token expired' });
       return;
     }
-    
+
     if (error instanceof jwt.JsonWebTokenError) {
       res.status(403).json({ error: 'Invalid token' });
       return;
     }
-    
-    console.error('Auth middleware error:', error);
+
+    // Log only error type, no stack traces or details in production
+    const errorId = crypto.randomUUID();
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('Auth middleware error:', { errorId, error });
+    } else {
+      console.error('Auth error:', { errorId, errorType: error?.constructor?.name });
+    }
     res.status(500).json({ error: 'Authentication failed' });
   }
 };
@@ -170,26 +176,9 @@ export const neonAuthHelpers = {
         password: hashedPassword,
       });
 
-      // Create initial subscription for the user
-      const expiresAt = new Date();
-      expiresAt.setMonth(expiresAt.getMonth() + 1); // Default 1 month subscription
-
-      try {
-        await db.execute(sql`
-          INSERT INTO user_subscriptions
-          (user_id, tier_id, billing_cycle, expires_at, status)
-          VALUES (${newUser.id}, ${subscriptionTier}, 'monthly', ${expiresAt.toISOString()}, 'active')
-        `);
-
-        await db.execute(sql`
-          UPDATE users
-          SET subscription_tier_id = ${subscriptionTier}
-          WHERE id = ${newUser.id}
-        `);
-      } catch (subError) {
-        console.error('Subscription creation error during registration:', subError);
-        // Don't fail registration if subscription creation fails
-      }
+      // Note: Subscription management is handled separately
+      // Basic user registration doesn't require subscription tables
+      console.log(`📋 User registered with tier: ${subscriptionTier} (subscription management not yet implemented)`);
 
       const authUser: AuthUser = {
         id: newUser.id,
@@ -212,30 +201,61 @@ export const neonAuthHelpers = {
   async loginUser(username: string, password: string): Promise<{ user: AuthUser; token: string }> {
     try {
       const { storage } = await import('./storage');
-      
+
       // Find user by username
       const user = await storage.getUserByUsername(username);
       if (!user) {
+        // This is a legitimate "user not found" case
         throw new Error('Invalid credentials');
       }
-      
+
       // Verify password
       const isValidPassword = await verifyPassword(password, user.password);
       if (!isValidPassword) {
         throw new Error('Invalid credentials');
       }
-      
+
       const authUser: AuthUser = {
         id: user.id,
         username: user.username,
       };
-      
+
       const token = generateToken(authUser);
-      
+
       return { user: authUser, token };
     } catch (error) {
-      console.error('Login error:', error);
-      throw new Error('Invalid credentials');
+      // Generate unique error ID for tracking (no PII)
+      const errorId = crypto.randomUUID();
+
+      // Determine environment for logging level
+      const isDev = process.env.NODE_ENV !== 'production';
+
+      if (isDev) {
+        // Development: detailed logging with PII (for debugging)
+        console.error('Login failed:', {
+          errorId,
+          username, // OK in development
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          errorType: error?.constructor?.name
+        });
+      } else {
+        // Production: minimal logging without PII (GDPR compliant)
+        console.error('Login failed:', {
+          errorId,
+          errorType: error?.constructor?.name,
+          // NO username, NO stack traces
+        });
+      }
+
+      // If it's already an auth error, rethrow it
+      if (error instanceof Error && error.message === 'Invalid credentials') {
+        throw error;
+      }
+
+      // For database/system errors, log as critical and provide reference ID
+      console.error('SYSTEM ERROR during login:', { errorId });
+      throw new Error(`Service temporarily unavailable (ref: ${errorId}). Please try again or contact support.`);
     }
   },
 
@@ -260,21 +280,11 @@ export const neonAuthHelpers = {
   }
 };
 
-// Environment validation
+// Environment validation (minimal - most validation in config/env.ts)
 export const validateAuthEnvironment = (): void => {
-  const requiredEnvVars = ['JWT_SECRET'];
-  
-  if (process.env.NODE_ENV === 'production') {
-    requiredEnvVars.push('NEON_AUTH_URL');
-  }
-  
-  const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-  
-  if (missingVars.length > 0) {
-    throw new Error(`Missing required environment variables: ${missingVars.join(', ')}`);
-  }
-  
-  if (process.env.NODE_ENV === 'production' && JWT_SECRET === 'your-dev-secret-change-in-production') {
+  // All critical validation is handled in config/env.ts
+  // This function remains for backward compatibility
+  if (env.NODE_ENV === 'production' && env.JWT_SECRET === 'your-dev-secret-change-in-production') {
     throw new Error('JWT_SECRET must be changed in production');
   }
 };

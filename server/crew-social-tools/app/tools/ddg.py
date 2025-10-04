@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import List
 from ..common.schemas import UnifiedItem
-from ddgs import DDGS
+from duckduckgo_search import DDGS
 
 class DDGArgs(BaseModel):
     query: str

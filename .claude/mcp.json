@@ -1,0 +1,62 @@
+{
+  "mcpServers": {
+    "serena": {
+      "type": "stdio",
+      "command": "/home/omar/.local/bin/uv",
+      "args": [
+        "run",
+        "--directory",
+        "/home/omar/serena",
+        "serena",
+        "start-mcp-server"
+      ]
+    },
+    "desktop-commander": {
+      "type": "stdio",
+      "command": "node",
+      "args": [
+        "/home/omar/DesktopCommanderMCP/dist/index.js"
+      ]
+    },
+    "github": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@smithery-ai/github",
+        "--key",
+        "95e83c85-9a18-4524-9549-6a2c0f194f69",
+        "--profile",
+        "hungry-lemming-s64fT3"
+      ]
+    },
+    "microsoft-playwright-mcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@microsoft/playwright-mcp",
+        "--key",
+        "95e83c85-9a18-4524-9549-6a2c0f194f69"
+      ]
+    },
+    "fetch": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@smithery/cli@latest",
+        "run",
+        "@smithery-ai/fetch",
+        "--key",
+        "95e83c85-9a18-4524-9549-6a2c0f194f69",
+        "--profile",
+        "hungry-lemming-s64fT3"
+      ]
+    }
+  }
+}

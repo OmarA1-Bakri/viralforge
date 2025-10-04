@@ -24,11 +24,21 @@ from pathlib import Path
 from crewai import Agent, Task, Crew, Process, LLM
 from crewai.knowledge.source.string_knowledge_source import StringKnowledgeSource
 from crewai_tools import (
-    YoutubeChannelSearchTool, YoutubeVideoSearchTool, ScrapeWebsiteTool,
-    SerperDevTool, VisionTool, FileWriterTool, CSVSearchTool, 
+    ScrapeWebsiteTool, VisionTool, FileWriterTool, CSVSearchTool, 
     DallETool, CodeInterpreterTool, PGSearchTool, RagTool,
     ZapierActionTool, FirecrawlCrawlWebsiteTool, TavilySearchTool
 )
+
+# Import custom social media tools
+from pathlib import Path
+import importlib.util
+
+# Load crewai_integration module without modifying sys.path
+_crew_tools_path = Path(__file__).parent.parent / 'crew-social-tools' / 'crewai_integration.py'
+_spec = importlib.util.spec_from_file_location("crewai_integration", _crew_tools_path)
+_crewai_integration = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_crewai_integration)
+get_crew_social_tools = _crewai_integration.get_crew_social_tools
 
 # Storage will be injected from TypeScript side when needed
 # No need to import here as this causes module errors
@@ -51,7 +61,7 @@ class ViralForgeAgentSystem:
     def _setup_llm(self) -> LLM:
         """Configure the LLM for all agents using OpenRouter."""
         return LLM(
-            model="x-ai/grok-4-fast:free",  # Using Grok-4-fast via OpenRouter
+            model="openrouter/x-ai/grok-4-fast",  # Using Grok-4-fast via OpenRouter (free tier)
             api_key=os.getenv("OPENROUTER_API_KEY"),
             base_url="https://openrouter.ai/api/v1",
             temperature=0.7,
@@ -84,30 +94,41 @@ class ViralForgeAgentSystem:
     
     def _setup_tools(self) -> Dict[str, Any]:
         """Initialize all tools needed by agents."""
+        # Get custom social media tools
+        social_tools = get_crew_social_tools(
+            base_url=os.getenv("CREW_TOOLS_URL", "http://localhost:8001")
+        )
+        
         return {
-            # Content Discovery Tools
-            "youtube_search": YoutubeChannelSearchTool(),
-            "youtube_video": YoutubeVideoSearchTool(), 
+            # Custom Social Media Discovery Tools (from crew-social-tools)
+            "twitter_search": social_tools["twitter"],
+            "youtube_search": social_tools["youtube"],
+            "reddit_scan": social_tools["reddit"],
+            "instagram_fetch": social_tools["instagram"],
+            "ddg_search": social_tools["ddg"],
+            "social_aggregator": social_tools["aggregator"],
+            
+            # Other Discovery Tools
             "web_scraper": ScrapeWebsiteTool(),
-            "google_search": SerperDevTool(api_key=os.getenv("SERPER_API_KEY")),
-            "advanced_search": TavilySearchTool(api_key=os.getenv("TAVILY_API_KEY")),
-            "web_crawler": FirecrawlCrawlWebsiteTool(api_key=os.getenv("FIRECRAWL_API_KEY")),
+            # Note: Advanced search tools disabled - require API keys
+            # "advanced_search": TavilySearchTool(api_key=os.getenv("TAVILY_API_KEY")),
+            # "web_crawler": FirecrawlCrawlWebsiteTool(api_key=os.getenv("FIRECRAWL_API_KEY")),
             
-            # Analysis Tools  
-            "vision_analyzer": VisionTool(),
-            "csv_analyzer": CSVSearchTool(),
-            "code_interpreter": CodeInterpreterTool(),
-            "rag_tool": RagTool(),
-            
+            # Analysis Tools
+            # "vision_analyzer": VisionTool(),
+            # "csv_analyzer": CSVSearchTool(),  # Requires CHROMA_OPENAI_API_KEY
+            # "code_interpreter": CodeInterpreterTool(),
+            # "rag_tool": RagTool(),
+
             # Content Creation Tools
-            "image_generator": DallETool(api_key=os.getenv("OPENAI_API_KEY")),
+            # "image_generator": DallETool(api_key=os.getenv("OPENAI_API_KEY")),
             "file_writer": FileWriterTool(),
-            
+
             # Database & Storage
-            "db_query": PGSearchTool(db_uri=os.getenv("DATABASE_URL")),
-            
+            # "db_query": PGSearchTool(db_uri=os.getenv("DATABASE_URL")),
+
             # Automation & Integration
-            "zapier": ZapierActionTool(api_key=os.getenv("ZAPIER_NLA_API_KEY")),
+            # "zapier": ZapierActionTool(api_key=os.getenv("ZAPIER_NLA_API_KEY")),
         }
     
     def _create_agents(self) -> Dict[str, Agent]:
@@ -125,12 +146,13 @@ class ViralForgeAgentSystem:
             You constantly monitor YouTube, TikTok, Instagram, and emerging platforms for signals.""",
             llm=self.llm,
             tools=[
+                self.tools["twitter_search"],
                 self.tools["youtube_search"],
-                self.tools["youtube_video"], 
-                self.tools["web_scraper"],
-                self.tools["google_search"],
-                self.tools["advanced_search"],
-                self.tools["web_crawler"]
+                self.tools["reddit_scan"],
+                self.tools["instagram_fetch"],
+                self.tools["social_aggregator"],
+                self.tools["ddg_search"],
+                self.tools["web_scraper"]
             ],
             verbose=True,
             allow_delegation=False,
@@ -150,11 +172,7 @@ class ViralForgeAgentSystem:
             actionable insights.""",
             llm=self.llm,
             tools=[
-                self.tools["csv_analyzer"],
-                self.tools["code_interpreter"],
-                self.tools["vision_analyzer"],
-                self.tools["db_query"],
-                self.tools["rag_tool"]
+                self.tools["file_writer"]
             ],
             verbose=True,
             allow_delegation=False,
@@ -173,10 +191,7 @@ class ViralForgeAgentSystem:
             concepts, and optimize content for maximum reach across platforms.""",
             llm=self.llm,
             tools=[
-                self.tools["image_generator"],
-                self.tools["file_writer"],
-                self.tools["rag_tool"],
-                self.tools["vision_analyzer"]
+                self.tools["file_writer"]
             ],
             verbose=True,
             allow_delegation=False,
@@ -195,10 +210,7 @@ class ViralForgeAgentSystem:
             pipeline from scheduling to cross-platform optimization.""",
             llm=self.llm,
             tools=[
-                self.tools["zapier"],
-                self.tools["file_writer"],
-                self.tools["db_query"],
-                self.tools["csv_analyzer"]
+                self.tools["file_writer"]
             ],
             verbose=True,
             allow_delegation=False,
@@ -217,10 +229,7 @@ class ViralForgeAgentSystem:
             between different engagement signals and long-term viral success.""",
             llm=self.llm,
             tools=[
-                self.tools["code_interpreter"],
-                self.tools["csv_analyzer"],
-                self.tools["db_query"],
-                self.tools["rag_tool"]
+                self.tools["file_writer"]
             ],
             verbose=True,
             allow_delegation=False,
@@ -242,58 +251,38 @@ class ViralForgeAgentSystem:
             tasks=[],  # Tasks will be created dynamically
             process=Process.sequential,
             verbose=True,
-            memory=True,
-            knowledge_sources=self.knowledge,
-            max_rpm=30,
-            embedder={
-                "provider": "openai",
-                "config": {"model": "text-embedding-3-large"}
-            }
+            memory=False,  # Disable memory to avoid embeddings requirement
+            max_rpm=30
         )
-        
+
         # 2. Creation Crew - Generate viral content
         crews["creation"] = Crew(
             agents=[self.agents["content_creator"], self.agents["content_analyzer"]],
             tasks=[],
             process=Process.sequential,
             verbose=True,
-            memory=True,
-            knowledge=self.knowledge,
-            max_rpm=30,
-            embedder={
-                "provider": "openai", 
-                "config": {"model": "text-embedding-3-large"}
-            }
+            memory=False,
+            max_rpm=30
         )
-        
+
         # 3. Publication Crew - Distribute and optimize
         crews["publication"] = Crew(
             agents=[self.agents["publish_manager"], self.agents["performance_tracker"]],
             tasks=[],
             process=Process.sequential,
             verbose=True,
-            memory=True,
-            knowledge=self.knowledge,
-            max_rpm=30,
-            embedder={
-                "provider": "openai",
-                "config": {"model": "text-embedding-3-large"}
-            }
+            memory=False,
+            max_rpm=30
         )
-        
+
         # 4. Full Pipeline Crew - End-to-end viral content pipeline
         crews["full_pipeline"] = Crew(
             agents=list(self.agents.values()),
             tasks=[],
             process=Process.sequential,
             verbose=True,
-            memory=True,
-            knowledge=self.knowledge,
-            max_rpm=30,
-            embedder={
-                "provider": "openai",
-                "config": {"model": "text-embedding-3-large"}
-            }
+            memory=False,
+            max_rpm=30
         )
         
         return crews

@@ -17,9 +17,18 @@ import MultiplierProcessor from "@/components/MultiplierProcessor";
 import LoadingPage from "@/components/LoadingPage";
 import UserPreferences from "@/pages/UserPreferences";
 import NotFound from "@/pages/not-found";
+import StatusBarTest from "@/components/StatusBarTest";
 
 function MainApp() {
   const [activeTab, setActiveTab] = useState<"dashboard" | "idea-lab" | "launch-pad" | "multiplier" | "preferences">("dashboard");
+  const [serverVersion, setServerVersion] = useState<any>(null);
+
+  useEffect(() => {
+    fetch('/api/version')
+      .then(r => r.json())
+      .then(setServerVersion)
+      .catch(() => console.log('Version endpoint unavailable'));
+  }, []);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -46,10 +55,17 @@ function MainApp() {
       </main>
 
       {/* Bottom Navigation */}
-      <BottomTabNavigation 
+      <BottomTabNavigation
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
+
+      {/* Version Display */}
+      {serverVersion && (
+        <div className="fixed bottom-20 right-2 text-[10px] text-muted-foreground/50 font-mono">
+          {serverVersion.server?.gitHash?.substring(0, 7) || 'dev'}
+        </div>
+      )}
     </div>
   );
 }
@@ -57,6 +73,9 @@ function MainApp() {
 function Router() {
   return (
     <Switch>
+      <Route path="/test-status-bar">
+        <StatusBarTest />
+      </Route>
       <Route path="/">
         <ProtectedRoute>
           <MainApp />

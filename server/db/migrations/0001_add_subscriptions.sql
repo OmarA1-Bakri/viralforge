@@ -52,15 +52,15 @@ ALTER TABLE "user_usage" ADD CONSTRAINT "user_usage_user_id_users_id_fk" FOREIGN
 -- Insert default subscription tiers
 INSERT INTO "subscription_tiers" ("id", "name", "display_name", "description", "price_monthly", "price_yearly", "features", "limits", "sort_order") VALUES
 ('free', 'free', 'Free', 'Perfect for getting started', 0, 0,
- '["Access to trending content", "Basic analytics", "3 video analyses per month", "Community support"]'::json,
+ '["3 video analyses per month", "5 AI-generated content ideas", "10 trend bookmarks", "Basic analytics"]'::json,
  '{"videoAnalysis": 3, "contentGeneration": 5, "trendBookmarks": 10, "videoClips": 0}'::json,
  1),
-('pro', 'pro', 'Pro', 'For serious content creators', 1499, 14930,
- '["Everything in Free", "Unlimited video analyses", "Advanced analytics", "Priority support", "Custom branding", "API access"]'::json,
- '{"videoAnalysis": -1, "contentGeneration": 100, "trendBookmarks": 100, "videoClips": 50}'::json,
+('pro', 'pro', 'Pro', 'For serious content creators', 1499, 14990,
+ '["Unlimited video analyses", "Unlimited AI content generation", "Unlimited trend bookmarks", "Advanced analytics dashboard", "Video clip generation (50/month)", "Priority support"]'::json,
+ '{"videoAnalysis": -1, "contentGeneration": -1, "trendBookmarks": -1, "videoClips": 50}'::json,
  2),
-('agency', 'agency', 'Agency', 'For agencies and teams', 4999, 49790,
- '["Everything in Pro", "Unlimited everything", "White-label solution", "Team collaboration", "Dedicated account manager", "Custom integrations", "SLA guarantee"]'::json,
+('creator', 'creator', 'Creator', 'For professional creators and agencies', 4999, 49990,
+ '["Everything in Pro", "Unlimited video clips", "Team collaboration tools", "API access", "Custom integrations", "Dedicated support"]'::json,
  '{"videoAnalysis": -1, "contentGeneration": -1, "trendBookmarks": -1, "videoClips": -1}'::json,
  3);
 

@@ -80,14 +80,38 @@ interface IdeaLabFeedProps {
 export default function IdeaLabFeed({ onTrendSave, onTrendRemix, onNavigate }: IdeaLabFeedProps) {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
-  // Fetch existing trends from database
-  const { data: existingTrends, isLoading: isLoadingTrends } = useQuery({
-    queryKey: ['/api/trends', { platform: 'tiktok' }],
+  // Fetch user preferences for personalization
+  const { data: userPrefs } = useQuery({
+    queryKey: ['/api/user/preferences'],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest('GET', '/api/user/preferences');
+        const data = await response.json();
+        console.log('[IdeaLab] User preferences:', data);
+        return data;
+      } catch (error) {
+        console.log('[IdeaLab] No user preferences found, using defaults');
+        return null;
+      }
+    },
+  });
+
+  // Fetch existing trends from database (personalized if preferences exist)
+  const { data: existingTrends, isLoading: isLoadingTrends, error: trendsError } = useQuery({
+    queryKey: ['/api/trends', { platform: 'tiktok', categories: userPrefs?.preferredCategories }],
     enabled: true,
     queryFn: async () => {
-      const response = await fetch('/api/trends?platform=tiktok');
-      return response.json();
-    }
+      const params = new URLSearchParams({ platform: 'tiktok' });
+      if (userPrefs?.preferredCategories?.length > 0) {
+        params.append('categories', userPrefs.preferredCategories.join(','));
+      }
+      const response = await apiRequest('GET', `/api/trends?${params}`);
+      const data = await response.json();
+      console.log('[IdeaLab] Trends loaded:', data);
+      return data;
+    },
+    retry: 2,
+    staleTime: 30000,
   });
 
   // AI-powered trend discovery mutation
@@ -157,66 +181,77 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix, onNavigate }: I
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Clean Header */}
-      <div className="px-4 py-6 border-b border-border/30 bg-transparent">
-        <div className="flex items-center justify-between mb-4">
+    <div className="bg-background pb-24">
+      {/* Header */}
+      <div style={{ paddingTop: '56px' }} className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border px-4 pb-3">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img 
-              src={viralForgeAILogo} 
-              alt="ViralForgeAI" 
+            <img
+              src={viralForgeAILogo}
+              alt="ViralForgeAI"
               className="w-8 h-8 object-contain"
               data-testid="img-logo-idealab"
             />
             <div>
-              <h1 className="text-xl font-bold">ViralForgeAI</h1>
-              <p className="text-sm text-muted-foreground">AI-powered TikTok content discovery</p>
+              <h1 className="text-lg font-bold">ViralForgeAI</h1>
+              <p className="text-xs text-muted-foreground">Idea Lab</p>
             </div>
           </div>
-          
+
           <Button
             variant="default"
+            size="sm"
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="gap-2 bg-gradient-to-r from-primary to-accent text-black hover:shadow-lg hover:shadow-primary/20"
+            className="gap-2"
             data-testid="button-refresh-trends"
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`} />
             {isRefreshing ? "Finding..." : "Refresh"}
           </Button>
         </div>
-        
-        {/* Stats Row */}
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-sm text-muted-foreground">Live trending</span>
-          </div>
-          <div className="text-sm text-muted-foreground">
-            {displayTrends.length} fresh ideas
-          </div>
-          <div className="text-sm text-muted-foreground">
-            Updated {getTimeAgo(lastUpdated)}
-          </div>
-        </div>
       </div>
 
       {/* Trend Feed */}
-      <div className="px-4 pt-6 pb-28 space-y-4">
-        {displayTrends.map((trend: any, index: number) => (
-          <div 
-            key={trend.id} 
-            className="animate-in slide-in-from-bottom-2 duration-300"
-            style={{ animationDelay: `${index * 50}ms` }}
-          >
-            <TrendCard
-              trend={trend}
-              onSave={handleTrendSave}
-              onRemix={handleTrendRemix}
-              onNavigate={onNavigate}
-            />
+      <div className="px-4 pt-4 space-y-4">
+        {trendsError ? (
+          <div className="flex flex-col items-center justify-center py-12 space-y-4">
+            <p className="text-sm text-destructive">Error loading trends</p>
+            <Button onClick={handleRefresh} variant="outline" size="sm">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Retry
+            </Button>
           </div>
-        ))}
+        ) : isLoadingTrends ? (
+          <div className="flex flex-col items-center justify-center py-12 space-y-4">
+            <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Loading trends...</p>
+          </div>
+        ) : displayTrends.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 space-y-4">
+            <Sparkles className="w-12 h-12 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">No trends found</p>
+            <Button onClick={handleRefresh} variant="default" size="sm">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Discover Trends
+            </Button>
+          </div>
+        ) : (
+          displayTrends.map((trend: any, index: number) => (
+            <div
+              key={trend.id}
+              className="animate-in slide-in-from-bottom-2 duration-300"
+              style={{ animationDelay: `${index * 50}ms` }}
+            >
+              <TrendCard
+                trend={trend}
+                onSave={handleTrendSave}
+                onRemix={handleTrendRemix}
+                onNavigate={onNavigate}
+              />
+            </div>
+          ))
+        )}
 
         {/* Load More */}
         <div className="text-center py-8">

@@ -1,0 +1,2 @@
+[console_scripts]
+crew-social-tools-mcp = mcp_server:main

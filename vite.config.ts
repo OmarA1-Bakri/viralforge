@@ -1,11 +1,23 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
 
-export default defineConfig({
-  plugins: [
-    react(),
-  ],
+export default defineConfig(({ mode }) => {
+  // Load env file based on `mode` in the current working directory.
+  const env = loadEnv(mode, process.cwd(), '');
+
+  return {
+    plugins: [
+      react(),
+    ],
+    // Expose environment variables to the client
+    define: {
+      'import.meta.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL),
+      'import.meta.env.VITE_API_BASE_URL': JSON.stringify(env.VITE_API_BASE_URL),
+      'import.meta.env.VITE_PUBLIC_POSTHOG_KEY': JSON.stringify(env.VITE_PUBLIC_POSTHOG_KEY),
+      'import.meta.env.VITE_PUBLIC_POSTHOG_HOST': JSON.stringify(env.VITE_PUBLIC_POSTHOG_HOST),
+      'import.meta.env.VITE_REVENUECAT_API_KEY': JSON.stringify(env.VITE_REVENUECAT_API_KEY),
+    },
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
@@ -20,10 +32,20 @@ export default defineConfig({
     emptyOutDir: true,
   },
 
-  server: {
-    fs: {
-      strict: true,
-      deny: ["**/.*"],
+    server: {
+      hmr: {
+        overlay: false, // Disable error overlay that crashes tsx watch
+        timeout: 5000,
+      },
+      watch: {
+        // Prevent Vite from crashing when files change during long requests
+        ignored: ['**/node_modules/**', '**/.git/**'],
+        usePolling: false,
+      },
+      fs: {
+        strict: true,
+        deny: ["**/.*"],
+      },
     },
-  },
+  };
 });

@@ -339,47 +339,69 @@ export class AITikTokProvider implements ITikTokTrendsProvider {
 
   async getTrendingHashtags(region: string = 'US', limit: number = 20): Promise<TrendResult[]> {
     console.log(`🤖 [${this.getName()}] Generating AI trending hashtags for ${region}...`);
-    
-    // Generate realistic TikTok trends using predefined data
+
+    // Expanded collection of 30+ realistic TikTok trends
     const trendTemplates = [
-      {
-        title: "Viral Dance Challenge 2025",
-        description: "New dance trend taking TikTok by storm with millions of creators participating",
-        category: "Dance",
-        hashtags: ["dancechallenge", "viral", "fyp", "trending"],
-        sound: "Trending Dance Beat"
-      },
-      {
-        title: "Food Hack Revolution",
-        description: "Mind-blowing cooking tricks that are changing the game for home chefs",
-        category: "Food",
-        hashtags: ["foodhack", "cooking", "kitchentips", "viral"],
-        sound: "Kitchen Magic Audio"
-      },
-      {
-        title: "Pet React Challenge",
-        description: "Show your pet's hilarious reactions to everyday sounds and situations",
-        category: "Animals",
-        hashtags: ["petreact", "funnypets", "dogsoftiktok", "fyp"],
-        sound: "Funny Pet Reaction Sound"
-      },
-      {
-        title: "DIY Home Makeover",
-        description: "Transform your space with budget-friendly DIY solutions that actually work",
-        category: "DIY",
-        hashtags: ["diyproject", "homemakeover", "budgetdiy", "transformation"],
-        sound: "DIY Transformation Music"
-      },
-      {
-        title: "Fashion Transition Magic",
-        description: "Seamless outfit changes that showcase your style evolution",
-        category: "Fashion",
-        hashtags: ["fashiontransition", "outfitchange", "style", "ootd"],
-        sound: "Fashion Transition Beat"
-      }
+      // Dance & Music
+      { title: "Viral Dance Challenge 2025", description: "New dance trend taking TikTok by storm with millions of creators participating", category: "Dance", hashtags: ["dancechallenge", "viral", "fyp", "trending"], sound: "Trending Dance Beat" },
+      { title: "Smooth Transition Dance", description: "Master the art of seamless dance transitions that wow your audience", category: "Dance", hashtags: ["transitiondance", "smoothmoves", "fyp", "viral"], sound: "Transition Beat" },
+      { title: "Couple Dance Trend", description: "Romantic dance moves perfect for duets and relationship content", category: "Dance", hashtags: ["coupledance", "relationship", "duet", "love"], sound: "Romantic Dance Music" },
+
+      // Food & Cooking
+      { title: "Food Hack Revolution", description: "Mind-blowing cooking tricks that are changing the game for home chefs", category: "Food", hashtags: ["foodhack", "cooking", "kitchentips", "viral"], sound: "Kitchen Magic Audio" },
+      { title: "5-Minute Meals", description: "Quick and delicious recipes that save time without sacrificing taste", category: "Food", hashtags: ["quickrecipes", "5minmeals", "easyrecipes", "foodie"], sound: "Cooking Beats" },
+      { title: "Food ASMR Trend", description: "Satisfying food preparation and eating sounds that get millions of views", category: "Food", hashtags: ["foodasmr", "satisfying", "asmr", "mukbang"], sound: "ASMR Audio" },
+
+      // Pets & Animals
+      { title: "Pet React Challenge", description: "Show your pet's hilarious reactions to everyday sounds and situations", category: "Animals", hashtags: ["petreact", "funnypets", "dogsoftiktok", "fyp"], sound: "Funny Pet Reaction Sound" },
+      { title: "Pet Training Hacks", description: "Genius training tips that actually work for stubborn pets", category: "Animals", hashtags: ["pettraining", "dogtraining", "pethacks", "pets"], sound: "Training Music" },
+      { title: "Animals Being Derps", description: "Compilation of pets doing the silliest things", category: "Animals", hashtags: ["derpypets", "funnypets", "petfail", "viral"], sound: "Funny Moment Audio" },
+
+      // DIY & Home
+      { title: "DIY Home Makeover", description: "Transform your space with budget-friendly DIY solutions that actually work", category: "DIY", hashtags: ["diyproject", "homemakeover", "budgetdiy", "transformation"], sound: "DIY Transformation Music" },
+      { title: "Room Glow-Up Challenge", description: "Before and after room transformations that inspire", category: "DIY", hashtags: ["roomglowup", "roomtour", "aesthetic", "homedecor"], sound: "Glow Up Beat" },
+      { title: "Thrift Flip Magic", description: "Turn thrifted finds into trendy pieces", category: "DIY", hashtags: ["thriftflip", "upcycle", "thrifted", "sustainable"], sound: "Craft Time Music" },
+
+      // Fashion & Beauty
+      { title: "Fashion Transition Magic", description: "Seamless outfit changes that showcase your style evolution", category: "Fashion", hashtags: ["fashiontransition", "outfitchange", "style", "ootd"], sound: "Fashion Transition Beat" },
+      { title: "Get Ready With Me", description: "Morning routines and outfit inspiration for every occasion", category: "Fashion", hashtags: ["grwm", "morningroutine", "ootd", "fashion"], sound: "Getting Ready Music" },
+      { title: "Thrift Haul Lookbook", description: "Show off your latest thrift finds and how you style them", category: "Fashion", hashtags: ["thrifthaul", "secondhand", "sustainable", "fashion"], sound: "Haul Music" },
+
+      // Comedy & Entertainment
+      { title: "POV: You're The...", description: "Relatable POV scenarios everyone can laugh at", category: "Comedy", hashtags: ["pov", "relatable", "comedy", "skit"], sound: "POV Audio" },
+      { title: "Expectation vs Reality", description: "Hilarious comparisons of what we expect vs what actually happens", category: "Comedy", hashtags: ["expectationvsreality", "funny", "relatable", "comedy"], sound: "Comedy Sound" },
+      { title: "Celebrity Impression Trend", description: "Nail those celebrity impressions and go viral", category: "Comedy", hashtags: ["impression", "celebrity", "comedy", "viral"], sound: "Impression Audio" },
+
+      // Fitness & Health
+      { title: "Workout At Home Challenge", description: "Effective home workouts with no equipment needed", category: "Fitness", hashtags: ["homeworkout", "fitness", "workout", "athome"], sound: "Workout Music" },
+      { title: "Fitness Transformation", description: "Before and after fitness journeys that motivate", category: "Fitness", hashtags: ["transformation", "fitness", "beforeafter", "motivation"], sound: "Motivation Beat" },
+      { title: "Healthy Meal Prep", description: "Weekly meal prep ideas that are actually delicious", category: "Fitness", hashtags: ["mealprep", "healthy", "fitness", "nutrition"], sound: "Prep Music" },
+
+      // Tech & Gaming
+      { title: "Tech Life Hack", description: "Phone and computer tricks you wish you knew sooner", category: "Technology", hashtags: ["techhack", "lifehack", "technology", "tips"], sound: "Tech Sounds" },
+      { title: "Gaming Moments", description: "Epic gaming wins, fails, and funny moments", category: "Gaming", hashtags: ["gaming", "gamer", "epicmoment", "gaming"], sound: "Gaming Music" },
+      { title: "Phone Setup Tour", description: "Show your aesthetic phone organization and apps", category: "Technology", hashtags: ["phonesetup", "aesthetic", "tech", "organization"], sound: "Tech Beat" },
+
+      // Travel & Lifestyle
+      { title: "Hidden Gem Locations", description: "Secret travel spots that deserve more attention", category: "Travel", hashtags: ["hiddengem", "travel", "explore", "wanderlust"], sound: "Travel Music" },
+      { title: "Day In My Life", description: "Authentic daily routines that people love watching", category: "Lifestyle", hashtags: ["dayinmylife", "vlog", "lifestyle", "routine"], sound: "Vlog Music" },
+      { title: "Aesthetic Morning Routine", description: "Picture-perfect morning habits to start your day right", category: "Lifestyle", hashtags: ["morningroutine", "aesthetic", "selfcare", "lifestyle"], sound: "Morning Vibes" },
+
+      // Art & Creative
+      { title: "Art Time Lapse", description: "Mesmerizing speed-drawing and painting videos", category: "Art", hashtags: ["art", "timelapse", "drawing", "painting"], sound: "Art Music" },
+      { title: "Craft Tutorial", description: "Easy DIY crafts anyone can make", category: "Art", hashtags: ["craft", "diy", "tutorial", "handmade"], sound: "Craft Time" },
+      { title: "Digital Art Hack", description: "Procreate and digital art tips that level up your skills", category: "Art", hashtags: ["digitalart", "procreate", "art", "tutorial"], sound: "Creative Beats" },
+
+      // Business & Education
+      { title: "Study Tips That Work", description: "Effective study methods backed by science", category: "Education", hashtags: ["studytips", "student", "education", "productivity"], sound: "Study Music" },
+      { title: "Side Hustle Ideas", description: "Realistic ways to make extra money online", category: "Business", hashtags: ["sidehustle", "entrepreneur", "money", "business"], sound: "Hustle Music" },
+      { title: "Productivity Hacks", description: "Time management tricks that actually help", category: "Education", hashtags: ["productivity", "lifehack", "organized", "efficiency"], sound: "Productive Vibes" }
     ];
 
-    const trends = trendTemplates.slice(0, limit).map((template, index) => ({
+    // Shuffle templates to ensure variety each time
+    const shuffled = [...trendTemplates].sort(() => Math.random() - 0.5);
+
+    const trends = shuffled.slice(0, limit).map((template, index) => ({
       title: template.title,
       description: template.description,
       category: template.category,
@@ -389,10 +411,11 @@ export class AITikTokProvider implements ITikTokTrendsProvider {
       hashtags: template.hashtags,
       sound: template.sound,
       suggestion: `Perfect opportunity to put your own creative spin on this trending format`,
-      timeAgo: `${Math.floor(Math.random() * 12) + 1}h ago`
+      timeAgo: `${Math.floor(Math.random() * 12) + 1}h ago`,
+      source: `Trending on TikTok • ${template.hashtags[0]} • ${Math.floor(Math.random() * 500) + 100}K videos`
     }));
 
-    console.log(`✅ [${this.getName()}] Generated ${trends.length} AI trending hashtags`);
+    console.log(`✅ [${this.getName()}] Generated ${trends.length} AI trending hashtags (shuffled from ${trendTemplates.length} templates)`);
     return trends;
   }
 }

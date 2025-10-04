@@ -61,11 +61,8 @@ export const pushNotificationService = {
 
   async registerToken(token: string): Promise<void> {
     try {
-      await fetch('/api/notifications/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token }),
-      });
+      const { apiRequest } = await import('./queryClient');
+      await apiRequest('POST', '/api/notifications/register', { token });
       console.log('Token registered with server');
     } catch (error) {
       console.error('Failed to register token:', error);

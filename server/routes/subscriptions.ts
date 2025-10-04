@@ -36,6 +36,36 @@ export function registerSubscriptionRoutes(app: Express) {
     try {
       const userId = req.user?.id;
 
+      // First check if subscription tables exist
+      const tableCheck = await db.execute(sql`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_name = 'user_subscriptions'
+        ) as table_exists
+      `);
+
+      // If tables don't exist yet, return free tier
+      if (!tableCheck.rows[0]?.table_exists) {
+        console.log('📋 Subscription tables not yet created, returning free tier');
+        return res.json({
+          success: true,
+          subscription: {
+            tier_id: 'free',
+            tier_name: 'free',
+            tier_display_name: 'Free',
+            status: 'active',
+            billing_cycle: 'monthly',
+            features: ['3 video analyses per month', '5 AI-generated content ideas', '10 trend bookmarks'],
+            limits: {
+              videoAnalysis: 3,
+              contentGeneration: 5,
+              trendBookmarks: 10,
+              videoClips: 0
+            }
+          }
+        });
+      }
+
       // Get user's subscription with tier details
       const subscription = await db.execute(sql`
         SELECT
@@ -60,6 +90,27 @@ export function registerSubscriptionRoutes(app: Express) {
         const freeTier = await db.execute(sql`
           SELECT * FROM subscription_tiers WHERE name = 'free'
         `);
+
+        if (freeTier.rows.length === 0) {
+          // Fallback if free tier not in database
+          return res.json({
+            success: true,
+            subscription: {
+              tier_id: 'free',
+              tier_name: 'free',
+              tier_display_name: 'Free',
+              status: 'active',
+              billing_cycle: 'monthly',
+              features: ['3 video analyses per month', '5 AI-generated content ideas', '10 trend bookmarks'],
+              limits: {
+                videoAnalysis: 3,
+                contentGeneration: 5,
+                trendBookmarks: 10,
+                videoClips: 0
+              }
+            }
+          });
+        }
 
         return res.json({
           success: true,
@@ -425,6 +476,107 @@ export function registerSubscriptionRoutes(app: Express) {
       res.status(500).json({
         success: false,
         error: "Failed to check feature limit"
+      });
+    }
+  });
+}
+
+
+/**
+ * Sync RevenueCat subscription with backend
+ * Called by the app after login or when subscription changes
+ */
+export function registerRevenueCatSyncRoute(app: Express) {
+  app.post("/api/subscriptions/sync-revenuecat", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ success: false, error: "Not authenticated" });
+    }
+
+    try {
+      const userId = req.user?.id;
+      const { entitlements, productIdentifier, expiresDate } = req.body;
+
+      console.log(`🔄 Syncing RevenueCat subscription for user ${userId}`);
+
+      // Determine tier from entitlements
+      let tierId = 'free';
+      if (entitlements?.creator?.isActive) {
+        tierId = 'creator';
+      } else if (entitlements?.pro?.isActive) {
+        tierId = 'pro';
+      }
+
+      // Determine billing cycle from product ID
+      const billingCycle = productIdentifier?.includes('yearly') ? 'yearly' : 'monthly';
+
+      // Check if tables exist
+      const tableCheck = await db.execute(sql`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_name = 'user_subscriptions'
+        ) as table_exists
+      `);
+
+      if (!tableCheck.rows[0]?.table_exists) {
+        console.log('⚠️  Subscription tables not yet created, skipping sync');
+        return res.json({
+          success: true,
+          message: 'Subscription tables not ready, sync skipped',
+          tier: tierId
+        });
+      }
+
+      await db.transaction(async (tx) => {
+        // Deactivate any existing active subscriptions
+        await tx.execute(sql`
+          UPDATE user_subscriptions
+          SET status = 'cancelled', auto_renew = false
+          WHERE user_id = ${userId} AND status = 'active'
+        `);
+
+        // If user has an active entitlement, create subscription record
+        if (tierId !== 'free' && expiresDate) {
+          await tx.execute(sql`
+            INSERT INTO user_subscriptions
+            (user_id, tier_id, billing_cycle, revenuecat_product_id, status, expires_at, auto_renew)
+            VALUES (
+              ${userId},
+              ${tierId},
+              ${billingCycle},
+              ${productIdentifier},
+              'active',
+              ${new Date(expiresDate).toISOString()},
+              true
+            )
+            ON CONFLICT (user_id, revenuecat_product_id)
+            DO UPDATE SET
+              status = 'active',
+              expires_at = ${new Date(expiresDate).toISOString()},
+              auto_renew = true,
+              updated_at = now()
+          `);
+        }
+
+        // Update user's subscription tier
+        await tx.execute(sql`
+          UPDATE users
+          SET subscription_tier_id = ${tierId}
+          WHERE id = ${userId}
+        `);
+      });
+
+      console.log(`✅ Synced subscription for user ${userId} to tier ${tierId}`);
+
+      res.json({
+        success: true,
+        message: 'Subscription synced successfully',
+        tier: tierId
+      });
+    } catch (error) {
+      console.error("Error syncing RevenueCat subscription:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to sync subscription"
       });
     }
   });

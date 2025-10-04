@@ -7,15 +7,28 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-// Get API base URL - defaults to current origin for web, configurable for mobile
+// Get API base URL - same logic as AuthContext for consistency
 const getApiBaseUrl = () => {
-  // For Capacitor mobile apps, use environment variable or localhost
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
+  }
+  // For Capacitor apps on Android emulator, use 10.0.2.2 instead of localhost
+  if (typeof window !== 'undefined' && (window as any).Capacitor?.getPlatform() === 'android') {
+    return 'http://10.0.2.2:5000';
   }
   // For web deployment, use current origin
   return window.location.origin;
 };
+
+// Get auth token from Capacitor storage
+async function getAuthToken(): Promise<string | null> {
+  if (typeof window !== 'undefined' && (window as any).Capacitor) {
+    const { Preferences } = await import('@capacitor/preferences');
+    const { value } = await Preferences.get({ key: 'auth_token' });
+    return value;
+  }
+  return null;
+}
 
 export async function apiRequest(
   method: string,
@@ -23,9 +36,17 @@ export async function apiRequest(
   data?: unknown | undefined,
 ): Promise<Response> {
   const fullUrl = url.startsWith('http') ? url : `${getApiBaseUrl()}${url}`;
+
+  // Get auth token and add to headers
+  const token = await getAuthToken();
+  const headers: Record<string, string> = data ? { "Content-Type": "application/json" } : {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   const res = await fetch(fullUrl, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -42,7 +63,16 @@ export const getQueryFn: <T>(options: {
   async ({ queryKey }) => {
     const url = queryKey.join("/") as string;
     const fullUrl = url.startsWith('http') ? url : `${getApiBaseUrl()}${url}`;
+
+    // Get auth token and add to headers
+    const token = await getAuthToken();
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const res = await fetch(fullUrl, {
+      headers,
       credentials: "include",
     });
 

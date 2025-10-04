@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,21 +63,11 @@ export default function LaunchPadAnalyzer() {
       fileName: string;
       contentType: string;
     }) => {
-      const response = await fetch('/api/upload/thumbnail', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          imageData,
-          fileName,
-          contentType
-        })
+      const response = await apiRequest('POST', '/api/upload/thumbnail', {
+        imageData,
+        fileName,
+        contentType
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to upload thumbnail');
-      }
 
       return response.json();
     },
@@ -175,22 +166,12 @@ export default function LaunchPadAnalyzer() {
       platform: string;
       roastMode: boolean;
     }) => {
-      const response = await fetch('/api/content/analyze', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: title.trim() || undefined,
-          thumbnailDescription: thumbnailDescription || undefined,
-          platform,
-          roastMode
-        })
+      const response = await apiRequest('POST', '/api/content/analyze', {
+        title: title.trim() || undefined,
+        thumbnailDescription: thumbnailDescription || undefined,
+        platform,
+        roastMode
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to analyze content');
-      }
 
       return response.json();
     },
@@ -291,9 +272,9 @@ export default function LaunchPadAnalyzer() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="bg-background pb-24">
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
+      <div style={{ paddingTop: '56px' }} className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border px-4 pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img 

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { secureStorage } from '@/lib/mobileStorage';
 import { analytics } from '@/lib/analytics';
+import { revenueCat } from '@/lib/revenueCat';
 
 export interface User {
   id: string;
@@ -31,7 +32,23 @@ interface AuthProviderProps {
   children: ReactNode;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Get API base URL - same logic as queryClient for consistency
+const getApiBaseUrl = () => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  // For Capacitor apps on Android emulator, use 10.0.2.2 instead of localhost
+  if (typeof window !== 'undefined' && (window as any).Capacitor?.getPlatform() === 'android') {
+    return 'http://10.0.2.2:5000';
+  }
+  return window.location.origin;
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
+// Log the API URL being used for debugging
+console.log('[AuthContext] API_BASE_URL:', API_BASE_URL);
+console.log('[AuthContext] Environment:', import.meta.env);
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -56,7 +73,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const validateToken = async (token: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/validate`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/validate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -91,7 +108,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      const loginUrl = `${API_BASE_URL}/api/auth/login`;
+      console.log('[AuthContext] Logging in at:', loginUrl);
+
+      const response = await fetch(loginUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -105,25 +125,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setToken(data.token);
         setUser(data.user);
         await secureStorage.setAuthToken(data.token);
-        
+
+        // Login to RevenueCat with user ID
+        try {
+          await revenueCat.loginUser(data.user.id);
+          // Sync RevenueCat subscription with backend
+          await revenueCat.syncSubscriptionWithBackend(data.token);
+        } catch (error) {
+          console.error('[AuthContext] RevenueCat login/sync failed:', error);
+        }
+
         // Track login event
         analytics.trackLogin('password', {
           username: data.user.username,
           user_id: data.user.id
         });
-        
+
         // Identify user in analytics
         analytics.identify(data.user.id, {
           username: data.user.username
         });
-        
+
         return { success: true };
       } else {
         return { success: false, error: data.message || 'Login failed' };
       }
     } catch (error) {
-      console.error('Login error:', error);
-      return { success: false, error: 'Network error. Please try again.' };
+      console.error('[AuthContext] Login error:', error);
+      console.error('[AuthContext] Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        url: `${API_BASE_URL}/auth/login`
+      });
+      return { success: false, error: 'Network error. Please check your connection and try again.' };
     } finally {
       setIsLoading(false);
     }
@@ -132,7 +165,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (username: string, password: string, subscriptionTier: string = 'free'): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
+      const registerUrl = `${API_BASE_URL}/api/auth/register`;
+      console.log('[AuthContext] Registering at:', registerUrl);
+
+      const response = await fetch(registerUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -146,25 +182,38 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setToken(data.token);
         setUser(data.user);
         await secureStorage.setAuthToken(data.token);
-        
+
+        // Login to RevenueCat with user ID
+        try {
+          await revenueCat.loginUser(data.user.id);
+          // Sync RevenueCat subscription with backend
+          await revenueCat.syncSubscriptionWithBackend(data.token);
+        } catch (error) {
+          console.error('[AuthContext] RevenueCat login/sync failed:', error);
+        }
+
         // Track signup event
         analytics.trackSignup('password', {
           username: data.user.username,
           user_id: data.user.id
         });
-        
+
         // Identify user in analytics
         analytics.identify(data.user.id, {
           username: data.user.username
         });
-        
+
         return { success: true };
       } else {
         return { success: false, error: data.message || 'Registration failed' };
       }
     } catch (error) {
-      console.error('Registration error:', error);
-      return { success: false, error: 'Network error. Please try again.' };
+      console.error('[AuthContext] Registration error:', error);
+      console.error('[AuthContext] Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        url: `${API_BASE_URL}/auth/register`
+      });
+      return { success: false, error: 'Network error. Please check your connection and try again.' };
     } finally {
       setIsLoading(false);
     }
@@ -177,6 +226,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         username: user.username,
         user_id: user.id
       });
+    }
+
+    // Logout from RevenueCat
+    try {
+      await revenueCat.logoutUser();
+    } catch (error) {
+      console.error('[AuthContext] RevenueCat logout failed:', error);
     }
     
     setToken(null);

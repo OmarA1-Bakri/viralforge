@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -60,21 +61,11 @@ export default function MultiplierProcessor() {
       fileSize: number;
       contentType: string;
     }) => {
-      const response = await fetch('/api/upload/video', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fileName,
-          fileSize,
-          contentType
-        })
+      const response = await apiRequest('POST', '/api/upload/video', {
+        fileName,
+        fileSize,
+        contentType
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to upload video');
-      }
 
       return response.json();
     },
@@ -157,22 +148,12 @@ export default function MultiplierProcessor() {
   // Mutation for video processing
   const processVideoMutation = useMutation({
     mutationFn: async ({ videoUrl, platform }: { videoUrl: string; platform: string }) => {
-      const response = await fetch('/api/videos/process', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          videoUrl,
-          title: `Video from ${videoUrl}`,
-          platform,
-          videoDuration: 300 // Default 5 minutes
-        })
+      const response = await apiRequest('POST', '/api/videos/process', {
+        videoUrl,
+        title: `Video from ${videoUrl}`,
+        platform,
+        videoDuration: 300 // Default 5 minutes
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to process video');
-      }
 
       return response.json();
     },
@@ -357,9 +338,9 @@ export default function MultiplierProcessor() {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="bg-background pb-24">
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
+      <div style={{ paddingTop: '56px' }} className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border px-4 pb-3">
         <div className="flex items-center gap-3">
           <img 
             src={viralForgeAILogo} 

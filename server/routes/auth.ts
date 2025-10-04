@@ -64,18 +64,20 @@ router.post('/register', registerLimiter, async (req, res: Response) => {
     });
 
   } catch (error) {
-    console.error('Registration error:', error);
-    
+    console.error('❌ Registration error:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+
     if (error instanceof Error) {
+      console.error('Error message:', error.message);
       if (error.message.includes('already exists')) {
-        return res.status(409).json({ 
-          error: 'An account with this username already exists' 
+        return res.status(409).json({
+          error: 'An account with this username already exists'
         });
       }
     }
 
-    res.status(500).json({ 
-      error: 'Registration failed. Please try again.' 
+    res.status(500).json({
+      error: 'Registration failed. Please try again.'
     });
   }
 });

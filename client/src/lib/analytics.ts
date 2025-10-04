@@ -19,6 +19,9 @@ export const analytics = {
     try {
       posthog.init(POSTHOG_API_KEY, {
         api_host: POSTHOG_HOST,
+        defaults: '2025-05-24',
+        capture_exceptions: true,
+        debug: import.meta.env.MODE === 'development',
         person_profiles: 'identified_only', // Only create profiles for identified users
         capture_pageview: true,
         capture_pageleave: true,
