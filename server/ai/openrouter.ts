@@ -121,6 +121,11 @@ export interface ContentAnalysisResult {
     hypothesis: string;
     expectedOutcome: string;
   }[];
+  competitorComparison?: {
+    strengths: string[];
+    gaps: string[];
+    opportunities: string[];
+  };
 }
 
 export interface VideoClipSuggestion {

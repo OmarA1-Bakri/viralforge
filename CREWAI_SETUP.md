@@ -11,8 +11,11 @@ Already done! CrewAI dependencies are installed.
 Add these to your `.env` file:
 
 ```bash
-# Required: Enable CrewAI agents
-CREWAI_SCRIPT_PATH=server/agents/viral_crew.py
+# Required: Enable CrewAI agents via HTTP bridge
+CREW_AGENT_URL=http://localhost:8002
+
+# Optional legacy fallback if you prefer spawning the script directly
+# CREWAI_SCRIPT_PATH=server/agents/viral_crew.py
 
 # Required: OpenRouter API key (agents use Grok via OpenRouter)
 OPENROUTER_API_KEY=your-openrouter-key-here
@@ -21,13 +24,19 @@ OPENROUTER_API_KEY=your-openrouter-key-here
 # DATABASE_URL=your-postgres-url
 ```
 
-### 3. Restart Your Server
+### 3. Start the Agent Service
+
+```bash
+uvicorn server.agents.api:app --reload --port 8002
+```
+
+### 4. Restart Your Server
 
 ```bash
 npm run dev
 ```
 
-You should see: `🤖 Python CrewAI agents detected - enabling enhanced AI workflows`
+You should see: `🤖 Agent service detected - enabling enhanced AI workflows`
 
 ## Verification
 
@@ -43,9 +52,10 @@ Expected response:
   "success": true,
   "data": {
     "system_status": "operational",
-    "python_agents_available": true,
-    "environment_variables": {
-      "crewai_configured": true,
+      "python_agents_available": true,
+      "environment_variables": {
+      "crewai_http_configured": true,
+      "crewai_script_configured": false,
       "openrouter_configured": true,
       "database_configured": true
     }
@@ -111,9 +121,9 @@ GET /api/agents/activity
 ### "Python agents not available"
 
 **Check:**
-1. `CREWAI_SCRIPT_PATH` is set in `.env`
-2. Path points to: `server/agents/viral_crew.py`
-3. File exists at that location
+1. `CREW_AGENT_URL` is set in `.env`
+2. FastAPI service is running (`curl http://localhost:8002/health`)
+3. Optional: legacy CLI path configured via `CREWAI_SCRIPT_PATH`
 
 ### "OPENROUTER_API_KEY not found"
 
@@ -174,9 +184,9 @@ print(result)
 ## Next Steps
 
 1. ✅ Dependencies installed
-2. ⏳ Add `CREWAI_SCRIPT_PATH=server/agents/viral_crew.py` to `.env`
-3. ⏳ Add `OPENROUTER_API_KEY` to `.env` (same key as base app)
-4. ⏳ Restart server
+2. ⏳ Launch FastAPI service: `uvicorn server.agents.api:app --reload --port 8002`
+3. ⏳ Add `CREW_AGENT_URL` and `OPENROUTER_API_KEY` to `.env`
+4. ⏳ Restart Node server (`npm run dev`)
 5. ⏳ Verify with `/api/agents/status`
 6. ⏳ Monitor automated workflows
 7. ⏳ Add optional search tools as needed
@@ -189,4 +199,4 @@ print(result)
 
 ---
 
-**Ready to enable?** Just add `CREWAI_SCRIPT_PATH` and `OPENROUTER_API_KEY` to your `.env` file!
+**Ready to enable?** Launch the agent API and add `CREW_AGENT_URL` + `OPENROUTER_API_KEY` to your `.env`!

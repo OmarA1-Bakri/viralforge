@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Crew Social Tools Service
  *

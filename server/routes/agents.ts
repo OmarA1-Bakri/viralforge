@@ -21,9 +21,10 @@ router.get('/status', async (req: Request, res: Response) => {
     const status = {
       system_status: 'operational',
       timestamp: new Date().toISOString(),
-      python_agents_available: process.env.CREWAI_SCRIPT_PATH ? true : false,
+      python_agents_available: !!process.env.CREW_AGENT_URL,
       environment_variables: {
-        crewai_configured: !!process.env.CREWAI_SCRIPT_PATH,
+        crewai_http_configured: !!process.env.CREW_AGENT_URL,
+        crewai_script_configured: !!process.env.CREWAI_SCRIPT_PATH,
         openrouter_configured: !!process.env.OPENROUTER_API_KEY,
         database_configured: !!process.env.DATABASE_URL
       }
@@ -48,13 +49,18 @@ router.get('/status', async (req: Request, res: Response) => {
  */
 router.get('/config', async (req: Request, res: Response) => {
   try {
+    const agentUrl = process.env.CREW_AGENT_URL;
+    const pythonScriptPath = process.env.CREWAI_SCRIPT_PATH;
+
     const config = {
       python_agents: {
-        enabled: !!process.env.CREWAI_SCRIPT_PATH,
-        script_path: process.env.CREWAI_SCRIPT_PATH || 'Not configured',
+        enabled: !!agentUrl || !!pythonScriptPath,
+        service_url: agentUrl || 'Not configured',
+        script_path: pythonScriptPath || 'Legacy CLI not configured',
         requirements: [
           'crewai>=0.201.0',
           'crewai-tools>=0.12.0',
+          'fastapi>=0.115.0',
           'python-dotenv>=1.0.0'
         ]
       },

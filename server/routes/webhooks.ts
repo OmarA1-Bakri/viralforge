@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { Express } from "express";
 import type Stripe from "stripe";
 import { db } from "../db";

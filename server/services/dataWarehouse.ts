@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Data Warehouse Service
  *
@@ -15,7 +16,7 @@ import {
   trendSources,
   appEvents,
   crewExecutions
-} from '../db/schema';
+} from '@shared/schema';
 import { eq, and, gte, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 

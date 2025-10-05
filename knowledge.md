@@ -34,7 +34,8 @@ Python agents in `server/agents/` are integrated with TypeScript via `server/aut
 - `JWT_SECRET` - Secret for JWT token signing (change in production!)
 
 **Optional (AI Features):**
-- `CREWAI_SCRIPT_PATH` - Path to Python CrewAI script (enables AI agents)
+- `CREW_AGENT_URL` - Base URL for the CrewAI FastAPI service
+- `CREWAI_SCRIPT_PATH` - Legacy CLI fallback if you spawn the script directly
 - `OPENROUTER_API_KEY` - OpenRouter API key for AI completions
 - `POSTHOG_API_KEY` - PostHog analytics key
 - `SERPER_API_KEY`, `TAVILY_API_KEY`, `FIRECRAWL_API_KEY` - For CrewAI tools
@@ -87,7 +88,7 @@ ViralForge AI implements **5 key cost-saving measures**:
 ### AI Integration
 - OpenRouter API used for AI completions (not OpenAI directly)
 - Caching system in `.cache/ai/` for performance
-- Python CrewAI agents communicate with TypeScript via child processes
+- Python CrewAI agents run as a FastAPI service (`uvicorn server.agents.api:app`) consumed by the TypeScript automation bridge
 
 ### Database
 - Use Drizzle migrations in `migrations/`
@@ -109,11 +110,11 @@ The agentic-branch includes a full CrewAI multi-agent system:
 - **Knowledge Base**: Domain expertise in viral_patterns.md, platform_guidelines.md, content_strategies.md
 
 ### Enabling AI Agents
-1. ✅ Install Python dependencies: `pip3 install -r requirements.txt` (DONE)
-2. Set environment variable: `CREWAI_SCRIPT_PATH=server/agents/viral_crew.py` in `.env`
-3. Set `OPENROUTER_API_KEY` in `.env` (agents use Grok-4-fast via OpenRouter)
+1. ✅ Install Python dependencies: `pip3 install -r requirements.txt`
+2. Start the agent API: `uvicorn server.agents.api:app --reload --port 8002`
+3. Set `CREW_AGENT_URL=http://localhost:8002` and `OPENROUTER_API_KEY` in `.env`
 4. Optional: Add search tool API keys (SERPER_API_KEY, TAVILY_API_KEY, FIRECRAWL_API_KEY)
-5. Restart server - AI workflows will auto-schedule
+5. Restart the Node server - AI workflows auto-schedule when the agent service is reachable
 
 See `CREWAI_SETUP.md` for detailed setup instructions.
 

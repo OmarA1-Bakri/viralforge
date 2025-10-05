@@ -17,6 +17,7 @@ import { initSentry, Sentry } from './lib/sentry';
 import { logger, logRequest } from './lib/logger';
 import healthRoutes from './routes/health';
 import { db } from './db';
+import { registerWebhookRoutes, registerRevenueCatWebhook } from './routes/webhooks';
 
 const app = express();
 
@@ -35,7 +36,6 @@ app.use(requestIdMiddleware);
 app.use(compression());
 
 // Register webhook routes BEFORE body parsers (needs raw body)
-import { registerWebhookRoutes, registerRevenueCatWebhook } from './routes/webhooks';
 registerWebhookRoutes(app);
 registerRevenueCatWebhook(app);
 
@@ -83,7 +83,7 @@ app.use((req, res, next) => {
 
   // Register Sentry error handler BEFORE custom error handler (only if Sentry is configured)
   if (process.env.SENTRY_DSN) {
-    app.use(Sentry.setupExpressErrorHandler(app));
+    Sentry.setupExpressErrorHandler(app);
   }
 
   // Custom error handler (runs after Sentry captures the error)

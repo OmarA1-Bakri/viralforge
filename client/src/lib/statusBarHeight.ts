@@ -10,6 +10,10 @@
 import { StatusBar } from '@capacitor/status-bar';
 import { Capacitor } from '@capacitor/core';
 
+type StatusBarInfoWithHeight = Awaited<ReturnType<typeof StatusBar.getInfo>> & {
+  height?: number;
+};
+
 let cachedStatusBarHeight: number | null = null;
 
 /**
@@ -32,7 +36,7 @@ export async function getStatusBarHeight(): Promise<number> {
   if (Capacitor.getPlatform() === 'android') {
     try {
       // Method 1: Use StatusBar plugin's getInfo API
-      const info = await StatusBar.getInfo();
+      const info = await StatusBar.getInfo() as StatusBarInfoWithHeight;
       if (info && typeof info.height === 'number' && info.height > 0) {
         cachedStatusBarHeight = info.height;
         return info.height;

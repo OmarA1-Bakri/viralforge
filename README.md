@@ -88,14 +88,22 @@ OPENROUTER_API_KEY=your_openrouter_key
 
 ### Optional AI Agent Setup
 
-To enable the CrewAI multi-agent system:
+To enable the CrewAI multi-agent system, point the automation bridge at the agent service (FastAPI) and provide any auxiliary API keys:
 
 ```env
-CREWAI_SCRIPT_PATH=server/agents/viral_crew.py
+CREW_AGENT_URL=http://localhost:8002
+# Optional legacy fallback if you prefer spawning the script directly
+# CREWAI_SCRIPT_PATH=server/agents/viral_crew.py
 OPENAI_API_KEY=your_openai_key
 SERPER_API_KEY=your_serper_key  # For Google search
 TAVILY_API_KEY=your_tavily_key  # For advanced search
 FIRECRAWL_API_KEY=your_firecrawl_key  # For web crawling
+```
+
+Run the agent service locally with:
+
+```bash
+uvicorn server.agents.api:app --reload --port 8002
 ```
 
 ### Platform Integration (Optional - Real Data)

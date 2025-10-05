@@ -16,11 +16,8 @@ const pool = new Pool({
 });
 
 // Connection pool event handlers for monitoring
-pool.on('error', (err, client) => {
-  logger.error('Unexpected database pool error', {
-    error: err.message,
-    stack: err.stack,
-  });
+pool.on('error', (err) => {
+  logger.error({ err }, 'Unexpected database pool error');
   // In production, this should trigger alerts/monitoring
 });
 
@@ -55,7 +52,7 @@ const gracefulShutdown = async (signal: string) => {
     logger.info('Database pool drained successfully');
     process.exit(0);
   } catch (error) {
-    logger.error('Error draining database pool', { error });
+    logger.error({ error }, 'Error draining database pool');
     process.exit(1);
   }
 };
@@ -66,11 +63,11 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Log successful initialization
 if (env.NODE_ENV !== 'production') {
-  logger.info('Database pool initialized successfully', {
+  logger.info({
     max: env.DB_POOL_MAX,
     idleTimeout: env.DB_POOL_IDLE_TIMEOUT,
     connectionTimeout: env.DB_POOL_CONNECTION_TIMEOUT,
-  });
+  }, 'Database pool initialized successfully');
 }
 
 export { pool, db };

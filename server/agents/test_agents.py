@@ -29,9 +29,10 @@ try:
     
     print("🎉 All tests passed! CrewAI agents are ready.\n")
     print("Next steps:")
-    print("1. Set CREWAI_SCRIPT_PATH=server/agents/viral_crew.py in .env")
+    print("1. Set CREW_AGENT_URL=http://localhost:8002 in .env")
     print("2. Set OPENROUTER_API_KEY in .env (agents use Grok via OpenRouter)")
-    print("3. Restart server: npm run dev\n")
+    print("3. Start agents: uvicorn server.agents.api:app --port 8002")
+    print("4. Restart server: npm run dev\n")
     print("Note: Agents will initialize on first use to avoid startup delays.")
     
 except ImportError as e:

@@ -418,7 +418,7 @@ class ViralForgeAgentSystem:
                 "timestamp": datetime.now().isoformat()
             }
     
-    async def run_full_pipeline(self, user_id: int, campaign_config: Dict[str, Any]) -> Dict[str, Any]:
+    async def run_full_pipeline(self, user_id: str, campaign_config: Dict[str, Any]) -> Dict[str, Any]:
         """
         Execute the complete viral content pipeline from discovery to publication.
         
@@ -512,7 +512,7 @@ class ViralForgeAgentSystem:
                 "timestamp": datetime.now().isoformat()
             }
     
-    async def _store_pipeline_results(self, user_id: int, result: Any, config: Dict[str, Any]) -> None:
+    async def _store_pipeline_results(self, user_id: str, result: Any, config: Dict[str, Any]) -> None:
         """Store pipeline execution results in the database."""
         # Results will be stored by the TypeScript layer that calls this
         # Just log the completion here

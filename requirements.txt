@@ -1,6 +1,9 @@
 # CrewAI Multi-Agent System Dependencies
 crewai>=0.201.0
 crewai-tools>=0.12.0
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+httpx>=0.27.2
 
 # Core Dependencies
 python-dotenv>=1.0.0

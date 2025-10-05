@@ -53,7 +53,10 @@ export function checkSubscriptionLimit(feature: string) {
         videoClips: 0
       };
 
-      const currentUsage = parseInt(usage.rows[0]?.total || '0');
+      const totalValue = usage.rows[0]?.total as number | string | null | undefined;
+      const currentUsage = typeof totalValue === 'number'
+        ? totalValue
+        : parseInt((totalValue ?? '0').toString(), 10);
       const limit = limits[feature as keyof typeof limits];
 
       // -1 means unlimited
