@@ -490,12 +490,12 @@ export function registerSubscriptionRoutes(app: Express) {
  */
 export function registerRevenueCatSyncRoute(app: Express) {
   app.post("/api/subscriptions/sync-revenuecat", async (req, res) => {
-    if (!req.isAuthenticated()) {
+    if (!req.isAuthenticated() || !req.user?.id) {
       return res.status(401).json({ success: false, error: "Not authenticated" });
     }
 
     try {
-      const userId = req.user?.id;
+      const userId = req.user.id; // Safe non-null assertion after check above
 
       console.log(`🔄 Syncing RevenueCat subscription for user ${userId}`);
 
@@ -531,8 +531,26 @@ export function registerRevenueCatSyncRoute(app: Express) {
 
       const data = await response.json();
 
+      // ✅ SECURITY: Validate RevenueCat API response structure
+      if (!data || typeof data !== 'object' || !data.subscriber) {
+        console.error('❌ Invalid RevenueCat API response structure:', data);
+        return res.status(500).json({
+          success: false,
+          error: 'Invalid RevenueCat response'
+        });
+      }
+
+      // ✅ SECURITY: Require original_app_user_id to exist (prevent null bypass)
+      if (!data.subscriber.original_app_user_id) {
+        console.error('❌ Missing original_app_user_id from RevenueCat');
+        return res.status(500).json({
+          success: false,
+          error: 'Invalid RevenueCat response - missing user ID'
+        });
+      }
+
       // ✅ SECURITY: Verify the RevenueCat app_user_id matches authenticated session
-      if (data.subscriber?.original_app_user_id && data.subscriber.original_app_user_id !== userId) {
+      if (data.subscriber.original_app_user_id !== userId) {
         console.error(`❌ User ID mismatch: session=${userId}, revenuecat=${data.subscriber.original_app_user_id}`);
         return res.status(403).json({
           success: false,
