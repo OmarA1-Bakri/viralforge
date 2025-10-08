@@ -15,6 +15,7 @@ import {
   CreditCard
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { getErrorMessage } from "@/lib/errors";
 
 interface SubscriptionTier {
   id: string;
@@ -98,7 +99,7 @@ export default function SubscriptionSettings() {
     onError: (error: any) => {
       toast({
         title: "Checkout Failed",
-        description: error.message || "Failed to create checkout session. Please try again.",
+        description: getErrorMessage(error),
         variant: "destructive"
       });
     }
@@ -119,7 +120,7 @@ export default function SubscriptionSettings() {
     onError: (error: any) => {
       toast({
         title: "Portal Failed",
-        description: error.message || "Failed to open billing portal. Please try again.",
+        description: getErrorMessage(error),
         variant: "destructive"
       });
     }
@@ -141,7 +142,7 @@ export default function SubscriptionSettings() {
     onError: (error: any) => {
       toast({
         title: "Cancellation Failed",
-        description: error.message || "Failed to cancel subscription.",
+        description: getErrorMessage(error),
         variant: "destructive"
       });
     }
@@ -286,7 +287,7 @@ export default function SubscriptionSettings() {
       </div>
 
       {/* Subscription Tiers */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {tiers.map((tier) => {
           const price = selectedCycle === 'monthly' ? tier.price_monthly : tier.price_yearly;
           const monthlyPrice = selectedCycle === 'monthly' ? price : price / 12;

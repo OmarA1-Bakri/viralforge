@@ -3,16 +3,26 @@ import { Capacitor } from '@capacitor/core';
 
 // Product IDs matching our tiers
 export const PRODUCT_IDS = {
-  pro_monthly: 'viralforge_pro_monthly',
-  pro_yearly: 'viralforge_pro_yearly',
+  // Starter tier (free) - no products needed
+  
+  // Creator tier
   creator_monthly: 'viralforge_creator_monthly',
   creator_yearly: 'viralforge_creator_yearly',
+  
+  // Pro tier
+  pro_monthly: 'viralforge_pro_monthly',
+  pro_yearly: 'viralforge_pro_yearly',
+  
+  // Studio tier
+  studio_monthly: 'viralforge_studio_monthly',
+  studio_yearly: 'viralforge_studio_yearly',
 } as const;
 
 // Entitlement identifiers
 export const ENTITLEMENTS = {
-  pro: 'pro',
   creator: 'creator',
+  pro: 'pro',
+  studio: 'studio',
 } as const;
 
 class RevenueCatService {
@@ -160,12 +170,12 @@ class RevenueCatService {
       const customerInfo = await this.getCustomerInfo();
       const entitlements = customerInfo.customerInfo.entitlements.active;
 
-      // Check which entitlement is active
-      if (entitlements[ENTITLEMENTS.creator]) {
+      // Check which entitlement is active (in priority order: studio > pro > creator)
+      if (entitlements[ENTITLEMENTS.studio]) {
         return {
-          tier: 'creator',
-          entitlement: entitlements[ENTITLEMENTS.creator],
-          expiresAt: entitlements[ENTITLEMENTS.creator].expirationDate,
+          tier: 'studio',
+          entitlement: entitlements[ENTITLEMENTS.studio],
+          expiresAt: entitlements[ENTITLEMENTS.studio].expirationDate,
         };
       }
 
@@ -177,15 +187,23 @@ class RevenueCatService {
         };
       }
 
+      if (entitlements[ENTITLEMENTS.creator]) {
+        return {
+          tier: 'creator',
+          entitlement: entitlements[ENTITLEMENTS.creator],
+          expiresAt: entitlements[ENTITLEMENTS.creator].expirationDate,
+        };
+      }
+
       return {
-        tier: 'free',
+        tier: 'starter',  // Free tier renamed to 'starter'
         entitlement: null,
         expiresAt: null,
       };
     } catch (error) {
       console.error('[RevenueCat] Error checking subscription:', error);
       return {
-        tier: 'free',
+        tier: 'starter',
         entitlement: null,
         expiresAt: null,
       };
@@ -197,17 +215,24 @@ class RevenueCatService {
       const customerInfo = await this.getCustomerInfo();
       const entitlements = customerInfo.customerInfo.entitlements.active;
 
-      // Get active product identifier
+      // Get active product identifier and tier
       let productIdentifier = null;
       let expiresDate = null;
+      let tier = 'starter';
 
-      // Check which entitlement is active and get product info
-      if (entitlements[ENTITLEMENTS.creator]) {
-        productIdentifier = entitlements[ENTITLEMENTS.creator].productIdentifier;
-        expiresDate = entitlements[ENTITLEMENTS.creator].expirationDate;
+      // Check entitlements in priority order
+      if (entitlements[ENTITLEMENTS.studio]) {
+        productIdentifier = entitlements[ENTITLEMENTS.studio].productIdentifier;
+        expiresDate = entitlements[ENTITLEMENTS.studio].expirationDate;
+        tier = 'studio';
       } else if (entitlements[ENTITLEMENTS.pro]) {
         productIdentifier = entitlements[ENTITLEMENTS.pro].productIdentifier;
         expiresDate = entitlements[ENTITLEMENTS.pro].expirationDate;
+        tier = 'pro';
+      } else if (entitlements[ENTITLEMENTS.creator]) {
+        productIdentifier = entitlements[ENTITLEMENTS.creator].productIdentifier;
+        expiresDate = entitlements[ENTITLEMENTS.creator].expirationDate;
+        tier = 'creator';
       }
 
       // Send to backend for verification and storage
@@ -217,6 +242,7 @@ class RevenueCatService {
         entitlements,
         productIdentifier,
         expiresDate,
+        tier,
       });
 
       const result = await response.json();

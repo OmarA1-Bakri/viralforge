@@ -7,6 +7,7 @@ export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  role: text("role").default("user").notNull(), // "user", "premium", "pro", "admin"
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -24,6 +25,10 @@ export const trends = pgTable("trends", {
   suggestion: text("suggestion").notNull(), // AI suggestion for using this trend
   timeAgo: text("time_ago").notNull(),
   thumbnailUrl: text("thumbnail_url"),
+  // Optional personalization fields for filtering
+  targetNiche: text("target_niche"), // Which niche this trend is optimized for
+  targetAudience: text("target_audience"), // gen-z, millennials, etc.
+  contentStyle: text("content_style"), // entertainment, educational, etc.
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -37,6 +42,33 @@ export const userTrends = pgTable("user_trends", {
 }, (table) => ({
   userTrendActionUnique: unique().on(table.userId, table.trendId, table.action),
 }));
+
+// Viral pattern analyses - cached AI breakdowns of trending videos
+export const viralAnalyses = pgTable("viral_analyses", {
+  id: serial("id").primaryKey(),
+  trendId: integer("trend_id").references(() => trends.id, { onDelete: "cascade" }).notNull(),
+  thumbnailAnalysis: text("thumbnail_analysis"), // What Grok Vision sees in thumbnail
+  whyItWorks: text("why_it_works").notNull(), // AI explanation of viral elements
+  keyTakeaways: text("key_takeaways").array().notNull(), // 3-5 bullet points
+  patternType: text("pattern_type"), // "pov_format", "tutorial", "trending_audio", etc.
+  audioStrategy: text("audio_strategy"), // How audio contributes to virality
+  hashtagStrategy: text("hashtag_strategy"), // Hashtag usage analysis
+  engagementRate: real("engagement_rate"), // likes/views ratio
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  expiresAt: timestamp("expires_at"), // Cache expiration (7 days)
+});
+
+// Personalized advice when users click "Use This"
+export const trendApplications = pgTable("trend_applications", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  trendId: integer("trend_id").references(() => trends.id, { onDelete: "cascade" }).notNull(),
+  analysisId: integer("analysis_id").references(() => viralAnalyses.id),
+  userContentConcept: text("user_content_concept"), // User's text description of their content
+  personalizedAdvice: text("personalized_advice").notNull(), // AI-generated advice
+  wasHelpful: boolean("was_helpful"), // User feedback
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 // User's content they want to analyze/optimize
 export const userContent = pgTable("user_content", {
@@ -127,6 +159,45 @@ export const userActivity = pgTable("user_activity", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// User automation settings (BullMQ-based)
+export const userAutomationSettings = pgTable("user_automation_settings", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  // Trend Discovery
+  trendDiscoveryEnabled: boolean("trend_discovery_enabled").default(false).notNull(),
+  trendDiscoveryInterval: text("trend_discovery_interval").default("daily").notNull(), // "4hours", "daily", "weekly"
+  lastTrendDiscoveryRun: timestamp("last_trend_discovery_run"),
+  // Content Scoring
+  contentScoringEnabled: boolean("content_scoring_enabled").default(false).notNull(),
+  contentScoringInterval: text("content_scoring_interval").default("daily").notNull(), // "hourly", "4hours", "daily"
+  lastContentScoringRun: timestamp("last_content_scoring_run"),
+  // Video Processing
+  videoProcessingEnabled: boolean("video_processing_enabled").default(false).notNull(),
+  videoProcessingInterval: text("video_processing_interval").default("daily").notNull(), // "daily", "weekly"
+  lastVideoProcessingRun: timestamp("last_video_processing_run"),
+  // Usage tracking
+  monthlyCostUsd: real("monthly_cost_usd").default(0).notNull(),
+  monthlyJobCount: integer("monthly_job_count").default(0).notNull(),
+  monthResetAt: timestamp("month_reset_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Automation job execution history
+export const automationJobs = pgTable("automation_jobs", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  jobType: text("job_type").notNull(), // "trend_discovery", "content_scoring", "video_processing"
+  status: text("status").notNull().default("pending"), // "pending", "running", "completed", "failed"
+  startedAt: timestamp("started_at"),
+  completedAt: timestamp("completed_at"),
+  error: text("error"),
+  costUsd: real("cost_usd").default(0).notNull(),
+  recordsCreated: integer("records_created").default(0).notNull(),
+  metadata: json("metadata"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Insert schemas for forms
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
@@ -174,6 +245,172 @@ export const insertUserActivitySchema = createInsertSchema(userActivity).omit({
   createdAt: true,
 });
 
+export const insertUserAutomationSettingsSchema = createInsertSchema(userAutomationSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAutomationJobSchema = createInsertSchema(automationJobs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertViralAnalysisSchema = createInsertSchema(viralAnalyses).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertTrendApplicationSchema = createInsertSchema(trendApplications).omit({
+  id: true,
+  createdAt: true,
+});
+
+// ============================================================================
+// CREATOR PROFILE ANALYSIS TABLES (Added 2025-10-05)
+// ============================================================================
+
+// Creator profiles with social media handles and viral score
+export const creatorProfiles = pgTable("creator_profiles", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+
+  // Social media handles
+  tiktokUsername: text("tiktok_username"),
+  instagramUsername: text("instagram_username"),
+  youtubeChannelId: text("youtube_channel_id"),
+
+  // Analysis status
+  analysisStatus: text("analysis_status").default("pending").notNull(), // pending, analyzing, completed, failed
+  lastAnalyzedAt: timestamp("last_analyzed_at"),
+
+  // Viral Score (0-100)
+  viralScore: integer("viral_score"),
+  
+  // Previous score for comparison (simple before/after tracking)
+  previousViralScore: integer("previous_viral_score"),
+  previousAnalyzedAt: timestamp("previous_analyzed_at"),
+
+  // Aggregated insights
+  contentStrengths: text("content_strengths").array(),
+  contentWeaknesses: text("content_weaknesses").array(),
+  recommendedImprovements: text("recommended_improvements").array(),
+
+  // Platform-specific scores
+  tiktokScore: integer("tiktok_score"),
+  instagramScore: integer("instagram_score"),
+  youtubeScore: integer("youtube_score"),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Individual posts analyzed from creator's profile
+export const analyzedPosts = pgTable("analyzed_posts", {
+  id: serial("id").primaryKey(),
+  profileId: integer("profile_id").references(() => creatorProfiles.id, { onDelete: "cascade" }).notNull(),
+
+  // Post metadata
+  platform: text("platform").notNull(), // 'tiktok', 'instagram', 'youtube'
+  postUrl: text("post_url").notNull(),
+  postId: text("post_id").notNull(),
+
+  // Scraped data
+  title: text("title"),
+  description: text("description"),
+  thumbnailUrl: text("thumbnail_url"),
+  viewCount: integer("view_count"),
+  likeCount: integer("like_count"),
+  commentCount: integer("comment_count"),
+  shareCount: integer("share_count"),
+  postedAt: timestamp("posted_at"),
+
+  // AI analysis
+  viralElements: text("viral_elements").array(), // ["trending_audio", "strong_hook", "clear_cta"]
+  contentStructure: json("content_structure").$type<{
+    hook?: string;
+    body?: string;
+    cta?: string;
+  }>(), // {hook: "0-3s", body: "3-25s", cta: "25-30s"}
+  engagementRate: real("engagement_rate"),
+  emotionalTriggers: text("emotional_triggers").array(), // ["curiosity", "humor", "fomo"]
+  postScore: integer("post_score"), // 0-100 score for this specific post
+
+  // AI feedback
+  whatWorked: text("what_worked"),
+  whatDidntWork: text("what_didnt_work"),
+  improvementTips: text("improvement_tips").array(),
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Comprehensive analysis reports
+export const profileAnalysisReports = pgTable("profile_analysis_reports", {
+  id: serial("id").primaryKey(),
+  profileId: integer("profile_id").references(() => creatorProfiles.id, { onDelete: "cascade" }).notNull(),
+
+  // Overall analysis
+  viralScore: integer("viral_score").notNull(),
+  postsAnalyzed: integer("posts_analyzed").notNull(),
+
+  // Platform breakdown
+  platformScores: json("platform_scores").$type<{
+    tiktok?: number;
+    instagram?: number;
+    youtube?: number;
+  }>(), // {tiktok: 75, instagram: 68, youtube: 82}
+
+  // Detailed feedback
+  overallStrengths: text("overall_strengths").array(),
+  overallWeaknesses: text("overall_weaknesses").array(),
+  contentStyleSummary: text("content_style_summary"),
+  targetAudienceInsight: text("target_audience_insight"),
+
+  // Actionable recommendations
+  quickWins: text("quick_wins").array(), // 3-5 easy improvements
+  strategicRecommendations: text("strategic_recommendations").array(), // Long-term growth tactics
+
+  // Pattern recognition
+  mostViralPattern: text("most_viral_pattern"), // "POV format with trending audio"
+  leastEffectivePattern: text("least_effective_pattern"),
+
+  // Benchmarking
+  comparedToNiche: text("compared_to_niche"), // "Above average in fitness niche"
+  growthPotential: text("growth_potential"), // "high", "medium", "low"
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// GDPR compliance - Data Subject Access Requests
+export const dataSubjectRequests = pgTable("data_subject_requests", {
+  id: serial("id").primaryKey(),
+  email: varchar("email").notNull(),
+  requestType: varchar("request_type").notNull(), // 'access', 'rectification', 'erasure', 'portability', 'objection', 'complaint'
+  details: text("details"),
+  status: varchar("status").default("pending").notNull(), // 'pending', 'in_progress', 'completed', 'rejected'
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: varchar("resolved_by"), // Admin user ID
+  notes: text("notes"), // Internal notes for admins
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Insert schemas for Creator Profile Analysis
+export const insertCreatorProfileSchema = createInsertSchema(creatorProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAnalyzedPostSchema = createInsertSchema(analyzedPosts).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertProfileAnalysisReportSchema = createInsertSchema(profileAnalysisReports).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types for TypeScript
 export type User = typeof users.$inferSelect;
 export type Trend = typeof trends.$inferSelect;
@@ -184,9 +421,54 @@ export type VideoClip = typeof videoClips.$inferSelect;
 export type UserAnalytics = typeof userAnalytics.$inferSelect;
 export type ProcessingJob = typeof processingJobs.$inferSelect;
 export type UserActivity = typeof userActivity.$inferSelect;
+export type ViralAnalysis = typeof viralAnalyses.$inferSelect;
+export type TrendApplication = typeof trendApplications.$inferSelect;
+export type UserAutomationSettings = typeof userAutomationSettings.$inferSelect;
+export type AutomationJob = typeof automationJobs.$inferSelect;
+export type CreatorProfile = typeof creatorProfiles.$inferSelect;
+export type AnalyzedPost = typeof analyzedPosts.$inferSelect;
+export type ProfileAnalysisReport = typeof profileAnalysisReports.$inferSelect;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type InsertTrend = z.infer<typeof insertTrendSchema>;
+export type InsertViralAnalysis = z.infer<typeof insertViralAnalysisSchema>;
+export type InsertTrendApplication = z.infer<typeof insertTrendApplicationSchema>;
+export type InsertUserAutomationSettings = z.infer<typeof insertUserAutomationSettingsSchema>;
+export type InsertAutomationJob = z.infer<typeof insertAutomationJobSchema>;
+export type InsertCreatorProfile = z.infer<typeof insertCreatorProfileSchema>;
+export type InsertAnalyzedPost = z.infer<typeof insertAnalyzedPostSchema>;
+export type InsertProfileAnalysisReport = z.infer<typeof insertProfileAnalysisReportSchema>;
+
+// ============================================================================
+// OAUTH TOKENS TABLE (Added 2025-10-06)
+// ============================================================================
+
+// Store OAuth access tokens for social media platforms
+export const socialMediaTokens = pgTable("social_media_tokens", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  firebaseUid: text("firebase_uid"), // Link to Firebase user
+  platform: text("platform").notNull(), // 'youtube' (instagram/tiktok parked for now)
+  accessToken: text("access_token").notNull(), // Will be encrypted
+  refreshToken: text("refresh_token"), // Will be encrypted
+  tokenType: text("token_type").default("Bearer").notNull(),
+  expiresAt: timestamp("expires_at"),
+  scope: text("scope"), // OAuth scopes granted
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  userPlatformUnique: unique().on(table.userId, table.platform),
+}));
+
+export const insertSocialMediaTokenSchema = createInsertSchema(socialMediaTokens).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type SocialMediaToken = typeof socialMediaTokens.$inferSelect;
+export type InsertSocialMediaToken = z.infer<typeof insertSocialMediaTokenSchema>;
+
 // ============================================================================
 // DATA WAREHOUSE TABLES (Added 2025-10-03)
 // ============================================================================
@@ -341,6 +623,12 @@ export const subscriptionTiers = pgTable("subscription_tiers", {
     contentGeneration: number;
     trendBookmarks: number;
     videoClips: number;
+    scheduledAnalysis?: boolean | string;  // false, 'weekly', 'daily'
+    roastMode?: boolean;
+    advancedAnalytics?: boolean;
+    audienceInsights?: boolean;
+    teamSeats?: number;
+    apiAccess?: boolean;
   }>(),
   isActive: boolean("is_active").default(true).notNull(),
   sortOrder: integer("sort_order").default(0).notNull(),
@@ -383,11 +671,61 @@ export const insertSubscriptionTierSchema = createInsertSchema(subscriptionTiers
 export const insertUserSubscriptionSchema = createInsertSchema(userSubscriptions);
 export const insertUserUsageSchema = createInsertSchema(userUsage);
 
+// User preferences for personalization
+export const userPreferences = pgTable("user_preferences", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  niche: text("niche").notNull(),
+  targetAudience: text("target_audience").default("gen-z").notNull(),
+  contentStyle: text("content_style").default("entertainment").notNull(),
+  bestPerformingPlatforms: text("best_performing_platforms").array().default(["tiktok"]).notNull(),
+  preferredCategories: text("preferred_categories").array().default([]).notNull(),
+  bio: text("bio").default("").notNull(),
+  preferredContentLength: text("preferred_content_length").default("short").notNull(),
+  optimizedPostTimes: text("optimized_post_times").array().default(["18:00", "21:00"]).notNull(),
+  goals: text("goals").default("grow_followers").notNull(),
+  avgSuccessfulEngagement: real("avg_successful_engagement").default(0.05).notNull(),
+  successfulHashtags: text("successful_hashtags").array().default([]).notNull(),
+  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Zod schema for user preferences
+export const insertUserPreferencesSchema = createInsertSchema(userPreferences).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Analysis schedules for automated profile analysis
+export const analysisSchedules = pgTable("analysis_schedules", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }).notNull().unique(),
+  frequency: text("frequency").notNull(), // 'manual', 'daily', 'weekly', 'monthly'
+  scheduledDayOfWeek: integer("scheduled_day_of_week"), // 0-6 (Sunday=0) for weekly
+  scheduledDayOfMonth: integer("scheduled_day_of_month"), // 1-31 for monthly
+  scheduledTime: text("scheduled_time").notNull().default("09:00:00"),
+  lastRunAt: timestamp("last_run_at"),
+  nextRunAt: timestamp("next_run_at"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertAnalysisScheduleSchema = createInsertSchema(analysisSchedules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types for subscriptions
 export type SubscriptionTier = typeof subscriptionTiers.$inferSelect;
 export type UserSubscription = typeof userSubscriptions.$inferSelect;
 export type UserUsage = typeof userUsage.$inferSelect;
+export type UserPreferences = typeof userPreferences.$inferSelect;
+export type AnalysisSchedule = typeof analysisSchedules.$inferSelect;
 
 export type InsertSubscriptionTier = z.infer<typeof insertSubscriptionTierSchema>;
 export type InsertUserSubscription = z.infer<typeof insertUserSubscriptionSchema>;
 export type InsertUserUsage = z.infer<typeof insertUserUsageSchema>;
+export type InsertUserPreferences = z.infer<typeof insertUserPreferencesSchema>;
+export type InsertAnalysisSchedule = z.infer<typeof insertAnalysisScheduleSchema>;
