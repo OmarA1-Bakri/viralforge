@@ -54,7 +54,6 @@ export default function LaunchPadAnalyzer() {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [roastMode, setRoastMode] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
-  const [platform] = useState("youtube"); // YouTube-only for mobile
   const [trendSuggestions, setTrendSuggestions] = useState<any>(null);
   const [selectedTrend, setSelectedTrend] = useState<any>(null);
 
@@ -186,16 +185,15 @@ export default function LaunchPadAnalyzer() {
 
   // Mutation for content analysis
   const analyzeContentMutation = useMutation({
-    mutationFn: async ({ title, thumbnailUrl, platform, roastMode }: {
+    mutationFn: async ({ title, thumbnailUrl, roastMode }: {
       title: string;
       thumbnailUrl?: string;
-      platform: string;
       roastMode: boolean;
     }) => {
       const response = await apiRequest('POST', '/api/content/analyze', {
         title: title.trim() || undefined,
         thumbnailUrl: thumbnailUrl || undefined,
-        platform,
+        platform: "youtube",
         roastMode
       });
 
@@ -271,7 +269,6 @@ export default function LaunchPadAnalyzer() {
       await analyzeContentMutation.mutateAsync({
         title: title.trim(),
         thumbnailUrl: thumbnailUrl || undefined,
-        platform,
         roastMode
       });
     } finally {
@@ -400,11 +397,11 @@ export default function LaunchPadAnalyzer() {
             </p>
           </div>
 
-          {/* TikTok Format Guide */}
+          {/* YouTube Shorts Format Guide */}
           <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-4 h-6 bg-primary rounded-sm"></div>
-              <span className="font-medium text-sm">TikTok Vertical Format (9:16)</span>
+              <span className="font-medium text-sm">YouTube Shorts Vertical Format (9:16)</span>
             </div>
             <p className="text-xs text-muted-foreground">
               Optimized for mobile viewing • Keep text in safe zones • Clear subject focus
@@ -439,7 +436,7 @@ export default function LaunchPadAnalyzer() {
                 <div className="border-2 border-dashed border-border rounded-md p-6 text-center">
                   <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
                   <p className="text-sm text-muted-foreground mb-2">
-                    Upload your thumbnail for TikTok AI analysis
+                    Upload your thumbnail for YouTube AI analysis
                   </p>
                   <p className="text-xs text-muted-foreground mb-3">
                     Best: 9:16 aspect ratio • Clear faces • Bright colors • Text overlay

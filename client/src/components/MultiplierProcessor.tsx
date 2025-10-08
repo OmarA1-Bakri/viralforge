@@ -384,11 +384,11 @@ export default function MultiplierProcessor() {
             </Button>
           </div>
           
-          {/* TikTok Optimization Guide */}
+          {/* YouTube Shorts Optimization Guide */}
           <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
             <div className="flex items-center gap-2 mb-2">
               <div className="w-3 h-3 bg-primary rounded-full animate-pulse"></div>
-              <span className="font-medium text-sm">TikTok Optimization (15s clips)</span>
+              <span className="font-medium text-sm">YouTube Shorts Optimization (15s clips)</span>
             </div>
             <p className="text-xs text-muted-foreground">
               AI will extract the most viral moments • Vertical format optimized • Hook-heavy content

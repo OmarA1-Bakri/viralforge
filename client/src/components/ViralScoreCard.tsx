@@ -19,9 +19,7 @@ interface ViralScoreCardProps {
   previousAnalyzedAt?: string;
   confidenceInterval?: { lower: number; upper: number };
   platformScores?: {
-    tiktok?: number;
-    instagram?: number;
-    youtube?: number;
+    youtube?: number;  // YouTube-only for mobile
   };
   lastAnalyzedAt?: string;
   analysisStatus?: 'pending' | 'analyzing' | 'completed' | 'failed';
@@ -140,7 +138,7 @@ export function ViralScoreCard({
           </div>
 
           <p className="text-xs text-muted-foreground">
-            We're analyzing your top posts across platforms. This will take about a minute.
+            We're analyzing your YouTube channel. This will take about a minute.
           </p>
         </div>
       </Card>
