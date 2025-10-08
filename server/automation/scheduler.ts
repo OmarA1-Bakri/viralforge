@@ -12,23 +12,23 @@ export class AutomationScheduler {
   // Start all automated tasks
   start() {
     console.log('🤖 Starting ViralForgeAI automation system...');
-    
-    // Daily trend monitoring at 9 AM
-    cron.schedule('0 9 * * *', this.dailyTrendMonitoring.bind(this));
-    
-    // Hourly content scoring for new uploads
-    cron.schedule('0 * * * *', this.automaticContentScoring.bind(this));
-    
-    // Every 30 minutes: check for new videos to process
-    cron.schedule('*/30 * * * *', this.backgroundVideoProcessing.bind(this));
-    
-    // Daily at 10 AM: generate posting schedules
-    cron.schedule('0 10 * * *', this.generatePostingSchedules.bind(this));
-    
-    // Every 2 hours: check for trending opportunities
-    cron.schedule('0 */2 * * *', this.checkTrendingOpportunities.bind(this));
 
-    console.log('✅ All automation tasks scheduled successfully');
+    // DISABLED: Daily trend monitoring at 9 AM
+    // cron.schedule('0 9 * * *', this.dailyTrendMonitoring.bind(this));
+
+    // DISABLED: Hourly content scoring for new uploads (too frequent - fills database)
+    // cron.schedule('0 * * * *', this.automaticContentScoring.bind(this));
+
+    // DISABLED: Every 30 minutes video processing (too frequent)
+    // cron.schedule('*/30 * * * *', this.backgroundVideoProcessing.bind(this));
+
+    // DISABLED: Daily posting schedules
+    // cron.schedule('0 10 * * *', this.generatePostingSchedules.bind(this));
+
+    // DISABLED: Every 2 hours trending opportunities (too frequent)
+    // cron.schedule('0 */2 * * *', this.checkTrendingOpportunities.bind(this));
+
+    console.log('✅ Background automation disabled to conserve resources');
   }
 
   // 1. Scheduled trend monitoring (daily/weekly trend reports)

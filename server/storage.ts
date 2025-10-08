@@ -1,7 +1,7 @@
-import { 
-  type User, 
-  type InsertUser, 
-  type Trend, 
+import {
+  type User,
+  type InsertUser,
+  type Trend,
   type InsertTrend,
   type UserTrends,
   type InsertUserTrends,
@@ -17,6 +17,14 @@ import {
   type InsertProcessingJob,
   type UserActivity,
   type InsertUserActivity,
+  type UserPreferences,
+  type InsertUserPreferences,
+  type ViralAnalysis,
+  type InsertViralAnalysis,
+  type TrendApplication,
+  type InsertTrendApplication,
+  type AutomationJob,
+  type InsertAutomationJob,
   users,
   trends,
   userTrends,
@@ -25,7 +33,10 @@ import {
   videoClips,
   userAnalytics,
   processingJobs,
-  userActivity
+  userActivity,
+  userPreferences,
+  viralAnalyses,
+  trendApplications
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
@@ -44,6 +55,7 @@ export interface IStorage {
   createTrend(trend: InsertTrend): Promise<Trend>;
   getTrends(platform?: string, limit?: number): Promise<Trend[]>;
   getTrend(id: number): Promise<Trend | undefined>;
+  getTrendsByUserPreferences(userPrefs: UserPreferences, limit?: number): Promise<Trend[]>;
   
   // User-trend interactions
   createUserTrendAction(userTrend: InsertUserTrends): Promise<UserTrends>;
@@ -72,14 +84,32 @@ export interface IStorage {
   createUserActivity(activity: InsertUserActivity): Promise<UserActivity>;
   getUserActivity(userId: string, limit?: number, timeframe?: string): Promise<UserActivity[]>;
   
+  // User preferences
+  saveUserPreferences(userId: string, prefs: InsertUserPreferences): Promise<UserPreferences>;
+  getUserPreferences(userId: string): Promise<UserPreferences | null>;
+
+  // Viral analysis methods
+  createViralAnalysis(analysis: InsertViralAnalysis): Promise<ViralAnalysis>;
+  getViralAnalysis(trendId: number): Promise<ViralAnalysis | undefined>;
+  getViralAnalysisByTrendId(trendId: number): Promise<ViralAnalysis | undefined>;
+
+  // Trend application methods
+  createTrendApplication(application: InsertTrendApplication): Promise<TrendApplication>;
+  getTrendApplicationsByUser(userId: string): Promise<TrendApplication[]>;
+  getTrendApplicationsByTrend(trendId: number): Promise<TrendApplication[]>;
+
   // Analytics methods
   getUserAnalytics(userId: string): Promise<UserAnalytics[]>;
   createUserAnalytics(insertAnalytics: InsertUserAnalytics): Promise<UserAnalytics>;
+  deleteUserAnalytics(userId: string): Promise<void>;
   getContentAnalysisByUserId(userId: string): Promise<ContentAnalysis[]>;
   getVideoClipsByUserId(userId: string): Promise<VideoClip[]>;
   getUserTrendInteractions(userId: string): Promise<UserTrends[]>;
   getClipById(id: number): Promise<VideoClip | undefined>;
   updateVideoClip(id: number, updates: Partial<InsertVideoClip>): Promise<VideoClip | undefined>;
+
+  // Automation methods
+  createAutomationJob(job: InsertAutomationJob): Promise<AutomationJob>;
 }
 
 import { PostgresStorage } from './storage-postgres';
@@ -165,6 +195,46 @@ export class MemStorage implements IStorage {
 
   async getTrend(id: number): Promise<Trend | undefined> {
     return this.trends.get(id);
+  }
+
+  async getTrendsByUserPreferences(userPrefs: UserPreferences, limit = 10): Promise<Trend[]> {
+    let trends = Array.from(this.trends.values());
+    
+    // Use OR logic - match trends that align with ANY user preference
+    const matchedTrends = trends.filter(trend => {
+      let matches = false;
+      
+      // Match by niche
+      if (userPrefs.niche && trend.targetNiche === userPrefs.niche) {
+        matches = true;
+      }
+      
+      // Match by target audience
+      if (userPrefs.targetAudience && trend.targetAudience === userPrefs.targetAudience) {
+        matches = true;
+      }
+      
+      // Match by content style
+      if (userPrefs.contentStyle && trend.contentStyle === userPrefs.contentStyle) {
+        matches = true;
+      }
+      
+      // Match by preferred categories
+      if (userPrefs.preferredCategories && userPrefs.preferredCategories.length > 0) {
+        if (userPrefs.preferredCategories.includes(trend.category)) {
+          matches = true;
+        }
+      }
+      
+      return matches;
+    });
+    
+    // If no preferences set or no matches, return all trends
+    const finalTrends = matchedTrends.length > 0 ? matchedTrends : trends;
+    
+    return finalTrends
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .slice(0, limit);
   }
 
   // User-trend interactions
@@ -384,6 +454,14 @@ export class MemStorage implements IStorage {
     return analytics;
   }
 
+  async deleteUserAnalytics(userId: string): Promise<void> {
+    const analyticsToDelete = Array.from(this.userAnalytics.entries())
+      .filter(([_, analytics]) => analytics.userId === userId)
+      .map(([id]) => id);
+
+    analyticsToDelete.forEach(id => this.userAnalytics.delete(id));
+  }
+
   async getContentAnalysisByUserId(userId: string): Promise<ContentAnalysis[]> {
     const userContent = await this.getUserContent(userId);
     const contentIds = userContent.map(c => c.id);
@@ -403,6 +481,65 @@ export class MemStorage implements IStorage {
   async getUserTrendInteractions(userId: string): Promise<UserTrends[]> {
     return Array.from(this.userTrends.values())
       .filter(ut => ut.userId === userId);
+  }
+
+  // Viral analysis methods
+  private viralAnalyses: Map<number, ViralAnalysis> = new Map();
+  private nextViralAnalysisId = 1;
+
+  async createViralAnalysis(insertAnalysis: InsertViralAnalysis): Promise<ViralAnalysis> {
+    const id = this.nextViralAnalysisId++;
+    const analysis: ViralAnalysis = {
+      ...insertAnalysis,
+      id,
+      thumbnailAnalysis: insertAnalysis.thumbnailAnalysis ?? null,
+      patternType: insertAnalysis.patternType ?? null,
+      audioStrategy: insertAnalysis.audioStrategy ?? null,
+      hashtagStrategy: insertAnalysis.hashtagStrategy ?? null,
+      engagementRate: insertAnalysis.engagementRate ?? null,
+      createdAt: new Date(),
+      expiresAt: insertAnalysis.expiresAt ?? null,
+    };
+    this.viralAnalyses.set(id, analysis);
+    return analysis;
+  }
+
+  async getViralAnalysis(trendId: number): Promise<ViralAnalysis | undefined> {
+    return Array.from(this.viralAnalyses.values()).find(a => a.trendId === trendId);
+  }
+
+  async getViralAnalysisByTrendId(trendId: number): Promise<ViralAnalysis | undefined> {
+    return this.getViralAnalysis(trendId);
+  }
+
+  // Trend application methods
+  private trendApplications: Map<number, TrendApplication> = new Map();
+  private nextTrendApplicationId = 1;
+
+  async createTrendApplication(insertApplication: InsertTrendApplication): Promise<TrendApplication> {
+    const id = this.nextTrendApplicationId++;
+    const application: TrendApplication = {
+      ...insertApplication,
+      id,
+      analysisId: insertApplication.analysisId ?? null,
+      userContentConcept: insertApplication.userContentConcept ?? null,
+      wasHelpful: insertApplication.wasHelpful ?? null,
+      createdAt: new Date(),
+    };
+    this.trendApplications.set(id, application);
+    return application;
+  }
+
+  async getTrendApplicationsByUser(userId: string): Promise<TrendApplication[]> {
+    return Array.from(this.trendApplications.values())
+      .filter(app => app.userId === userId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  }
+
+  async getTrendApplicationsByTrend(trendId: number): Promise<TrendApplication[]> {
+    return Array.from(this.trendApplications.values())
+      .filter(app => app.trendId === trendId)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
   // Missing automation methods

@@ -103,19 +103,19 @@ export class AIEnhancedScheduler extends AutomationScheduler {
    * Schedule enhanced AI workflows (when Python agents are available)
    */
   private scheduleAIWorkflows(): void {
-    // AI-Powered Trend Discovery (every 4 hours)
-    cron.schedule('0 */4 * * *', () => this.aiTrendDiscoveryWorkflow());
+    // DISABLED: AI-Powered Trend Discovery (every 4 hours) - too frequent for production
+    // cron.schedule('0 */4 * * *', () => this.aiTrendDiscoveryWorkflow());
 
-    // AI-Powered Content Creation (every 6 hours)
-    cron.schedule('0 */6 * * *', () => this.aiContentCreationWorkflow());
+    // DISABLED: AI-Powered Content Creation (every 6 hours) - too frequent
+    // cron.schedule('0 */6 * * *', () => this.aiContentCreationWorkflow());
 
-    // AI-Powered Performance Analysis (every 2 hours) 
-    cron.schedule('0 */2 * * *', () => this.aiPerformanceAnalysisWorkflow());
+    // DISABLED: AI-Powered Performance Analysis (every 2 hours) - too frequent, fills database
+    // cron.schedule('0 */2 * * *', () => this.aiPerformanceAnalysisWorkflow());
 
-    // Full AI Pipeline Execution (daily at 8 AM)
-    cron.schedule('0 8 * * *', () => this.aiFullPipelineWorkflow());
+    // DISABLED: Full AI Pipeline Execution (daily at 8 AM) - resource intensive
+    // cron.schedule('0 8 * * *', () => this.aiFullPipelineWorkflow());
 
-    log('🤖 Enhanced AI workflows scheduled');
+    log('🤖 Enhanced AI workflows disabled to conserve database storage');
   }
 
   /**

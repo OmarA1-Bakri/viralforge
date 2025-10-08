@@ -19,7 +19,7 @@ async function callOpenAIWithRetry<T>(
   operationName: string,
   maxRetries: number = 2
 ): Promise<T> {
-  const TIMEOUT_MS = 8000; // 8 seconds - Android WebView can't wait 30s
+  const TIMEOUT_MS = 20000; // 20 seconds - Give OpenRouter more time
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -36,7 +36,10 @@ async function callOpenAIWithRetry<T>(
       const isLastAttempt = attempt === maxRetries;
 
       logger.error({
-        error,
+        errorMessage: error?.message || 'Unknown error',
+        errorName: error?.name,
+        errorStack: error?.stack?.substring(0, 200),
+        errorType: error?.constructor?.name,
         operationName,
         attempt: attempt + 1,
         maxRetries: maxRetries + 1,
@@ -88,7 +91,9 @@ export interface TrendResult {
 export interface ContentAnalysisRequest {
   title?: string;
   description?: string;
-  thumbnailDescription?: string;
+  thumbnailDescription?: string; // Deprecated: use thumbnailUrl or thumbnailBase64
+  thumbnailUrl?: string; // URL to thumbnail image for vision analysis
+  thumbnailBase64?: string; // Base64-encoded image data for vision analysis
   platform: string;
   roastMode?: boolean;
 }
@@ -458,12 +463,43 @@ Respond in JSON format with:
   ]
 }`;
 
-    const contentToAnalyze = `
+    // Build user message with vision support if thumbnail provided
+    const hasVision = !!(request.thumbnailUrl || request.thumbnailBase64);
+
+    let userMessage: any;
+    if (hasVision) {
+      // OpenAI Vision API format for multimodal analysis
+      const imageContent: any = request.thumbnailUrl
+        ? { type: "image_url", image_url: { url: request.thumbnailUrl } }
+        : { type: "image_url", image_url: { url: `data:image/jpeg;base64,${request.thumbnailBase64}` } };
+
+      const textContent = `
+Analyze this content for viral potential:
 Title: ${request.title || "No title provided"}
-Description: ${request.description || "No description provided"}  
+Description: ${request.description || "No description provided"}
+Platform: ${request.platform}
+
+Provide detailed analysis of the thumbnail image along with the title and description.
+      `.trim();
+
+      userMessage = {
+        role: "user",
+        content: [
+          { type: "text", text: textContent },
+          imageContent
+        ]
+      };
+    } else {
+      // Fallback to text-only analysis
+      const contentToAnalyze = `
+Title: ${request.title || "No title provided"}
+Description: ${request.description || "No description provided"}
 Thumbnail: ${request.thumbnailDescription || "No thumbnail description provided"}
 Platform: ${request.platform}
-    `.trim();
+      `.trim();
+
+      userMessage = { role: "user", content: contentToAnalyze };
+    }
 
     try {
       const response = await callOpenAIWithRetry(
@@ -471,7 +507,7 @@ Platform: ${request.platform}
           model: "x-ai/grok-4-fast",
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: contentToAnalyze }
+            userMessage
           ],
           response_format: { type: "json_object" },
           max_tokens: 1500,
@@ -486,31 +522,94 @@ Platform: ${request.platform}
 
       logger.info({ model: response.model }, 'AI content analysis completed and cached');
       return result;
-    } catch (error) {
-      logger.error({ error, request }, 'Content analysis failed');
-      Sentry.captureException(error, { tags: { operation: 'analyzeContent' } });
+    } catch (error: any) {
+      // Properly serialize error for logging
+      const errorDetails = {
+        message: error?.message || 'Unknown error',
+        code: error?.code,
+        status: error?.status,
+        type: error?.type,
+        stack: error?.stack
+      };
 
-      // Return fallback analysis instead of crashing
+      logger.error({ error: errorDetails, request }, 'Content analysis failed');
+      Sentry.captureException(error, {
+        tags: { operation: 'analyzeContent' },
+        extra: { request }
+      });
+
+      // Return fallback analysis with helpful message
       return this.getFallbackAnalysis(request);
     }
   }
 
   // Fallback analysis when AI fails
   private getFallbackAnalysis(request: ContentAnalysisRequest): ContentAnalysisResult {
+    // Check if we have minimal input to provide helpful feedback
+    const hasMinimalInput = request.title || request.description || request.thumbnailUrl || request.thumbnailBase64 || request.thumbnailDescription;
+
+    if (!hasMinimalInput) {
+      // No input provided - give actionable guidance
+      return {
+        clickabilityScore: 0,
+        clarityScore: 0,
+        intrigueScore: 0,
+        emotionScore: 0,
+        feedback: {
+          thumbnail: "📸 Add a thumbnail or describe your visual content to get AI feedback",
+          title: "✏️ Provide a title for your content to analyze its viral potential",
+          overall: "💡 To get AI analysis, please provide:\n• A title for your content\n• A description of what it's about\n• Upload/describe your thumbnail\n\nThe more details you share, the better feedback I can give!"
+        },
+        suggestions: [
+          "Add a compelling title that hooks viewers",
+          "Describe or upload your thumbnail",
+          "Explain what makes your content unique",
+          "Share your target platform (TikTok, YouTube, etc.)"
+        ],
+        viralPotential: {
+          score: 0,
+          reasoning: "Need content details to analyze viral potential",
+          successExamples: []
+        },
+        improvements: [{
+          priority: 'high',
+          change: 'Provide content details for AI analysis',
+          expectedImpact: 'Get personalized feedback on your viral potential',
+          before: 'No content information provided',
+          after: 'Share your title, description, and thumbnail'
+        }],
+        abTestSuggestions: [],
+        competitorComparison: {
+          strengths: [],
+          gaps: [],
+          opportunities: []
+        }
+      };
+    }
+
+    // AI service failed but we have some input
     return {
       clickabilityScore: 6,
       clarityScore: 6,
       intrigueScore: 6,
       emotionScore: 6,
       feedback: {
-        thumbnail: "Unable to analyze - AI service temporarily unavailable",
-        title: "Unable to analyze - AI service temporarily unavailable",
-        overall: "Analysis unavailable. Please try again later."
+        thumbnail: request.thumbnailUrl || request.thumbnailBase64 || request.thumbnailDescription ?
+          "Thumbnail detected, but AI analysis is temporarily unavailable. Try again in a moment." :
+          "No thumbnail provided - upload one for better analysis",
+        title: request.title ?
+          `Your title: "${request.title}" - AI analysis temporarily unavailable` :
+          "No title provided - add one for better feedback",
+        overall: "⚠️ AI analysis is temporarily unavailable. Your content has been received, but we can't provide detailed feedback right now. Please try again in a few moments."
       },
-      suggestions: ["Please try again in a few moments"],
+      suggestions: [
+        "Try again in a few moments when AI service recovers",
+        "Make sure you've provided a title and description",
+        "Upload or describe your thumbnail for visual analysis"
+      ],
       viralPotential: {
         score: 50,
-        reasoning: "Analysis unavailable",
+        reasoning: "Unable to analyze due to temporary service issue",
         successExamples: []
       },
       improvements: [],

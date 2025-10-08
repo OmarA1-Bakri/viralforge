@@ -13,6 +13,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import RedisStore from 'rate-limit-redis';
 import { createClient } from 'redis';
+import { logger } from '../lib/logger';
 
 // Redis client for rate limiting
 const redisClient = process.env.REDIS_URL 
@@ -62,6 +63,45 @@ export const uploadLimiter = rateLimit({
     // @ts-ignore
     client: redisClient,
     prefix: 'rl:upload:',
+  }) : undefined,
+});
+
+// Profile analysis rate limiter: Global safety net (tier-based limits are enforced in background-jobs.ts)
+// CRITICAL: Rate limit by userId, not IP (prevents bypass via VPN/proxy rotation)
+export const profileAnalysisLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10, // Safety net - tier-based limits are enforced elsewhere
+  // Disable IP-based validation entirely since we use userId
+  validate: {
+    xForwardedForHeader: false,
+    trustProxy: false,
+    ip: false, // Disable IP validation
+  },
+  keyGenerator: (req: any) => {
+    const userId = req.user?.id;
+    // Always use userId - if missing, fail (auth should have caught this)
+    if (!userId) {
+      throw new Error('Profile analysis requires authentication');
+    }
+    return `user:${userId}`;
+  },
+  handler: (req: any, res: any) => {
+    const userId = req.user?.id;
+    logger.warn({ userId, ip: req.ip }, 'Profile analysis rate limit exceeded');
+    res.status(429).json({
+      error: 'Too many profile analyses. Please wait before analyzing again.',
+      limit: 10,
+      window: '1 hour',
+      retryAfter: res.getHeader('Retry-After')
+    });
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false, // Count all attempts, even failed ones
+  store: redisClient ? new RedisStore({
+    // @ts-ignore
+    client: redisClient,
+    prefix: 'rl:profile:',
   }) : undefined,
 });
 

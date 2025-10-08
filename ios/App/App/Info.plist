@@ -51,5 +51,16 @@
         <string>ViralForgeAI needs photo library access to select images and videos for content optimization.</string>
         <key>NSMicrophoneUsageDescription</key>
         <string>ViralForgeAI needs microphone access for video recording functionality.</string>
+        <key>CFBundleURLTypes</key>
+        <array>
+                <dict>
+                        <key>CFBundleTypeRole</key>
+                        <string>Editor</string>
+                        <key>CFBundleURLSchemes</key>
+                        <array>
+                                <string>com.googleusercontent.apps.355579691551-3tcc2qs84sjr034v72igr0jnap0lf474</string>
+                        </array>
+                </dict>
+        </array>
 </dict>
 </plist>

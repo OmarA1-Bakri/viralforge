@@ -1,3 +1,4 @@
+// Build: 2025-10-05T05:02:00Z
 import { useState, useEffect } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
@@ -7,6 +8,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { analytics } from "@/lib/analytics";
+import { mobileRequest } from "@/lib/mobileRequest";
 
 // Main components
 import BottomTabNavigation from "@/components/BottomTabNavigation";
@@ -24,10 +26,10 @@ function MainApp() {
   const [serverVersion, setServerVersion] = useState<any>(null);
 
   useEffect(() => {
-    fetch('/api/version')
+    mobileRequest('/api/version')
       .then(r => r.json())
       .then(setServerVersion)
-      .catch(() => console.log('Version endpoint unavailable'));
+      .catch((error) => console.log('[App] Version endpoint unavailable:', error.message));
   }, []);
 
   const renderContent = () => {
@@ -61,11 +63,12 @@ function MainApp() {
       />
 
       {/* Version Display */}
-      {serverVersion && (
-        <div className="fixed bottom-20 right-2 text-[10px] text-muted-foreground/50 font-mono">
-          {serverVersion.server?.gitHash?.substring(0, 7) || 'dev'}
-        </div>
-      )}
+      <div className="fixed bottom-20 right-2 text-[10px] text-muted-foreground/50 font-mono space-y-0.5">
+        <div>Build: {import.meta.env.VITE_BUILD_ID?.substring(0, 10) || 'dev'}</div>
+        {serverVersion && (
+          <div>Server: {serverVersion.server?.gitHash?.substring(0, 7) || 'dev'}</div>
+        )}
+      </div>
     </div>
   );
 }
@@ -93,7 +96,12 @@ export default function App() {
   useEffect(() => {
     // Initialize analytics
     analytics.init();
-    
+
+    // Initialize offline queue for RevenueCat syncs
+    import('./lib/offlineQueue').then(({ initOfflineQueue }) => {
+      initOfflineQueue();
+    });
+
     const fadeTimer = setTimeout(() => {
       setFadeOut(true);
     }, 2500); // Start fade out after 2.5 seconds

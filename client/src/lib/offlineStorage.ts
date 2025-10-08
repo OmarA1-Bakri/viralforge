@@ -1,5 +1,6 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { Network } from '@capacitor/network';
+import { mobileRequest } from '@/lib/mobileRequest';
 
 interface ViralForgeDB extends DBSchema {
   pendingRequests: {
@@ -73,7 +74,7 @@ class OfflineStorageService {
 
       for (const req of requests) {
         try {
-          await fetch(req.url, {
+          await mobileRequest(req.url, {
             method: req.method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(req.body),

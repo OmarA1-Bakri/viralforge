@@ -16,8 +16,10 @@ import { validateAuthEnvironment } from "./auth";
 import { initSentry, Sentry } from './lib/sentry';
 import { logger, logRequest } from './lib/logger';
 import healthRoutes from './routes/health';
+import scheduleRoutes from './routes/schedule';
 import { db } from './db';
 import { registerWebhookRoutes, registerRevenueCatWebhook } from './routes/webhooks';
+import { analysisScheduler } from './automation/analysis-scheduler';
 
 const app = express();
 
@@ -81,6 +83,9 @@ app.use((req, res, next) => {
   
   const server = await registerRoutes(app);
 
+  // Register schedule routes
+  app.use(scheduleRoutes);
+
   // Register Sentry error handler BEFORE custom error handler (only if Sentry is configured)
   if (process.env.SENTRY_DSN) {
     Sentry.setupExpressErrorHandler(app);
@@ -122,6 +127,8 @@ app.use((req, res, next) => {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
+
+  // Serve frontend for Android app connecting to backend
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
@@ -132,6 +139,9 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
+  // Start analysis scheduler (cron job for scheduled profile analyses)
+  analysisScheduler.start();
+
   const port = parseInt(process.env.PORT || '5000', 10);
   server.listen({
     port,
@@ -139,21 +149,21 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`serving on port ${port}`);
-    
-    // Start AI-Enhanced ViralForgeAI automation system
+
+    // Start BullMQ-based user automation system
     try {
-      import('./automation/ai_scheduler').then(({ ai_enhanced_scheduler }) => {
-        ai_enhanced_scheduler.start();
-        log('🤖 AI-Enhanced ViralForge automation system started');
-      }).catch((error) => {
-        log('❌ Failed to start AI-enhanced automation system:', String(error));
-        // Fallback to original scheduler
-        import('./automation/scheduler').then(({ automationScheduler }) => {
+      import('./queue/workers').then(() => {
+        log('✅ BullMQ workers initialized');
+
+        // Start hourly scheduler
+        import('./queue/scheduler').then(({ automationScheduler }) => {
           automationScheduler.start();
-          log('🔄 Fallback automation system started');
-        }).catch((fallbackError) => {
-          log('❌ Fallback automation system also failed:', String(fallbackError));
+          log('🤖 User automation scheduler started');
+        }).catch((error) => {
+          log('❌ Failed to start automation scheduler:', String(error));
         });
+      }).catch((error) => {
+        log('❌ Failed to initialize BullMQ workers:', String(error));
       });
     } catch (error) {
       log('❌ Critical error in automation system initialization:', String(error));

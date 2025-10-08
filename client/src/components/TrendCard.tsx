@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 interface TrendCardProps {
   trend: {
-    id: string;
+    id: string | number;
     title: string;
     description: string;
     category: string;
@@ -22,8 +22,8 @@ interface TrendCardProps {
     duration?: string;
     source?: string; // Where the trend was found (e.g., "Trending on TikTok • #viral • 250K videos")
   };
-  onSave?: (id: string) => void;
-  onRemix?: (id: string) => void;
+  onSave?: (id: string | number) => void;
+  onRemix?: (id: string | number) => void;
   onNavigate?: (tab: "dashboard" | "idea-lab" | "launch-pad" | "multiplier" | "preferences") => void;
 }
 

@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { mobileRequest } from '@/lib/mobileRequest';
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -20,13 +21,21 @@ const getApiBaseUrl = () => {
   return window.location.origin;
 };
 
-// Get auth token from Capacitor storage
+// Get auth token from Capacitor storage or localStorage
 async function getAuthToken(): Promise<string | null> {
+  // Try Capacitor first (mobile)
   if (typeof window !== 'undefined' && (window as any).Capacitor) {
     const { Preferences } = await import('@capacitor/preferences');
     const { value } = await Preferences.get({ key: 'auth_token' });
-    return value;
+    if (value) return value;
   }
+
+  // Fallback to localStorage (web)
+  if (typeof window !== 'undefined' && window.localStorage) {
+    const token = window.localStorage.getItem('auth_token');
+    if (token) return token;
+  }
+
   return null;
 }
 
@@ -44,11 +53,16 @@ export async function apiRequest(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(fullUrl, {
+  // Debug logging (development only)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[apiRequest]', { method, url: fullUrl, hasToken: !!token });
+  }
+
+  // Use shared mobileRequest utility
+  const res = await mobileRequest(fullUrl, {
     method,
     headers,
     body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
   });
 
   await throwIfResNotOk(res);
@@ -71,9 +85,10 @@ export const getQueryFn: <T>(options: {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const res = await fetch(fullUrl, {
+    // Use shared mobileRequest utility
+    const res = await mobileRequest(fullUrl, {
+      method: 'GET',
       headers,
-      credentials: "include",
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
@@ -90,7 +105,7 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
+      staleTime: 5 * 60 * 1000, // 5 minutes instead of Infinity to prevent stale data
       retry: false,
     },
     mutations: {

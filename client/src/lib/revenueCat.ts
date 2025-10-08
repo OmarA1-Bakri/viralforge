@@ -210,48 +210,19 @@ class RevenueCatService {
     }
   }
 
-  async syncSubscriptionWithBackend(token: string) {
+  async syncSubscriptionWithBackend() {
     try {
-      const customerInfo = await this.getCustomerInfo();
-      const entitlements = customerInfo.customerInfo.entitlements.active;
-
-      // Get active product identifier and tier
-      let productIdentifier = null;
-      let expiresDate = null;
-      let tier = 'starter';
-
-      // Check entitlements in priority order
-      if (entitlements[ENTITLEMENTS.studio]) {
-        productIdentifier = entitlements[ENTITLEMENTS.studio].productIdentifier;
-        expiresDate = entitlements[ENTITLEMENTS.studio].expirationDate;
-        tier = 'studio';
-      } else if (entitlements[ENTITLEMENTS.pro]) {
-        productIdentifier = entitlements[ENTITLEMENTS.pro].productIdentifier;
-        expiresDate = entitlements[ENTITLEMENTS.pro].expirationDate;
-        tier = 'pro';
-      } else if (entitlements[ENTITLEMENTS.creator]) {
-        productIdentifier = entitlements[ENTITLEMENTS.creator].productIdentifier;
-        expiresDate = entitlements[ENTITLEMENTS.creator].expirationDate;
-        tier = 'creator';
-      }
-
-      // Send to backend for verification and storage
+      // ✅ SECURITY: Backend validates with RevenueCat API, not client data
       const { apiRequest } = await import('./queryClient');
 
-      const response = await apiRequest('POST', '/subscriptions/sync-revenuecat', {
-        entitlements,
-        productIdentifier,
-        expiresDate,
-        tier,
-      });
-
+      const response = await apiRequest('POST', '/api/subscriptions/sync-revenuecat', {});
       const result = await response.json();
-      console.log('[RevenueCat] Synced with backend successfully:', result);
+
+      console.log('[RevenueCat] Synced with backend (server-validated):', result);
       return result;
     } catch (error) {
-      console.error('[RevenueCat] Sync with backend failed (non-critical):', error);
-      // Don't throw - sync failure shouldn't break login
-      return null;
+      console.error('[RevenueCat] Sync with backend failed:', error);
+      throw error; // Re-throw for retry logic
     }
   }
 }

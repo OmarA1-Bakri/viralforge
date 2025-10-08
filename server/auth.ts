@@ -140,18 +140,12 @@ export const isValidPassword = (password: string): boolean => {
   return passwordRegex.test(password);
 };
 
-// Extract user ID from request (with fallback for demo compatibility)
+// Extract user ID from request
 export const getUserId = (req: AuthRequest): string => {
   if (req.user?.id) {
     return req.user.id;
   }
-  
-  // Fallback for development - remove in production
-  if (process.env.NODE_ENV === 'development') {
-    console.warn('⚠️  Using demo-user fallback - implement proper auth');
-    return 'demo-user';
-  }
-  
+
   throw new Error('User not authenticated');
 };
 
@@ -304,6 +298,9 @@ export const validateAuthEnvironment = (): void => {
     throw new Error('JWT_SECRET must be changed in production');
   }
 };
+
+// Alias for compatibility
+export const requireAuth = authenticateToken;
 
 export default {
   authenticateToken,

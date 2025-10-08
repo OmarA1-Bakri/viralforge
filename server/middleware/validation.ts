@@ -39,11 +39,13 @@ export const schemas = {
   // Content analysis
   analyzeContent: z.object({
     title: z.string().max(100).optional(),
-    thumbnailDescription: z.string().max(500).optional(),
+    thumbnailDescription: z.string().max(500).optional(), // Deprecated: for backward compatibility
+    thumbnailUrl: z.string().url().optional(), // URL to actual thumbnail image for vision analysis
+    thumbnailBase64: z.string().optional(), // Base64-encoded image for vision analysis
     platform: z.enum(['tiktok', 'youtube', 'instagram']),
     roastMode: z.boolean().optional(),
-  }).refine(data => data.title || data.thumbnailDescription, {
-    message: 'Either title or thumbnailDescription must be provided',
+  }).refine(data => data.title || data.thumbnailDescription || data.thumbnailUrl || data.thumbnailBase64, {
+    message: 'Either title, thumbnailDescription, thumbnailUrl, or thumbnailBase64 must be provided',
   }),
 
   // Trend discovery
@@ -81,6 +83,60 @@ export const schemas = {
     contentLength: z.enum(['short', 'medium', 'long']).optional(),
     postingSchedule: z.array(z.string()).max(10).optional(),
     goals: z.string().max(50).optional(),
+  }),
+
+  // Profile analysis
+  analyzeProfile: z.object({
+    tiktokUsername: z.string()
+      .max(30)
+      .regex(/^@?[a-zA-Z0-9._]+$/, 'Invalid TikTok username format')
+      .optional()
+      .transform(val => {
+        if (!val) return val;
+        // Remove @ prefix
+        val = val.replace(/^@/, '');
+        // Normalize to prevent homograph attacks (convert non-ASCII to closest ASCII)
+        val = val.normalize('NFKD').replace(/[^\x00-\x7F]/g, '');
+        // Remove template literal characters to prevent injection
+        val = val.replace(/[$`\\]/g, '');
+        // Final validation: only safe characters
+        if (!/^[a-zA-Z0-9._]+$/.test(val)) {
+          throw new Error('Username contains invalid characters after sanitization');
+        }
+        return val.trim();
+      }),
+    instagramUsername: z.string()
+      .max(30)
+      .regex(/^[a-zA-Z0-9._]+$/, 'Invalid Instagram username format')
+      .optional()
+      .transform(val => {
+        if (!val) return val;
+        // Normalize to prevent homograph attacks
+        val = val.normalize('NFKD').replace(/[^\x00-\x7F]/g, '');
+        // Remove template literal characters
+        val = val.replace(/[$`\\]/g, '');
+        // Final validation
+        if (!/^[a-zA-Z0-9._]+$/.test(val)) {
+          throw new Error('Username contains invalid characters after sanitization');
+        }
+        return val.trim();
+      }),
+    youtubeChannelId: z.string()
+      .regex(/^(@?[a-zA-Z0-9_-]+|UC[a-zA-Z0-9_-]{22})$/, 'Invalid YouTube channel ID or handle format')
+      .optional()
+      .transform(val => {
+        if (!val) return val;
+        // Accept both channel IDs (UC...) and handles (@username or username)
+        val = val.normalize('NFKD').replace(/[^\x00-\x7F]/g, '');
+        val = val.replace(/[$`\\]/g, '');
+        // Final validation: either channel ID or handle format
+        if (!/^(@?[a-zA-Z0-9_-]+|UC[a-zA-Z0-9_-]{22})$/.test(val)) {
+          throw new Error('Channel ID/handle contains invalid characters after sanitization');
+        }
+        return val.trim();
+      }),
+  }).refine(data => data.tiktokUsername || data.instagramUsername || data.youtubeChannelId, {
+    message: 'At least one social media handle is required',
   }),
 };
 

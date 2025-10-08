@@ -341,8 +341,8 @@ export class SimplifiedAICache {
    * Get cache with user context (for personalized content)
    */
   async getCachedWithUserContext<T>(type: string, params: any, userId?: string): Promise<T | null> {
-    // Only personalize content that truly benefits from it
-    const shouldPersonalize = type === 'content' && userId && params.roastMode; // Only personalize roast mode
+    // Personalize trends and content based on user context
+    const shouldPersonalize = userId && (['trends', 'content', 'videoProcessing'].includes(type));
     const contextualParams = shouldPersonalize ? { ...params, userId } : params;
     return this.get<T>(type, contextualParams);
   }
@@ -351,7 +351,8 @@ export class SimplifiedAICache {
    * Set cache with user context
    */
   async setCachedWithUserContext(type: string, params: any, data: any, userId?: string): Promise<void> {
-    const shouldPersonalize = type === 'content' && userId && params.roastMode;
+    // Personalize trends and content based on user context
+    const shouldPersonalize = userId && (['trends', 'content', 'videoProcessing'].includes(type));
     const contextualParams = shouldPersonalize ? { ...params, userId } : params;
     await this.set(type, contextualParams, data);
   }

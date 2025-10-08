@@ -42,3 +42,4 @@ android/*.keystore
 
 # Agent docs
 AGENTS.md
+/firebase-service-account.json

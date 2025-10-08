@@ -12,10 +12,15 @@ import {
   Zap,
   TrendingUp,
   AlertCircle,
-  CreditCard
+  CreditCard,
+  Loader2
 } from "lucide-react";
+import { Capacitor } from '@capacitor/core';
 import { apiRequest } from "@/lib/queryClient";
 import { getErrorMessage } from "@/lib/errors";
+import { revenueCat } from "@/lib/revenueCat";
+import { retryWithBackoff } from "@/lib/retryHelper";
+import { queueFailedSync } from "@/lib/offlineQueue";
 
 interface SubscriptionTier {
   id: string;
@@ -58,6 +63,59 @@ interface UsageStats {
   };
 }
 
+/**
+ * Map tier and billing cycle to RevenueCat product ID
+ */
+const PRODUCT_ID_MAP = {
+  creator: {
+    monthly: 'viralforge_creator_monthly',
+    yearly: 'viralforge_creator_yearly',
+  },
+  pro: {
+    monthly: 'viralforge_pro_monthly',
+    yearly: 'viralforge_pro_yearly',
+  },
+  studio: {
+    monthly: 'viralforge_studio_monthly',
+    yearly: 'viralforge_studio_yearly',
+  },
+} as const;
+
+function getProductId(tierId: string, billingCycle: string): string {
+  const product = PRODUCT_ID_MAP[tierId.toLowerCase() as keyof typeof PRODUCT_ID_MAP]?.[billingCycle as 'monthly' | 'yearly'];
+
+  if (!product) {
+    throw new Error(
+      `Invalid product configuration: ${tierId}/${billingCycle}. ` +
+      `Valid tiers: creator, pro, studio. Valid cycles: monthly, yearly.`
+    );
+  }
+
+  return product;
+}
+
+/**
+ * Get RevenueCat error message
+ */
+function getRevenueCatErrorMessage(error: any): string | null {
+  switch (error.code) {
+    case 'USER_CANCELLED':
+      return null; // Don't show error for user cancellation
+    case 'STORE_PROBLEM':
+      return 'App Store unavailable. Please try again later.';
+    case 'PURCHASE_NOT_ALLOWED':
+      return 'Purchases are disabled on this device.';
+    case 'NETWORK_ERROR':
+      return 'Network error. Check your connection and retry.';
+    case 'RECEIPT_ALREADY_IN_USE':
+      return 'This purchase is already active on another account.';
+    case 'PURCHASE_INVALID':
+      return 'This product is no longer available.';
+    default:
+      return 'Purchase failed. Contact support if this persists.';
+  }
+}
+
 export default function SubscriptionSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -81,27 +139,81 @@ export default function SubscriptionSettings() {
     retry: 1,
   });
 
-  // Create Stripe checkout session
+  // Create checkout session (Web: Stripe, Mobile: RevenueCat)
   const createCheckout = useMutation({
     mutationFn: async ({ tierId, billingCycle }: { tierId: string; billingCycle: string }) => {
-      const response = await apiRequest('POST', '/api/subscriptions/create-checkout', {
-        tierId,
-        billingCycle
-      });
-      return response.json();
+      // ✅ Platform detection: Web → Stripe, Mobile → RevenueCat
+      if (Capacitor.isNativePlatform()) {
+        // Mobile: Use RevenueCat
+        const productId = getProductId(tierId, billingCycle);
+        return await revenueCat.purchasePackage(productId);
+      } else {
+        // Web: Use Stripe
+        const response = await apiRequest('POST', '/api/subscriptions/create-checkout', {
+          tierId,
+          billingCycle
+        });
+        return response.json();
+      }
     },
-    onSuccess: (data) => {
-      if (data.url) {
-        // Redirect to Stripe checkout
-        window.location.href = data.url;
+    onSuccess: async (data) => {
+      if (Capacitor.isNativePlatform()) {
+        // Mobile: Sync with backend
+        if (data.success) {
+          try {
+            // ✅ 1. Sync with backend FIRST (with retries)
+            await retryWithBackoff(
+              () => revenueCat.syncSubscriptionWithBackend(),
+              { maxAttempts: 3, baseDelay: 1000 }
+            );
+
+            // ✅ 2. THEN invalidate queries to fetch updated state
+            await queryClient.invalidateQueries({
+              queryKey: ['/api/subscriptions/current']
+            });
+
+            toast({
+              title: "Subscription Active!",
+              description: "Your purchase is now active."
+            });
+          } catch (syncError) {
+            // Queue for retry on next app open
+            await queueFailedSync({
+              productId: data.productIdentifier,
+              timestamp: Date.now()
+            });
+
+            toast({
+              title: "Purchase Successful",
+              description: "Syncing subscription... Please restart the app if changes don't appear.",
+              variant: "default"
+            });
+          }
+        }
+      } else {
+        // Web: Redirect to Stripe
+        if (data.url) {
+          window.location.href = data.url;
+        }
       }
     },
     onError: (error: any) => {
-      toast({
-        title: "Checkout Failed",
-        description: getErrorMessage(error),
-        variant: "destructive"
-      });
+      if (Capacitor.isNativePlatform()) {
+        const message = getRevenueCatErrorMessage(error);
+        if (message) {
+          toast({
+            title: "Purchase Failed",
+            description: message,
+            variant: "destructive"
+          });
+        }
+      } else {
+        toast({
+          title: "Checkout Failed",
+          description: getErrorMessage(error),
+          variant: "destructive"
+        });
+      }
     }
   });
 
@@ -199,7 +311,39 @@ export default function SubscriptionSettings() {
                 </CardDescription>
               </div>
               <div className="flex gap-2">
-                {current.tier_name !== 'free' && (
+                {current.tier_name !== 'starter' && Capacitor.isNativePlatform() && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        await revenueCat.restorePurchases();
+
+                        // ✅ Sync restored purchases with backend
+                        await revenueCat.syncSubscriptionWithBackend();
+
+                        // ✅ Refresh UI
+                        await queryClient.invalidateQueries({
+                          queryKey: ['/api/subscriptions/current']
+                        });
+
+                        toast({
+                          title: "Purchases Restored",
+                          description: "Your subscription has been restored."
+                        });
+                      } catch (error) {
+                        toast({
+                          title: "Restore Failed",
+                          description: getErrorMessage(error),
+                          variant: "destructive"
+                        });
+                      }
+                    }}
+                  >
+                    Restore Purchases
+                  </Button>
+                )}
+                {current.tier_name !== 'starter' && !Capacitor.isNativePlatform() && (
                   <>
                     <Button
                       variant="outline"
@@ -359,10 +503,10 @@ export default function SubscriptionSettings() {
                   disabled={isCurrentTier || createCheckout.isPending}
                   onClick={() => {
                     if (tier.price_monthly === 0) {
-                      // Free tier - handle downgrade via cancel
-                      cancelSubscription.mutate();
+                      // Starter tier - no action (free tier)
+                      return;
                     } else {
-                      // Paid tier - redirect to Stripe checkout
+                      // Paid tier - platform detection in mutation
                       createCheckout.mutate({
                         tierId: tier.id,
                         billingCycle: selectedCycle
@@ -370,25 +514,21 @@ export default function SubscriptionSettings() {
                     }
                   }}
                 >
-                  {isCurrentTier ? (
+                  {createCheckout.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : isCurrentTier ? (
                     <>
                       <Check className="h-4 w-4 mr-2" />
                       Current Plan
                     </>
-                  ) : createCheckout.isPending ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-                      Processing...
-                    </>
-                  ) : tier.price_monthly === 0 ? (
-                    'Downgrade to Free'
-                  ) : current && current.tier_id === 'free' ? (
+                  ) : (
                     <>
                       <TrendingUp className="h-4 w-4 mr-2" />
                       Upgrade Now
                     </>
-                  ) : (
-                    'Switch Plan'
                   )}
                 </Button>
               </CardContent>

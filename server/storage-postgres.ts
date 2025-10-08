@@ -1,7 +1,7 @@
-import { 
-  type User, 
-  type InsertUser, 
-  type Trend, 
+import {
+  type User,
+  type InsertUser,
+  type Trend,
   type InsertTrend,
   type UserTrends,
   type InsertUserTrends,
@@ -17,6 +17,14 @@ import {
   type InsertProcessingJob,
   type UserActivity,
   type InsertUserActivity,
+  type UserPreferences,
+  type InsertUserPreferences,
+  type ViralAnalysis,
+  type InsertViralAnalysis,
+  type TrendApplication,
+  type InsertTrendApplication,
+  type AutomationJob,
+  type InsertAutomationJob,
   users,
   trends,
   userTrends,
@@ -25,11 +33,15 @@ import {
   videoClips,
   userAnalytics,
   processingJobs,
-  userActivity
+  userActivity,
+  userPreferences,
+  viralAnalyses,
+  trendApplications,
+  automationJobs
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { db } from "./db";
-import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
+import { eq, and, or, desc, gte, lte, sql } from "drizzle-orm";
 import { IStorage } from "./storage";
 import { logger } from "./lib/logger";
 
@@ -85,6 +97,71 @@ export class PostgresStorage implements IStorage {
   async getTrend(id: number): Promise<Trend | undefined> {
     const result = await db.select().from(trends).where(eq(trends.id, id)).limit(1);
     return result[0];
+  }
+
+  // Get trends filtered by user preferences
+  async getTrendsByUserPreferences(userPrefs: UserPreferences, limit: number = 10): Promise<Trend[]> {
+    try {
+      // Build profile filters (AND logic - must match ALL profile attributes)
+      const profileFilters = [];
+
+      if (userPrefs.niche) {
+        profileFilters.push(eq(trends.targetNiche, userPrefs.niche));
+      }
+      if (userPrefs.targetAudience) {
+        profileFilters.push(eq(trends.targetAudience, userPrefs.targetAudience));
+      }
+      if (userPrefs.contentStyle) {
+        profileFilters.push(eq(trends.contentStyle, userPrefs.contentStyle));
+      }
+
+      // Build category filters (OR logic - match ANY preferred category)
+      const categoryFilter = userPrefs.preferredCategories && userPrefs.preferredCategories.length > 0
+        ? or(...userPrefs.preferredCategories.map(cat => eq(trends.category, cat)))
+        : undefined;
+
+      // No preferences set at all
+      if (profileFilters.length === 0 && !categoryFilter) {
+        logger.debug('No user preferences set, returning general trends');
+        return this.getTrends(undefined, limit);
+      }
+
+      // Combine: profile filters AND category filters
+      const whereConditions = [];
+      if (profileFilters.length > 0) {
+        whereConditions.push(and(...profileFilters));
+      }
+      if (categoryFilter) {
+        whereConditions.push(categoryFilter);
+      }
+
+      const startTime = Date.now();
+      const result = await db.select()
+        .from(trends)
+        .where(and(...whereConditions))
+        .orderBy(desc(trends.createdAt))
+        .limit(limit);
+
+      const duration = Date.now() - startTime;
+      logger.debug({
+        duration,
+        filterCount: whereConditions.length,
+        resultCount: result.length,
+        userPrefs
+      }, 'Personalized trend query completed');
+
+      // Fallback if no matches
+      if (result.length === 0) {
+        logger.info('No trends match preferences, falling back to general trends');
+        return this.getTrends(undefined, limit);
+      }
+
+      return result;
+
+    } catch (error) {
+      logger.error({ error, userPrefs }, 'Failed to fetch personalized trends');
+      return this.getTrends(undefined, limit);
+    }
   }
 
   // User-trend interactions
@@ -292,8 +369,13 @@ export class PostgresStorage implements IStorage {
       ...insertAnalytics,
       recordedAt: insertAnalytics.recordedAt || new Date()
     }).returning();
-    
+
     return result[0];
+  }
+
+  async deleteUserAnalytics(userId: string): Promise<void> {
+    await db.delete(userAnalytics)
+      .where(eq(userAnalytics.userId, userId));
   }
 
   async getContentAnalysisByUserId(userId: string): Promise<ContentAnalysis[]> {
@@ -329,6 +411,97 @@ export class PostgresStorage implements IStorage {
     return result;
   }
 
+  // User preferences
+  async saveUserPreferences(userId: string, prefs: InsertUserPreferences): Promise<UserPreferences> {
+    // Check if preferences already exist
+    const existing = await db.select()
+      .from(userPreferences)
+      .where(eq(userPreferences.userId, userId))
+      .limit(1);
+    
+    if (existing.length > 0) {
+      // Update existing preferences
+      const result = await db.update(userPreferences)
+        .set({ ...prefs, lastUpdated: new Date() })
+        .where(eq(userPreferences.userId, userId))
+        .returning();
+      
+      return result[0];
+    } else {
+      // Insert new preferences
+      const result = await db.insert(userPreferences)
+        .values({
+          ...prefs,
+          userId,
+          createdAt: new Date(),
+          lastUpdated: new Date()
+        })
+        .returning();
+      
+      return result[0];
+    }
+  }
+
+  async getUserPreferences(userId: string): Promise<UserPreferences | null> {
+    const result = await db.select()
+      .from(userPreferences)
+      .where(eq(userPreferences.userId, userId))
+      .limit(1);
+
+    return result[0] || null;
+  }
+
+  // Viral analysis methods
+  async createViralAnalysis(insertAnalysis: InsertViralAnalysis): Promise<ViralAnalysis> {
+    const result = await db.insert(viralAnalyses).values({
+      ...insertAnalysis,
+      createdAt: new Date()
+    }).returning();
+
+    return result[0];
+  }
+
+  async getViralAnalysis(trendId: number): Promise<ViralAnalysis | undefined> {
+    const result = await db.select()
+      .from(viralAnalyses)
+      .where(eq(viralAnalyses.trendId, trendId))
+      .limit(1);
+
+    return result[0];
+  }
+
+  async getViralAnalysisByTrendId(trendId: number): Promise<ViralAnalysis | undefined> {
+    return this.getViralAnalysis(trendId);
+  }
+
+  // Trend application methods
+  async createTrendApplication(insertApplication: InsertTrendApplication): Promise<TrendApplication> {
+    const result = await db.insert(trendApplications).values({
+      ...insertApplication,
+      createdAt: new Date()
+    }).returning();
+
+    return result[0];
+  }
+
+  async getTrendApplicationsByUser(userId: string): Promise<TrendApplication[]> {
+    const result = await db.select()
+      .from(trendApplications)
+      .where(eq(trendApplications.userId, userId))
+      .orderBy(desc(trendApplications.createdAt));
+
+    return result;
+  }
+
+  async getTrendApplicationsByTrend(trendId: number): Promise<TrendApplication[]> {
+    const result = await db.select()
+      .from(trendApplications)
+      .where(eq(trendApplications.trendId, trendId))
+      .orderBy(desc(trendApplications.createdAt));
+
+    return result;
+  }
+
   // Additional methods for automation system
   async getAllUsers(): Promise<User[]> {
     const result = await db.select().from(users);
@@ -340,7 +513,17 @@ export class PostgresStorage implements IStorage {
       .from(processingJobs)
       .where(eq(processingJobs.status, status))
       .orderBy(desc(processingJobs.createdAt));
-    
+
     return result;
+  }
+
+  // Automation methods
+  async createAutomationJob(insertJob: InsertAutomationJob): Promise<AutomationJob> {
+    const result = await db.insert(automationJobs).values({
+      ...insertJob,
+      createdAt: new Date()
+    }).returning();
+
+    return result[0];
   }
 }

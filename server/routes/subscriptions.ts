@@ -485,8 +485,8 @@ export function registerSubscriptionRoutes(app: Express) {
 
 
 /**
- * Sync RevenueCat subscription with backend
- * Called by the app after login or when subscription changes
+ * Sync RevenueCat subscription with backend (SERVER-SIDE VALIDATION)
+ * SECURITY: Validates subscription with RevenueCat API - NEVER trust client data
  */
 export function registerRevenueCatSyncRoute(app: Express) {
   app.post("/api/subscriptions/sync-revenuecat", async (req, res) => {
@@ -496,25 +496,73 @@ export function registerRevenueCatSyncRoute(app: Express) {
 
     try {
       const userId = req.user?.id;
-      const { entitlements, productIdentifier, expiresDate } = req.body;
 
       console.log(`🔄 Syncing RevenueCat subscription for user ${userId}`);
 
-      // Determine tier from entitlements
-      let tierId = 'free';
-      if (entitlements?.creator?.isActive) {
-        tierId = 'creator';
-      } else if (entitlements?.pro?.isActive) {
-        tierId = 'pro';
+      // ✅ CRITICAL SECURITY: Validate with RevenueCat API, not client data
+      const revenueCatSecretKey = process.env.REVENUECAT_SECRET_KEY;
+
+      if (!revenueCatSecretKey) {
+        console.error('❌ REVENUECAT_SECRET_KEY not configured');
+        return res.status(500).json({
+          success: false,
+          error: 'RevenueCat configuration error'
+        });
       }
 
-      // Determine billing cycle from product ID
+      // Fetch subscriber info from RevenueCat API
+      const response = await fetch(
+        `https://api.revenuecat.com/v1/subscribers/${userId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${revenueCatSecretKey}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (!response.ok) {
+        console.error(`❌ RevenueCat API error: ${response.status} ${response.statusText}`);
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to validate subscription with RevenueCat'
+        });
+      }
+
+      const data = await response.json();
+      const activeEntitlements = data.subscriber?.entitlements || {};
+
+      // ✅ Determine tier from SERVER-validated entitlements
+      let tierId = 'starter';
+      let productIdentifier = null;
+      let expiresDate = null;
+      const now = Date.now();
+
+      // Check entitlements in priority order: studio > pro > creator
+      if (activeEntitlements.studio?.expires_date &&
+          new Date(activeEntitlements.studio.expires_date).getTime() > now) {
+        tierId = 'studio';
+        productIdentifier = activeEntitlements.studio.product_identifier;
+        expiresDate = activeEntitlements.studio.expires_date;
+      } else if (activeEntitlements.pro?.expires_date &&
+                 new Date(activeEntitlements.pro.expires_date).getTime() > now) {
+        tierId = 'pro';
+        productIdentifier = activeEntitlements.pro.product_identifier;
+        expiresDate = activeEntitlements.pro.expires_date;
+      } else if (activeEntitlements.creator?.expires_date &&
+                 new Date(activeEntitlements.creator.expires_date).getTime() > now) {
+        tierId = 'creator';
+        productIdentifier = activeEntitlements.creator.product_identifier;
+        expiresDate = activeEntitlements.creator.expires_date;
+      }
+
+      // Determine billing cycle from validated product ID
       const billingCycle = productIdentifier?.includes('yearly') ? 'yearly' : 'monthly';
 
       // Check if tables exist
       const tableCheck = await db.execute(sql`
         SELECT EXISTS (
-          SELECT FROM information_schema.tables 
+          SELECT FROM information_schema.tables
           WHERE table_name = 'user_subscriptions'
         ) as table_exists
       `);
@@ -537,7 +585,7 @@ export function registerRevenueCatSyncRoute(app: Express) {
         `);
 
         // If user has an active entitlement, create subscription record
-        if (tierId !== 'free' && expiresDate) {
+        if (tierId !== 'starter' && expiresDate) {
           await tx.execute(sql`
             INSERT INTO user_subscriptions
             (user_id, tier_id, billing_cycle, revenuecat_product_id, status, expires_at, auto_renew)
@@ -567,7 +615,7 @@ export function registerRevenueCatSyncRoute(app: Express) {
         `);
       });
 
-      console.log(`✅ Synced subscription for user ${userId} to tier ${tierId}`);
+      console.log(`✅ Synced subscription for user ${userId} to tier ${tierId} (SERVER-VALIDATED)`);
 
       res.json({
         success: true,

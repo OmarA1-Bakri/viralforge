@@ -91,8 +91,11 @@ export class YouTubeService {
         suggestion: `Create content similar to: ${video.snippet?.title}`,
         timeAgo: this.getTimeAgo(video.snippet?.publishedAt || undefined),
       })) || [];
-    } catch (error) {
-      logger.error({ error }, 'Failed to fetch YouTube trending videos');
+    } catch (error: any) {
+      logger.error({
+        errorMessage: error?.message || String(error),
+        errorType: error?.constructor?.name
+      }, 'Failed to fetch YouTube trending videos');
       return [];
     }
   }

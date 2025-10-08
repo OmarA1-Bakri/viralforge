@@ -8,7 +8,7 @@ const config: CapacitorConfig = {
     // Use HTTP for development to avoid mixed content issues with localhost API
     androidScheme: 'http',
     // NOTE: url is commented out so app loads from bundled files
-    // Only uncomment for live reload development: url: 'http://10.0.2.2:5000',
+    // url: 'http://10.0.2.2:5000',
     cleartext: true,
     // Allow cleartext (HTTP) traffic for development
     allowNavigation: ['http://10.0.2.2:5000', 'http://localhost:5000']

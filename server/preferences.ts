@@ -68,22 +68,15 @@ export async function analyzeSuccessPatterns(content: any, performance: ContentP
 
 export async function getUserPreferences(userId: string): Promise<UserPreferences | null> {
   try {
-    // For now, return mock preferences - in production this would query the database
-    const mockPreferences: UserPreferences = {
-      userId,
-      niche: 'lifestyle',
-      preferredCategories: ['Comedy', 'Lifestyle', 'Entertainment'],
-      successfulHashtags: ['viral', 'trending', 'lifestyle'],
-      avgSuccessfulEngagement: 0.08,
-      preferredContentLength: 'short',
-      bestPerformingPlatforms: ['tiktok', 'youtube'],
-      contentStyle: 'entertainment',
-      targetAudience: 'gen-z',
-      optimizedPostTimes: ['18:00', '21:00'],
-      lastUpdated: new Date()
-    };
+    // Query database for user preferences
+    const preferences = await storage.getUserPreferences(userId);
+    
+    if (!preferences) {
+      console.log(`⚠️ No preferences found for user ${userId}`);
+      return null;
+    }
 
-    return mockPreferences;
+    return preferences;
   } catch (error) {
     console.error('Error getting user preferences:', error);
     return null;

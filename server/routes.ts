@@ -15,15 +15,19 @@ import agentRoutes from "./routes/agents";
 import oauthRoutes from "./routes/oauth";
 import notificationRoutes from "./routes/notifications";
 import versionRoutes from "./routes/version";
+import gdprRoutes from "./routes/gdpr";
 import { registerSubscriptionRoutes, registerRevenueCatSyncRoute } from "./routes/subscriptions";
 import { authenticateToken, optionalAuth, getUserId, AuthRequest } from "./auth";
-import { aiAnalysisLimiter, uploadLimiter } from './middleware/security';
+import { aiAnalysisLimiter, uploadLimiter, profileAnalysisLimiter } from './middleware/security';
 import { validateRequest, schemas } from './middleware/validation';
 import { checkSubscriptionLimit, trackFeatureUsage } from './middleware/subscriptionLimits';
 import { logger, logError, logAICall } from './lib/logger';
 import { storageService } from './lib/storage';
 import { uploadImage, uploadVideo } from './middleware/upload';
 import { videoProcessingQueue } from './lib/queue';
+import { db } from './db';
+import { creatorProfiles, analyzedPosts as analyzedPostsTable, profileAnalysisReports } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Version endpoint (public)
@@ -41,6 +45,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Notification routes
   app.use("/api/notifications", notificationRoutes);
 
+  // GDPR compliance routes
+  app.use("/api/gdpr", gdprRoutes);
+
   // Subscription routes
   registerSubscriptionRoutes(app);
   registerRevenueCatSyncRoute(app);
@@ -57,16 +64,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = getUserId(req);
       const { platform, category, contentType, targetAudience } = req.body;
-      
+
+      console.log('🔍 [USER TRIGGERED] POST /api/trends/discover received:', {
+        userId,
+        platform,
+        category,
+        contentType,
+        targetAudience,
+        requestBody: req.body
+      });
+
       if (!platform) {
         return res.status(400).json({ error: "Platform is required" });
       }
 
-      console.log(`🔍 Discovering trends for ${platform}...`);
-      
+      // Load user preferences for personalization
+      const userPrefs = userId ? await storage.getUserPreferences(userId) : null;
+      console.log('🔍 [USER TRIGGERED] Loaded userPrefs:', {
+        hasPrefs: !!userPrefs,
+        preferredCategories: userPrefs?.preferredCategories,
+        niche: userPrefs?.niche,
+        targetAudience: userPrefs?.targetAudience
+      });
+
       // Use platform-specific APIs first, fall back to AI
       let trends: any[] = [];
-      
+
       if (platform === 'youtube') {
         const youtubeTrends = await youtubeService.getTrendingVideos('US', category, 10);
         trends = youtubeTrends;
@@ -74,7 +97,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const tiktokTrends = await tiktokService.getTrendingHashtags('US', 10);
         trends = tiktokTrends;
       }
-      
+
       // If no platform trends, enhance with AI discovery
       if (trends.length === 0) {
         trends = await openRouterService.discoverTrends({
@@ -85,12 +108,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }, userId);
       }
 
-      // Store trends in database with validation-aware fallback
+      // Store trends in database with validation-aware fallback and user context
       const storedTrends = [];
       for (const trendData of trends) {
         try {
-          // Validate trend data
-          const validatedTrend = insertTrendSchema.parse(trendData);
+          // Validate trend data with user personalization
+          const validatedTrend = insertTrendSchema.parse({
+            ...trendData,
+            targetNiche: userPrefs?.preferredCategories?.[0],
+            targetAudience: userPrefs?.targetAudience,
+            contentStyle: userPrefs?.contentStyle
+          });
           const trend = await storage.createTrend(validatedTrend);
           storedTrends.push(trend);
         } catch (error) {
@@ -110,10 +138,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             targetAudience
           }, userId);
           
-          // Store AI trends (these should be pre-validated by our AI service)
+          // Store AI trends with user context
           for (const trendData of aiTrends) {
             try {
-              const validatedTrend = insertTrendSchema.parse(trendData);
+              const validatedTrend = insertTrendSchema.parse({
+                ...trendData,
+                targetNiche: userPrefs?.niche,
+                targetAudience: userPrefs?.targetAudience,
+                contentStyle: userPrefs?.contentStyle
+              });
               const trend = await storage.createTrend(validatedTrend);
               storedTrends.push(trend);
             } catch (error) {
@@ -139,23 +172,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const startTime = Date.now();
     try {
       const { platform, limit, categories } = req.query;
-      const userId = (req as any).userId || 'anonymous';
+      const userId = (req as any).userId;
 
       logger.info({
         platform,
         limit,
         categories,
-        userId,
+        userId: userId || 'unauthenticated',
         requestId: (req as any).id
       }, '🎯 GET /api/trends - Starting AI trend discovery');
 
-      // Get user preferences for AI curation
+      // Get user preferences for AI curation (only for authenticated users)
       let userPrefs = null;
-      try {
-        userPrefs = await getUserPreferences(userId);
-        logger.debug({ userPrefs }, 'User preferences loaded');
-      } catch (error) {
-        logger.debug('No user preferences found, using category filters');
+      if (userId) {
+        try {
+          userPrefs = await getUserPreferences(userId);
+          logger.debug({ userPrefs }, 'User preferences loaded');
+        } catch (error) {
+          logger.debug('No user preferences found, using category filters');
+        }
       }
 
       let trends = [];
@@ -166,10 +201,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // This prevents Vite HMR crashes during development
 
       // Step 1: Return any existing trends immediately (< 100ms)
-      const dbTrends = await storage.getTrends(
-        (platform as string) || 'tiktok',
-        limit ? parseInt(limit as string) : 20
-      );
+      // Use personalized filtering if user has preferences
+      let dbTrends;
+      if (userPrefs && (userPrefs.preferredCategories?.length > 0 || userPrefs.targetAudience || userPrefs.contentStyle)) {
+        logger.debug({ userPrefs }, 'Using personalized trend filtering');
+        dbTrends = await storage.getTrendsByUserPreferences(
+          userPrefs,
+          limit ? parseInt(limit as string) : 20
+        );
+      } else {
+        dbTrends = await storage.getTrends(
+          (platform as string) || 'tiktok',
+          limit ? parseInt(limit as string) : 20
+        );
+      }
 
       if (dbTrends.length > 0) {
         logger.info({ trendsCount: dbTrends.length }, '✅ Returning cached trends immediately');
@@ -201,10 +246,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 categories: categoryList
               }, '✅ Background: AI generated fresh ideas, storing for next request');
 
-              // Store for next request
+              // Store for next request with user context
               for (const trendData of freshTrends) {
                 try {
-                  const validatedTrend = insertTrendSchema.parse(trendData);
+                  const validatedTrend = insertTrendSchema.parse({
+                    ...trendData,
+                    targetNiche: userPrefs?.preferredCategories?.[0],
+                    targetAudience: userPrefs?.targetAudience,
+                    contentStyle: userPrefs?.contentStyle
+                  });
                   await storage.createTrend(validatedTrend);
                 } catch (e) {
                   logger.warn({ error: e }, 'Background: Failed to store trend');
@@ -387,24 +437,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     async (req: AuthRequest, res) => {
     try {
       const userId = getUserId(req);
-      const { title, thumbnailDescription, platform, roastMode } = req.body;
-      
-      if (!title && !thumbnailDescription) {
-        return res.status(400).json({ error: 'Either title or thumbnailDescription is required' });
+      const { title, thumbnailDescription, thumbnailUrl, thumbnailBase64, platform, roastMode } = req.body;
+
+      if (!title && !thumbnailDescription && !thumbnailUrl && !thumbnailBase64) {
+        return res.status(400).json({ error: 'Either title, thumbnailDescription, thumbnailUrl, or thumbnailBase64 is required' });
       }
-      
+
       if (!platform) {
         return res.status(400).json({ error: 'Platform is required' });
       }
 
-      console.log(`🎯 Analyzing content for ${platform}...`);
-      
+      console.log(`🎯 Analyzing content for ${platform}...`, {
+        hasTitle: !!title,
+        hasVision: !!(thumbnailUrl || thumbnailBase64),
+        hasLegacyDescription: !!thumbnailDescription
+      });
+
       // Create user content record first
       const content = await storage.createUserContent({
         userId,
         platform,
         title: title || null,
-        thumbnailUrl: thumbnailDescription || null,
+        thumbnailUrl: thumbnailUrl || thumbnailDescription || null,
         status: 'analyzing'
       });
 
@@ -414,13 +468,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         { title, description: thumbnailDescription }
       );
 
-      // Analyze content using AI
+      // Analyze content using AI with vision support
       const analysis = await openRouterService.analyzeContent({
         title,
-        thumbnailDescription,
+        thumbnailDescription, // Keep for backward compatibility
+        thumbnailUrl, // New: actual image URL for vision
+        thumbnailBase64, // New: base64 image for vision
         platform: platform as 'tiktok' | 'youtube' | 'instagram',
         roastMode: roastMode || false
-      });
+      }, userId);
 
       // Add personalized insights to suggestions
       if (personalizedInsights) {
@@ -998,7 +1054,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           'tutorial', 'storytelling', 'behind-scenes', 'motivational'
         ],
         platforms: [
-          'tiktok', 'youtube', 'instagram', 'twitter', 'linkedin'
+          'tiktok', 'youtube', 'instagram', 'twitter'
         ],
         contentLengths: [
           'short', 'medium', 'long'
@@ -1065,7 +1121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`💾 Saving user preferences for ${userId}...`);
 
-      const userPreferences = {
+      const userPreferencesData = {
         userId,
         niche,
         targetAudience: targetAudience || 'gen-z',
@@ -1076,17 +1132,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         preferredContentLength: contentLength || 'short',
         optimizedPostTimes: postingSchedule || ['18:00', '21:00'],
         goals: goals || 'grow_followers',
-        avgSuccessfulEngagement: 0.05, // Default
-        successfulHashtags: [], // Will be learned
-        lastUpdated: new Date()
+        avgSuccessfulEngagement: 0.05,
+        successfulHashtags: []
       };
 
-      // TODO: Store in database - for now we'll just return the preferences
-      console.log(`✅ User preferences saved:`, userPreferences);
+      // Save to database
+      const savedPreferences = await storage.saveUserPreferences(userId, userPreferencesData);
+      console.log(`✅ User preferences saved to database:`, savedPreferences);
 
       res.json({
         success: true,
-        preferences: userPreferences,
+        preferences: savedPreferences,
         message: 'Preferences saved successfully! You\'ll now get personalized trend recommendations.'
       });
     } catch (error) {
@@ -1113,10 +1169,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timeframe = (req.query.timeframe as 'week' | 'month' | 'year') || 'week';
       
       console.log(`📊 Fetching dashboard stats for ${userId} (${timeframe})...`);
-      
-      // Ensure mock analytics data exists for demo
-      await analyticsService.seedAnalyticsIfNeeded(userId);
-      
+
+      // Mock data seeding disabled - users start with zero stats
+      // await analyticsService.seedAnalyticsIfNeeded(userId);
+
       const stats = await analyticsService.calculateDashboardStats(userId, timeframe);
       
       console.log('✅ Dashboard stats calculated successfully');
@@ -1142,10 +1198,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timeframe = (req.query.timeframe as 'week' | 'month' | 'year') || 'week';
       
       console.log(`💡 Fetching performance insights for ${userId} (${timeframe})...`);
-      
-      // Ensure mock analytics data exists for demo
-      await analyticsService.seedAnalyticsIfNeeded(userId);
-      
+
+      // Mock data seeding disabled - users start with zero stats
+      // await analyticsService.seedAnalyticsIfNeeded(userId);
+
       const insights = await analyticsService.calculatePerformanceInsights(userId, timeframe);
       
       console.log('✅ Performance insights calculated successfully');
@@ -1160,6 +1216,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false, 
         error: 'Failed to fetch performance insights' 
+      });
+    }
+  });
+
+  // Delete user analytics (for clearing mock data)
+  app.delete('/api/dashboard/analytics', authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = getUserId(req);
+
+      console.log(`🗑️  Deleting all analytics for ${userId}...`);
+      await storage.deleteUserAnalytics(userId);
+
+      res.json({
+        success: true,
+        message: 'Analytics data cleared successfully'
+      });
+    } catch (error) {
+      console.error('Error deleting analytics:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to delete analytics data'
       });
     }
   });
@@ -1279,11 +1356,146 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================================
+  // VIRAL PATTERN ANALYSIS ROUTES
+  // ============================================================================
+
+  /**
+   * POST /api/trends/:id/analyze
+   * Analyze why a specific trend is going viral
+   * Returns cached analysis if available (7-day cache)
+   */
+  app.post("/api/trends/:id/analyze", async (req, res) => {
+    try {
+      const trendId = parseInt(req.params.id);
+
+      if (isNaN(trendId)) {
+        return res.status(400).json({ error: "Invalid trend ID" });
+      }
+
+      const { viralPatternService } = await import('./ai/viralPatternService');
+      const analysis = await viralPatternService.analyzeTrend(trendId);
+
+      res.json(analysis);
+    } catch (error: any) {
+      logger.error({ error, trendId: req.params.id }, 'Failed to analyze viral trend');
+      res.status(500).json({ error: error.message || "Failed to analyze trend" });
+    }
+  });
+
+  /**
+   * POST /api/trends/:id/apply
+   * Generate personalized advice for applying a viral trend
+   * Body: { userContentConcept?: string }
+   */
+  app.post("/api/trends/:id/apply", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const trendId = parseInt(req.params.id);
+      const { userContentConcept } = req.body;
+
+      if (isNaN(trendId)) {
+        return res.status(400).json({
+          error: "Invalid trend ID",
+          code: "INVALID_TREND_ID"
+        });
+      }
+
+      // Validate that user provided some input
+      if (!userContentConcept || userContentConcept.trim().length === 0) {
+        return res.status(400).json({
+          error: "Please describe your content idea to get personalized advice",
+          code: "MISSING_CONTENT_CONCEPT",
+          suggestion: "Share your content idea, target audience, or what makes your take unique"
+        });
+      }
+
+      const { viralPatternService } = await import('./ai/viralPatternService');
+      const application = await viralPatternService.generatePersonalizedAdvice(
+        userId,
+        trendId,
+        userContentConcept
+      );
+
+      res.json(application);
+    } catch (error: any) {
+      const errorDetails = {
+        message: error?.message || 'Unknown error',
+        code: error?.code,
+        status: error?.status
+      };
+
+      logger.error({
+        error: errorDetails,
+        userId: req.user?.id,
+        trendId: req.params.id
+      }, 'Failed to generate personalized advice');
+
+      // Provide helpful error message to user
+      const userMessage = error?.message?.includes('timeout') ?
+        "AI analysis is taking longer than expected. Please try again." :
+        error?.message?.includes('rate limit') ?
+        "Too many requests. Please wait a moment and try again." :
+        "Unable to generate advice right now. Please try again in a few moments.";
+
+      res.status(500).json({
+        error: userMessage,
+        code: error?.code || "ANALYSIS_FAILED"
+      });
+    }
+  });
+
+  /**
+   * GET /api/trends/:id/analysis
+   * Get cached viral analysis if it exists
+   */
+  app.get("/api/trends/:id/analysis", async (req, res) => {
+    try {
+      const trendId = parseInt(req.params.id);
+
+      if (isNaN(trendId)) {
+        return res.status(400).json({ error: "Invalid trend ID" });
+      }
+
+      const analysis = await storage.getViralAnalysisByTrendId(trendId);
+
+      if (!analysis) {
+        return res.status(404).json({ error: "Analysis not found" });
+      }
+
+      // Check if expired
+      if (analysis.expiresAt && new Date() > analysis.expiresAt) {
+        return res.status(404).json({ error: "Analysis expired" });
+      }
+
+      res.json(analysis);
+    } catch (error: any) {
+      logger.error({ error, trendId: req.params.id }, 'Failed to get viral analysis');
+      res.status(500).json({ error: error.message || "Failed to get analysis" });
+    }
+  });
+
+  /**
+   * GET /api/users/trend-applications
+   * Get user's history of applied trends
+   */
+  app.get("/api/users/trend-applications", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.id;
+      const applications = await storage.getTrendApplicationsByUser(userId);
+
+      res.json(applications);
+    } catch (error: any) {
+      logger.error({ error, userId: req.user?.id }, 'Failed to get trend applications');
+      res.status(500).json({ error: error.message || "Failed to get applications" });
+    }
+  });
+
   // Health check endpoint for monitoring provider status
   app.get("/api/health/trends", async (req, res) => {
     try {
       const tiktokStatus = tiktokService.getProviderStatus();
-      
+
       res.json({
         success: true,
         providers: {
@@ -1295,6 +1507,169 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Health check error:", error);
       res.status(500).json({ error: "Health check failed" });
+    }
+  });
+
+  // ============================================================================
+  // CREATOR PROFILE ANALYSIS ROUTES
+  // ============================================================================
+
+  /**
+   * POST /api/profile/analyze
+   * Start a new profile analysis job (Creator Class only)
+   * Body: { tiktokUsername?, instagramUsername?, youtubeChannelId? }
+   * Returns: { jobId }
+   */
+  app.post("/api/profile/analyze",
+    authenticateToken,
+    profileAnalysisLimiter,
+    validateRequest({ body: schemas.analyzeProfile }),
+    async (req: AuthRequest, res) => {
+    try {
+      const userId = getUserId(req);
+      const { tiktokUsername, instagramUsername, youtubeChannelId } = req.body;
+
+      logger.info({ userId, platforms: { tiktokUsername, instagramUsername, youtubeChannelId } }, 
+        'Starting profile analysis');
+
+      const { backgroundJobService } = await import('./services/background-jobs');
+      
+      const jobId = await backgroundJobService.createAnalysisJob(userId, {
+        tiktokUsername,
+        instagramUsername,
+        youtubeChannelId
+      });
+
+      res.json({
+        success: true,
+        jobId,
+        message: 'Analysis started. This will take 45-70 seconds.',
+        estimatedDuration: '45-70 seconds'
+      });
+    } catch (error: any) {
+      logger.error({ error, userId: req.user?.id }, 'Failed to start profile analysis');
+      res.status(500).json({ error: error.message || "Failed to start analysis" });
+    }
+  });
+
+  /**
+   * GET /api/profile/analysis/:jobId
+   * Get analysis job status
+   * Returns: { status, progress, result?, error? }
+   */
+  app.get("/api/profile/analysis/:jobId", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const { jobId } = req.params;
+      const userId = getUserId(req);
+
+      const { backgroundJobService } = await import('./services/background-jobs');
+      const job = backgroundJobService.getJobStatus(jobId);
+
+      if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+
+      // CRITICAL: Verify job belongs to user IMMEDIATELY after fetch
+      if (job.userId !== userId) {
+        logger.warn({ jobId, userId, jobUserId: job.userId }, 'Unauthorized job access attempt');
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
+
+      // TOCTOU protection: Re-validate job still exists and belongs to user
+      const revalidatedJob = backgroundJobService.getJobStatus(jobId);
+      if (!revalidatedJob || revalidatedJob.userId !== userId) {
+        logger.warn({ jobId, userId }, 'Job disappeared between checks (TOCTOU)');
+        return res.status(404).json({ error: 'Job no longer available' });
+      }
+
+      res.json({
+        success: true,
+        job: {
+          id: job.id,
+          status: job.status,
+          progress: job.progress,
+          error: job.error,
+          result: job.result,
+          createdAt: job.createdAt,
+          completedAt: job.completedAt,
+        }
+      });
+    } catch (error: any) {
+      logger.error({ error, jobId: req.params.jobId }, 'Failed to get job status');
+      res.status(500).json({ error: error.message || "Failed to get job status" });
+    }
+  });
+
+  /**
+   * GET /api/profile/report
+   * Get user's creator profile and latest report
+   * Returns: { profile, report, analyzedPosts }
+   */
+  app.get("/api/profile/report", authenticateToken, async (req: AuthRequest, res) => {
+    try {
+      const userId = getUserId(req);
+
+      const profile = await db.query.creatorProfiles.findFirst({
+        where: eq(creatorProfiles.userId, userId),
+      });
+
+      if (!profile) {
+        return res.status(404).json({ 
+          error: 'No profile found. Start an analysis first.' 
+        });
+      }
+
+      // Get latest report
+      const report = await db.query.profileAnalysisReports.findFirst({
+        where: eq(profileAnalysisReports.profileId, profile.id),
+        orderBy: (reports, { desc }) => [desc(reports.createdAt)],
+      });
+
+      // Get analyzed posts
+      const posts = await db.query.analyzedPosts.findMany({
+        where: eq(analyzedPostsTable.profileId, profile.id),
+        orderBy: (posts, { desc }) => [desc(posts.postScore)],
+        limit: 15,
+      });
+
+      logger.info({
+        userId,
+        hasProfile: !!profile,
+        hasReport: !!report,
+        reportFields: report ? Object.keys(report) : [],
+        postsCount: posts.length,
+      }, '📊 Profile report response');
+
+      res.json({
+        success: true,
+        profile,
+        report,
+        analyzedPosts: posts,
+      });
+    } catch (error: any) {
+      logger.error({ error, userId: req.user?.id }, 'Failed to get profile report');
+      res.status(500).json({ error: error.message || "Failed to get report" });
+    }
+  });
+
+  /**
+   * GET /api/profile/scrapers/health
+   * Check scraper health status
+   * Returns: { youtube, instagram, tiktok }
+   */
+  app.get("/api/profile/scrapers/health", async (req, res) => {
+    try {
+      const { scraperService } = await import('./services/scraper');
+      const health = await scraperService.healthCheck();
+
+      res.json({
+        success: true,
+        scrapers: health,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      logger.error({ error }, 'Scraper health check failed');
+      res.status(500).json({ error: error.message || "Health check failed" });
     }
   });
 

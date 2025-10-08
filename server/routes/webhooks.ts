@@ -77,22 +77,44 @@ export function registerWebhookRoutes(app: Express) {
 }
 
 /**
+ * Verify RevenueCat webhook signature
+ * SECURITY: Prevents unauthorized webhook calls
+ */
+function verifyRevenueCatSignature(body: Buffer, signature: string): boolean {
+  const secret = process.env.REVENUECAT_WEBHOOK_SECRET;
+
+  if (!secret) {
+    console.error('❌ REVENUECAT_WEBHOOK_SECRET not configured');
+    return false;
+  }
+
+  const crypto = require('crypto');
+  const hash = crypto
+    .createHmac('sha256', secret)
+    .update(body)
+    .digest('hex');
+
+  return hash === signature;
+}
+
+/**
  * RevenueCat webhook endpoint
  * Handles subscription events from RevenueCat
  */
 export function registerRevenueCatWebhook(app: Express) {
-  app.post("/api/webhooks/revenuecat", express.json(), async (req, res) => {
+  app.post("/api/webhooks/revenuecat",
+    express.raw({ type: 'application/json' }),
+    async (req, res) => {
     try {
-      // Verify webhook signature
-      const authHeader = req.headers.authorization;
-      const webhookSecret = process.env.REVENUECAT_WEBHOOK_SECRET;
+      const signature = req.headers['x-revenuecat-signature'] as string;
 
-      if (webhookSecret && authHeader !== `Bearer ${webhookSecret}`) {
-        console.error("⚠️  RevenueCat webhook authentication failed");
-        return res.status(401).send("Unauthorized");
+      // Verify webhook signature
+      if (!verifyRevenueCatSignature(req.body, signature)) {
+        console.error('❌ [Webhook] Invalid signature');
+        return res.status(401).json({ error: 'Invalid signature' });
       }
 
-      const event = req.body;
+      const event = JSON.parse(req.body.toString());
       console.log(`✅ Received RevenueCat webhook: ${event.type}`);
 
       // Handle different event types
@@ -135,9 +157,11 @@ async function handleRevenueCatPurchase(event: any) {
 
   console.log(`✅ Purchase event for user ${app_user_id}`);
 
-  // Map product ID to tier
-  let tierId = 'free';
-  if (entitlement_ids?.includes('pro')) {
+  // Map product ID to tier (4-tier system: starter, creator, pro, studio)
+  let tierId = 'starter';
+  if (entitlement_ids?.includes('studio')) {
+    tierId = 'studio';
+  } else if (entitlement_ids?.includes('pro')) {
     tierId = 'pro';
   } else if (entitlement_ids?.includes('creator')) {
     tierId = 'creator';
@@ -222,15 +246,15 @@ async function handleRevenueCatExpiration(event: any) {
       WHERE user_id = ${app_user_id} AND status = 'active'
     `);
 
-    // Downgrade user to free tier
+    // Downgrade user to starter tier
     await tx.execute(sql`
       UPDATE users
-      SET subscription_tier_id = 'free'
+      SET subscription_tier_id = 'starter'
       WHERE id = ${app_user_id}
     `);
   });
 
-  console.log(`✅ User ${app_user_id} downgraded to free tier after expiration`);
+  console.log(`✅ User ${app_user_id} downgraded to starter tier after expiration`);
 }
 
 /**

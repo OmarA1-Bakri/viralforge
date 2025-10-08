@@ -6,6 +6,9 @@ export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current working directory.
   const env = loadEnv(mode, process.cwd(), '');
 
+  // Generate unique build ID for cache busting
+  const buildId = Date.now().toString();
+
   return {
     plugins: [
       react(),
@@ -17,6 +20,7 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_PUBLIC_POSTHOG_KEY': JSON.stringify(env.VITE_PUBLIC_POSTHOG_KEY),
       'import.meta.env.VITE_PUBLIC_POSTHOG_HOST': JSON.stringify(env.VITE_PUBLIC_POSTHOG_HOST),
       'import.meta.env.VITE_REVENUECAT_API_KEY': JSON.stringify(env.VITE_REVENUECAT_API_KEY),
+      'import.meta.env.VITE_BUILD_ID': JSON.stringify(buildId),
     },
   resolve: {
     alias: {
@@ -30,6 +34,14 @@ export default defineConfig(({ mode }) => {
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        // Force new hash on every build to prevent cache issues
+        entryFileNames: `assets/[name]-[hash]-${buildId}.js`,
+        chunkFileNames: `assets/[name]-[hash]-${buildId}.js`,
+        assetFileNames: `assets/[name]-[hash]-${buildId}.[ext]`
+      }
+    }
   },
 
     server: {

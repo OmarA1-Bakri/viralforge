@@ -115,12 +115,8 @@ export class AnalyticsService {
         ? Math.min(50, Math.max(0, recentActivity.length * 2.5)) // Mock growth calculation
         : 0;
 
-      // Calculate automation savings based on activities
-      const activitiesCount = recentActivity.length;
-      const savedMinutes = activitiesCount * 15; // Assume 15 minutes saved per AI action
-      const hours = Math.floor(savedMinutes / 60);
-      const minutes = savedMinutes % 60;
-      const automationSavings = `${hours}h ${minutes}m`;
+      // Time saved calculation disabled - users start with zero
+      const automationSavings = "0h 0m";
 
       console.log(`📊 Analytics calculated for ${userId} (${timeframe}):`, {
         totalViews,

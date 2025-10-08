@@ -1,97 +1,363 @@
-import type { Express, Request, Response } from "express";
-import { notificationService } from "../automation/notifications";
-import { workflowTriggers } from "../automation/triggers";
-import { authenticateToken, getUserId, AuthRequest } from "../auth";
+import type { Express, Request } from 'express';
+import { db } from '../db';
+import { userAutomationSettings, automationJobs, users } from '@shared/schema';
+import { eq, desc } from 'drizzle-orm';
+import { logger } from '../lib/logger';
+import { requireAuth, getUserId } from '../auth';
+import { trendDiscoveryQueue, contentScoringQueue, videoProcessingQueue } from '../queue/index';
+import { TrendCache } from '../queue/trendCache';
+import { redisConnection } from '../queue/index';
+import { randomUUID } from 'crypto';
+import rateLimit from 'express-rate-limit';
 
+const trendCache = new TrendCache(redisConnection);
+
+// Rate limiters for automation endpoints
+const automationSettingsLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // Max 10 settings updates per minute
+  message: 'Too many automation settings requests, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const automationTriggerLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 5, // Max 5 manual triggers per minute per user
+  message: 'Too many automation triggers, please wait before triggering again',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: any) => {
+    // Rate limit per user, not per IP
+    const userId = req.user?.id;
+    return userId ? `trigger:${userId}` : req.ip;
+  },
+});
+
+const automationQueryLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30, // Max 30 queries per minute
+  message: 'Too many requests, please slow down',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+/**
+ * Automation API endpoints for BullMQ-based user automation system
+ */
 export function registerAutomationRoutes(app: Express) {
-  
-  // Get user notifications
-  app.get("/api/notifications", authenticateToken, async (req: AuthRequest, res: Response) => {
+  /**
+   * GET /api/automation/settings
+   * Get user's automation settings
+   */
+  app.get('/api/automation/settings', requireAuth, automationQueryLimiter, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const notifications = await notificationService.getUserNotifications(userId, 20);
-      
-      res.json({
-        success: true,
-        notifications,
-        unreadCount: notifications.filter(n => (n.metadata as any)?.priority === 'high').length
-      });
+
+      let [settings] = await db
+        .select()
+        .from(userAutomationSettings)
+        .where(eq(userAutomationSettings.userId, userId))
+        .limit(1);
+
+      // Create default settings if they don't exist
+      if (!settings) {
+        [settings] = await db
+          .insert(userAutomationSettings)
+          .values({
+            userId,
+            trendDiscoveryEnabled: false,
+            contentScoringEnabled: false,
+            videoProcessingEnabled: false,
+          })
+          .returning();
+      }
+
+      res.json(settings);
     } catch (error) {
-      console.error("❌ Failed to get notifications:", error);
-      res.status(500).json({ 
-        success: false, 
-        error: "Failed to load notifications" 
-      });
+      logger.error({ error }, 'Error fetching automation settings');
+      res.status(500).json({ error: 'Failed to fetch automation settings' });
     }
   });
 
-  // Trigger workflow when content is uploaded
-  app.post("/api/automation/content-uploaded", authenticateToken, async (req: AuthRequest, res: Response) => {
+  /**
+   * PUT /api/automation/settings
+   * Update user's automation settings
+   * CRITICAL: Validates subscription tier before allowing automation enablement
+   */
+  app.put('/api/automation/settings', requireAuth, automationSettingsLimiter, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const { title, description, platform, contentType, filePath } = req.body;
+      const {
+        trendDiscoveryEnabled,
+        trendDiscoveryInterval,
+        contentScoringEnabled,
+        contentScoringInterval,
+        videoProcessingEnabled,
+        videoProcessingInterval,
+      } = req.body;
 
-      const result = await workflowTriggers.onContentUploaded(userId, {
-        title,
-        description,
-        platform,
-        contentType,
-        filePath
-      });
+      // Check subscription tier BEFORE allowing automation to be enabled
+      const [user] = await db
+        .select({ role: users.role })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
 
-      res.json({
-        success: true,
-        message: "Content upload automation triggered",
-        result
-      });
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      const userRole = user.role || 'user';
+      const isAutomationAllowed = ['premium', 'pro', 'admin'].includes(userRole);
+
+      // Prevent free users from enabling automation
+      if (!isAutomationAllowed) {
+        if (trendDiscoveryEnabled || contentScoringEnabled || videoProcessingEnabled) {
+          return res.status(403).json({
+            error: 'Automation is not available for your subscription tier. Please upgrade to Premium or Pro.',
+            requiredTier: 'premium',
+          });
+        }
+      }
+
+      // Validate intervals
+      const validIntervals = ['hourly', 'every_6_hours', 'every_12_hours', 'daily', 'weekly'];
+
+      if (trendDiscoveryInterval && !validIntervals.includes(trendDiscoveryInterval)) {
+        return res.status(400).json({ error: 'Invalid trend discovery interval' });
+      }
+
+      if (contentScoringInterval && !validIntervals.includes(contentScoringInterval)) {
+        return res.status(400).json({ error: 'Invalid content scoring interval' });
+      }
+
+      if (videoProcessingInterval && !validIntervals.includes(videoProcessingInterval)) {
+        return res.status(400).json({ error: 'Invalid video processing interval' });
+      }
+
+      // Check if settings exist
+      const [existing] = await db
+        .select()
+        .from(userAutomationSettings)
+        .where(eq(userAutomationSettings.userId, userId))
+        .limit(1);
+
+      let settings;
+
+      if (existing) {
+        // Update existing settings
+        [settings] = await db
+          .update(userAutomationSettings)
+          .set({
+            trendDiscoveryEnabled: trendDiscoveryEnabled ?? existing.trendDiscoveryEnabled,
+            trendDiscoveryInterval: trendDiscoveryInterval ?? existing.trendDiscoveryInterval,
+            contentScoringEnabled: contentScoringEnabled ?? existing.contentScoringEnabled,
+            contentScoringInterval: contentScoringInterval ?? existing.contentScoringInterval,
+            videoProcessingEnabled: videoProcessingEnabled ?? existing.videoProcessingEnabled,
+            videoProcessingInterval: videoProcessingInterval ?? existing.videoProcessingInterval,
+            updatedAt: new Date(),
+          })
+          .where(eq(userAutomationSettings.userId, userId))
+          .returning();
+      } else {
+        // Create new settings
+        [settings] = await db
+          .insert(userAutomationSettings)
+          .values({
+            userId,
+            trendDiscoveryEnabled: trendDiscoveryEnabled ?? false,
+            trendDiscoveryInterval: trendDiscoveryInterval ?? 'daily',
+            contentScoringEnabled: contentScoringEnabled ?? false,
+            contentScoringInterval: contentScoringInterval ?? 'daily',
+            videoProcessingEnabled: videoProcessingEnabled ?? false,
+            videoProcessingInterval: videoProcessingInterval ?? 'daily',
+          })
+          .returning();
+      }
+
+      logger.info({ userId, settings }, 'Automation settings updated');
+      res.json(settings);
     } catch (error) {
-      console.error("❌ Content upload automation failed:", error);
-      res.status(500).json({ 
-        success: false, 
-        error: "Automation failed" 
-      });
+      logger.error({ error }, 'Error updating automation settings');
+      res.status(500).json({ error: 'Failed to update automation settings' });
     }
   });
 
-  // Trigger when user saves a trend
-  app.post("/api/automation/trend-saved", authenticateToken, async (req: AuthRequest, res: Response) => {
+  /**
+   * GET /api/automation/jobs
+   * Get user's automation job history
+   */
+  app.get('/api/automation/jobs', requireAuth, automationQueryLimiter, async (req, res) => {
     try {
       const userId = getUserId(req);
-      const { trendId, trendTitle } = req.body;
+      const limit = parseInt(req.query.limit as string) || 50;
 
-      await workflowTriggers.onTrendSaved(userId, trendId, trendTitle);
+      const jobs = await db
+        .select()
+        .from(automationJobs)
+        .where(eq(automationJobs.userId, userId))
+        .orderBy(desc(automationJobs.createdAt))
+        .limit(limit);
 
-      res.json({
-        success: true,
-        message: "Trend save automation triggered"
-      });
+      res.json(jobs);
     } catch (error) {
-      console.error("❌ Trend save automation failed:", error);
-      res.status(500).json({ 
-        success: false, 
-        error: "Automation failed" 
-      });
+      logger.error({ error }, 'Error fetching automation jobs');
+      res.status(500).json({ error: 'Failed to fetch automation jobs' });
     }
   });
 
-  // Manual performance check trigger
-  app.post("/api/automation/check-performance", authenticateToken, async (req: AuthRequest, res: Response) => {
+  /**
+   * POST /api/automation/jobs/:jobType/trigger
+   * Manually trigger an automation job
+   */
+  app.post('/api/automation/jobs/:jobType/trigger', requireAuth, automationTriggerLimiter, async (req, res) => {
     try {
       const userId = getUserId(req);
-      
-      await workflowTriggers.checkPerformanceAlerts(userId);
+      const { jobType } = req.params;
 
-      res.json({
-        success: true,
-        message: "Performance check completed"
-      });
-    } catch (error) {
-      console.error("❌ Performance check failed:", error);
-      res.status(500).json({ 
-        success: false, 
-        error: "Performance check failed" 
-      });
+      if (!['trend_discovery', 'content_scoring', 'video_processing'].includes(jobType)) {
+        return res.status(400).json({ error: 'Invalid job type' });
+      }
+
+      // Enqueue job based on type with circuit breaker for Redis failures
+      let job;
+      const jobData = { userId };
+      const jobOptions = {
+        jobId: `${jobType}-${userId}-${randomUUID()}`, // UUID prevents collisions
+        removeOnComplete: 1000, // Keep some history
+        removeOnFail: 5000,
+      };
+
+      try {
+        switch (jobType) {
+          case 'trend_discovery':
+            job = await trendDiscoveryQueue.add('discover-trends', jobData, jobOptions);
+            break;
+          case 'content_scoring':
+            job = await contentScoringQueue.add('score-content', jobData, jobOptions);
+            break;
+          case 'video_processing':
+            job = await videoProcessingQueue.add('process-video', jobData, jobOptions);
+            break;
+        }
+
+        logger.info({ userId, jobType, jobId: job.id }, 'Manual job triggered');
+        res.json({
+          message: `${jobType} job triggered`,
+          jobId: job.id,
+          status: 'queued',
+        });
+      } catch (queueError: any) {
+        // Circuit breaker: Redis/BullMQ failure
+        logger.error({ userId, jobType, error: queueError.message }, 'Queue unavailable - job not enqueued');
+
+        if (queueError.message?.includes('ECONNREFUSED') || queueError.message?.includes('Connection is closed')) {
+          return res.status(503).json({
+            error: 'Automation system temporarily unavailable. Please try again in a few minutes.',
+          });
+        }
+
+        throw queueError; // Re-throw unexpected errors
+      }
+    } catch (error: any) {
+      logger.error({ error }, 'Error triggering automation job');
+
+      // Return user-friendly error messages
+      if (error.message?.includes('not available for')) {
+        return res.status(403).json({ error: error.message });
+      }
+      if (error.message?.includes('limit')) {
+        return res.status(429).json({ error: error.message });
+      }
+
+      res.status(500).json({ error: 'Failed to trigger automation job' });
     }
   });
 
+  /**
+   * GET /api/automation/usage
+   * Get user's current month usage and limits
+   */
+  app.get('/api/automation/usage', requireAuth, automationQueryLimiter, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+
+      // Get user's subscription tier
+      const [user] = await db
+        .select({ role: users.role })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Get automation settings with usage
+      const [settings] = await db
+        .select()
+        .from(userAutomationSettings)
+        .where(eq(userAutomationSettings.userId, userId))
+        .limit(1);
+
+      // Subscription limits
+      const limits = {
+        free: { jobLimit: 0, costLimit: 0, automationAllowed: false },
+        user: { jobLimit: 0, costLimit: 0, automationAllowed: false },
+        premium: { jobLimit: 15, costLimit: 1.0, automationAllowed: true },
+        pro: { jobLimit: 999999, costLimit: 50.0, automationAllowed: true },
+        admin: { jobLimit: 999999, costLimit: 999999, automationAllowed: true },
+      };
+
+      const userRole = (user.role || 'user') as keyof typeof limits;
+      const limit = limits[userRole];
+
+      res.json({
+        subscriptionTier: userRole,
+        currentUsage: {
+          monthlyJobs: settings?.monthlyJobCount || 0,
+          monthlyCost: settings?.monthlyCostUsd || 0,
+        },
+        limits: {
+          monthlyJobs: limit.jobLimit,
+          monthlyCost: limit.costLimit,
+          automationAllowed: limit.automationAllowed,
+        },
+        resetDate: settings?.monthResetAt || new Date(),
+      });
+    } catch (error) {
+      logger.error({ error }, 'Error fetching automation usage');
+      res.status(500).json({ error: 'Failed to fetch automation usage' });
+    }
+  });
+
+  /**
+   * GET /api/automation/cache/stats
+   * Get trend cache statistics (admin only)
+   */
+  app.get('/api/automation/cache/stats', requireAuth, async (req, res) => {
+    try {
+      const userId = getUserId(req);
+
+      // Check if user is admin
+      const [user] = await db
+        .select({ role: users.role })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      if (user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Admin access required' });
+      }
+
+      const stats = await trendCache.getStats();
+      res.json(stats);
+    } catch (error) {
+      logger.error({ error }, 'Error fetching cache stats');
+      res.status(500).json({ error: 'Failed to fetch cache stats' });
+    }
+  });
+
+  logger.info('✅ Automation API routes registered');
 }

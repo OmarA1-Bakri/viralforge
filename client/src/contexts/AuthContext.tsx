@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { secureStorage } from '@/lib/mobileStorage';
 import { analytics } from '@/lib/analytics';
 import { revenueCat } from '@/lib/revenueCat';
+import { mobileRequest } from '@/lib/mobileRequest';
 
 export interface User {
   id: string;
@@ -73,7 +74,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const validateToken = async (token: string) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/validate`, {
+      const response = await mobileRequest(`${API_BASE_URL}/api/auth/validate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -111,7 +112,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const loginUrl = `${API_BASE_URL}/api/auth/login`;
       console.log('[AuthContext] Logging in at:', loginUrl);
 
-      const response = await fetch(loginUrl, {
+      const response = await mobileRequest(loginUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -168,7 +169,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const registerUrl = `${API_BASE_URL}/api/auth/register`;
       console.log('[AuthContext] Registering at:', registerUrl);
 
-      const response = await fetch(registerUrl, {
+      const response = await mobileRequest(registerUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
