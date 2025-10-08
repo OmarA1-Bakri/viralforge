@@ -79,6 +79,7 @@ export function registerWebhookRoutes(app: Express) {
 /**
  * Verify RevenueCat webhook signature
  * SECURITY: Prevents unauthorized webhook calls
+ * Uses constant-time comparison to prevent timing attacks
  */
 function verifyRevenueCatSignature(body: Buffer, signature: string): boolean {
   const secret = process.env.REVENUECAT_WEBHOOK_SECRET;
@@ -94,7 +95,17 @@ function verifyRevenueCatSignature(body: Buffer, signature: string): boolean {
     .update(body)
     .digest('hex');
 
-  return hash === signature;
+  // Use constant-time comparison to prevent timing attacks
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(hash, 'hex'),
+      Buffer.from(signature, 'hex')
+    );
+  } catch (error) {
+    // timingSafeEqual throws if lengths don't match
+    console.error('❌ Signature verification failed:', error);
+    return false;
+  }
 }
 
 /**

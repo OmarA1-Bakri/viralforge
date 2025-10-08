@@ -13,18 +13,53 @@ interface PendingSync {
 }
 
 const QUEUE_KEY = 'pendingSyncs';
+const MAX_QUEUE_SIZE = 10;
+const MAX_RETRY_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 /**
  * Add a failed sync to the offline queue
+ * Prevents unbounded growth with size limits and age-based cleanup
  */
 export async function queueFailedSync(purchase: PendingSync): Promise<void> {
   try {
-    const queue = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
-    queue.push(purchase);
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
-    console.log('[OfflineQueue] Queued failed sync:', purchase);
+    const queue = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]') as PendingSync[];
+
+    // Remove old items (older than 7 days)
+    const now = Date.now();
+    const validQueue = queue.filter(item =>
+      (now - item.timestamp) < MAX_RETRY_AGE_MS
+    );
+
+    // Check for duplicate (same productId)
+    const existingIndex = validQueue.findIndex(
+      item => item.productId === purchase.productId
+    );
+
+    if (existingIndex >= 0) {
+      // Update timestamp instead of adding duplicate
+      validQueue[existingIndex].timestamp = purchase.timestamp;
+      console.log('[OfflineQueue] Updated existing queue item:', purchase.productId);
+    } else {
+      // Prevent unbounded growth
+      if (validQueue.length >= MAX_QUEUE_SIZE) {
+        console.warn('[OfflineQueue] Queue full, removing oldest item');
+        validQueue.shift(); // Remove oldest
+      }
+
+      validQueue.push(purchase);
+      console.log('[OfflineQueue] Queued failed sync:', purchase);
+    }
+
+    localStorage.setItem(QUEUE_KEY, JSON.stringify(validQueue));
   } catch (error) {
     console.error('[OfflineQueue] Failed to queue sync:', error);
+
+    // If localStorage is full, clear queue and try again
+    if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+      console.warn('[OfflineQueue] localStorage full, clearing old queue');
+      localStorage.removeItem(QUEUE_KEY);
+      localStorage.setItem(QUEUE_KEY, JSON.stringify([purchase]));
+    }
   }
 }
 

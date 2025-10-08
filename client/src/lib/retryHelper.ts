@@ -10,8 +10,11 @@ export interface RetryOptions {
   baseDelay: number; // milliseconds
 }
 
+const MAX_DELAY = 30000; // 30 seconds max delay
+
 /**
  * Retry a function with exponential backoff
+ * Includes max delay cap and jitter to prevent thundering herd
  * @param fn Function to retry
  * @param options Retry configuration
  * @returns Result of the function
@@ -31,8 +34,16 @@ export async function retryWithBackoff<T>(
 
       // Don't retry on last attempt
       if (attempt < options.maxAttempts - 1) {
-        const delay = options.baseDelay * Math.pow(2, attempt);
-        console.log(`[Retry] Attempt ${attempt + 1} failed, retrying in ${delay}ms...`);
+        // Calculate exponential backoff
+        const exponentialDelay = options.baseDelay * Math.pow(2, attempt);
+
+        // Add jitter (0-1000ms random) to prevent thundering herd
+        const jitter = Math.random() * 1000;
+
+        // Cap at MAX_DELAY to prevent extremely long waits
+        const delay = Math.min(exponentialDelay + jitter, MAX_DELAY);
+
+        console.log(`[Retry] Attempt ${attempt + 1} failed, retrying in ${Math.round(delay)}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
     }

@@ -27,6 +27,7 @@ export const ENTITLEMENTS = {
 
 class RevenueCatService {
   private initialized = false;
+  private syncInProgress: Promise<any> | null = null;
 
   async initialize(): Promise<void> {
     if (this.initialized) {
@@ -211,18 +212,30 @@ class RevenueCatService {
   }
 
   async syncSubscriptionWithBackend() {
+    // If sync already in progress, return the existing promise
+    if (this.syncInProgress) {
+      console.log('[RevenueCat] Sync already in progress, waiting...');
+      return this.syncInProgress;
+    }
+
     try {
-      // ✅ SECURITY: Backend validates with RevenueCat API, not client data
-      const { apiRequest } = await import('./queryClient');
+      this.syncInProgress = (async () => {
+        // ✅ SECURITY: Backend validates with RevenueCat API, not client data
+        const { apiRequest } = await import('./queryClient');
 
-      const response = await apiRequest('POST', '/api/subscriptions/sync-revenuecat', {});
-      const result = await response.json();
+        const response = await apiRequest('POST', '/api/subscriptions/sync-revenuecat', {});
+        const result = await response.json();
 
-      console.log('[RevenueCat] Synced with backend (server-validated):', result);
-      return result;
+        console.log('[RevenueCat] Synced with backend (server-validated):', result);
+        return result;
+      })();
+
+      return await this.syncInProgress;
     } catch (error) {
       console.error('[RevenueCat] Sync with backend failed:', error);
       throw error; // Re-throw for retry logic
+    } finally {
+      this.syncInProgress = null;
     }
   }
 }

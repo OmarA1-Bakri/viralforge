@@ -39,6 +39,8 @@ logs/
 android/keystore.properties
 android/*.jks
 android/*.keystore
+android/app/*.keystore
+android/app/*.jks
 
 # Agent docs
 AGENTS.md

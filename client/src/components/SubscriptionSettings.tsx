@@ -96,23 +96,48 @@ function getProductId(tierId: string, billingCycle: string): string {
 
 /**
  * Get RevenueCat error message
+ * Maps all known RevenueCat error codes to user-friendly messages
  */
 function getRevenueCatErrorMessage(error: any): string | null {
   switch (error.code) {
     case 'USER_CANCELLED':
       return null; // Don't show error for user cancellation
+
     case 'STORE_PROBLEM':
       return 'App Store unavailable. Please try again later.';
+
     case 'PURCHASE_NOT_ALLOWED':
-      return 'Purchases are disabled on this device.';
+      return 'Purchases are disabled on this device. Check your device settings.';
+
     case 'NETWORK_ERROR':
       return 'Network error. Check your connection and retry.';
+
     case 'RECEIPT_ALREADY_IN_USE':
       return 'This purchase is already active on another account.';
+
     case 'PURCHASE_INVALID':
-      return 'This product is no longer available.';
+      return 'This subscription is no longer available.';
+
+    case 'PRODUCT_NOT_AVAILABLE_FOR_PURCHASE':
+      return 'This subscription plan is currently unavailable. Please contact support.';
+
+    case 'PRODUCT_ALREADY_PURCHASED':
+      return 'You already have this subscription. Use "Restore Purchases" instead.';
+
+    case 'PAYMENT_PENDING':
+      return 'Payment is processing. This may take a few minutes. Check back soon.';
+
+    case 'INSUFFICIENT_PERMISSIONS':
+      return 'Your App Store account cannot make purchases. Contact Apple Support.';
+
+    case 'INVALID_CREDENTIALS':
+      return 'Invalid App Store credentials. Please sign in to the App Store.';
+
+    case 'UNKNOWN_ERROR':
     default:
-      return 'Purchase failed. Contact support if this persists.';
+      // Log unknown errors for debugging
+      console.error('[RevenueCat] Unknown error:', error.code, error);
+      return 'Purchase failed. Please contact support if this persists.';
   }
 }
 
@@ -120,6 +145,7 @@ export default function SubscriptionSettings() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedCycle, setSelectedCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [isRestoring, setIsRestoring] = useState(false);
 
   // Fetch available tiers (public endpoint, no auth required)
   const { data: tiersData, isLoading: tiersLoading } = useQuery<{ success: boolean; tiers: SubscriptionTier[] }>({
@@ -167,7 +193,10 @@ export default function SubscriptionSettings() {
               { maxAttempts: 3, baseDelay: 1000 }
             );
 
-            // ✅ 2. THEN invalidate queries to fetch updated state
+            // ✅ 2. Wait for webhook processing (RevenueCat takes 1-2s typically)
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            // ✅ 3. THEN invalidate queries to fetch updated state
             await queryClient.invalidateQueries({
               queryKey: ['/api/subscriptions/current']
             });
@@ -315,7 +344,9 @@ export default function SubscriptionSettings() {
                   <Button
                     variant="outline"
                     size="sm"
+                    disabled={isRestoring}
                     onClick={async () => {
+                      setIsRestoring(true);
                       try {
                         await revenueCat.restorePurchases();
 
@@ -337,10 +368,19 @@ export default function SubscriptionSettings() {
                           description: getErrorMessage(error),
                           variant: "destructive"
                         });
+                      } finally {
+                        setIsRestoring(false);
                       }
                     }}
                   >
-                    Restore Purchases
+                    {isRestoring ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Restoring...
+                      </>
+                    ) : (
+                      'Restore Purchases'
+                    )}
                   </Button>
                 )}
                 {current.tier_name !== 'starter' && !Capacitor.isNativePlatform() && (

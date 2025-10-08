@@ -530,6 +530,16 @@ export function registerRevenueCatSyncRoute(app: Express) {
       }
 
       const data = await response.json();
+
+      // ✅ SECURITY: Verify the RevenueCat app_user_id matches authenticated session
+      if (data.subscriber?.original_app_user_id && data.subscriber.original_app_user_id !== userId) {
+        console.error(`❌ User ID mismatch: session=${userId}, revenuecat=${data.subscriber.original_app_user_id}`);
+        return res.status(403).json({
+          success: false,
+          error: 'User ID mismatch - potential security issue'
+        });
+      }
+
       const activeEntitlements = data.subscriber?.entitlements || {};
 
       // ✅ Determine tier from SERVER-validated entitlements
