@@ -1,10 +1,11 @@
-// @ts-nocheck
 import type { Express } from "express";
 import type Stripe from "stripe";
 import { db } from "../db";
 import { sql } from "drizzle-orm";
 import { stripe } from "../lib/stripe";
 import express from "express";
+import * as crypto from "crypto";
+import { webhookLogger } from "../lib/webhookLogger";
 
 export function registerWebhookRoutes(app: Express) {
   // Stripe webhook endpoint - must use raw body
@@ -85,11 +86,10 @@ function verifyRevenueCatSignature(body: Buffer, signature: string): boolean {
   const secret = process.env.REVENUECAT_WEBHOOK_SECRET;
 
   if (!secret) {
-    console.error('❌ REVENUECAT_WEBHOOK_SECRET not configured');
+    webhookLogger.error('REVENUECAT_WEBHOOK_SECRET not configured', undefined, { source: 'revenuecat' });
     return false;
   }
 
-  const crypto = require('crypto');
   const hash = crypto
     .createHmac('sha256', secret)
     .update(body)
@@ -103,14 +103,49 @@ function verifyRevenueCatSignature(body: Buffer, signature: string): boolean {
     );
   } catch (error) {
     // timingSafeEqual throws if lengths don't match
-    console.error('❌ Signature verification failed:', error);
+    webhookLogger.security('Signature verification failed', { source: 'revenuecat', error: String(error) });
     return false;
+  }
+}
+
+/**
+ * Check if webhook event has already been processed (idempotency)
+ * Prevents replay attacks
+ */
+async function isEventProcessed(eventId: string, source: string): Promise<boolean> {
+  try {
+    const result = await db.execute(sql`
+      SELECT id FROM processed_webhook_events
+      WHERE event_id = ${eventId} AND source = ${source}
+      LIMIT 1
+    `);
+    return result.rows.length > 0;
+  } catch (error) {
+    webhookLogger.error('Error checking event processed status', error, { source: source as any, eventId });
+    return false; // Fail open to prevent blocking legitimate events
+  }
+}
+
+/**
+ * Mark webhook event as processed
+ */
+async function markEventProcessed(eventId: string, eventType: string, source: string): Promise<void> {
+  try {
+    await db.execute(sql`
+      INSERT INTO processed_webhook_events (event_id, event_type, source)
+      VALUES (${eventId}, ${eventType}, ${source})
+      ON CONFLICT (event_id) DO NOTHING
+    `);
+  } catch (error) {
+    webhookLogger.warn('Error marking event as processed (non-fatal)', { source: source as any, eventId, eventType, error: String(error) });
+    // Non-fatal - event was already processed successfully
   }
 }
 
 /**
  * RevenueCat webhook endpoint
  * Handles subscription events from RevenueCat
+ * SECURITY: Implements replay attack prevention via event ID tracking
  */
 export function registerRevenueCatWebhook(app: Express) {
   app.post("/api/webhooks/revenuecat",
@@ -121,12 +156,25 @@ export function registerRevenueCatWebhook(app: Express) {
 
       // Verify webhook signature
       if (!verifyRevenueCatSignature(req.body, signature)) {
-        console.error('❌ [Webhook] Invalid signature');
+        webhookLogger.security('Invalid webhook signature', { source: 'revenuecat' });
         return res.status(401).json({ error: 'Invalid signature' });
       }
 
       const event = JSON.parse(req.body.toString());
-      console.log(`✅ Received RevenueCat webhook: ${event.type}`);
+      const eventId = event.id || event.event?.id;
+
+      if (!eventId) {
+        webhookLogger.error('Missing event ID in webhook', undefined, { source: 'revenuecat', eventType: event.type });
+        return res.status(400).json({ error: 'Missing event ID' });
+      }
+
+      // Check for replay attack (idempotency)
+      if (await isEventProcessed(eventId, 'revenuecat')) {
+        webhookLogger.warn('Duplicate event (already processed)', { source: 'revenuecat', eventId, eventType: event.type });
+        return res.json({ received: true, duplicate: true });
+      }
+
+      webhookLogger.info('Webhook received', { source: 'revenuecat', eventType: event.type, eventId, userId: event.event?.app_user_id });
 
       // Handle different event types
       switch (event.type) {
@@ -149,24 +197,42 @@ export function registerRevenueCatWebhook(app: Express) {
           break;
 
         default:
-          console.log(`ℹ️  Unhandled RevenueCat event type: ${event.type}`);
+          webhookLogger.warn('Unhandled event type', { source: 'revenuecat', eventType: event.type, eventId });
       }
+
+      // Mark event as processed to prevent replay
+      await markEventProcessed(eventId, event.type, 'revenuecat');
 
       res.json({ received: true });
     } catch (error) {
-      console.error("❌ Error processing RevenueCat webhook:", error);
+      webhookLogger.error("Webhook processing failed", error, { source: 'revenuecat' });
       res.status(500).json({ error: "Webhook processing failed" });
     }
   });
 }
 
 /**
+ * RevenueCat webhook event structure
+ */
+interface RevenueCatEvent {
+  id: string;
+  type: string;
+  event: {
+    app_user_id: string;
+    product_id?: string;
+    entitlement_ids?: string[];
+    purchased_at_ms?: number;
+    expiration_at_ms?: number;
+  };
+}
+
+/**
  * Handle RevenueCat purchase events (initial purchase, renewal, product change)
  */
-async function handleRevenueCatPurchase(event: any) {
+async function handleRevenueCatPurchase(event: RevenueCatEvent): Promise<void> {
   const { app_user_id, product_id, entitlement_ids, purchased_at_ms, expiration_at_ms } = event.event;
 
-  console.log(`✅ Purchase event for user ${app_user_id}`);
+  webhookLogger.info('Processing purchase event', { source: 'revenuecat', eventType: event.type, userId: app_user_id, productId: product_id });
 
   // Map product ID to tier (4-tier system: starter, creator, pro, studio)
   let tierId = 'starter';
@@ -218,16 +284,16 @@ async function handleRevenueCatPurchase(event: any) {
     `);
   });
 
-  console.log(`✅ Subscription updated for user ${app_user_id} to tier ${tierId}`);
+  webhookLogger.success('Subscription updated', { source: 'revenuecat', userId: app_user_id, tierId, billingCycle });
 }
 
 /**
  * Handle RevenueCat cancellation events
  */
-async function handleRevenueCatCancellation(event: any) {
+async function handleRevenueCatCancellation(event: RevenueCatEvent): Promise<void> {
   const { app_user_id, expiration_at_ms } = event.event;
 
-  console.log(`✅ Cancellation event for user ${app_user_id}`);
+  webhookLogger.info('Processing cancellation event', { source: 'revenuecat', userId: app_user_id });
 
   await db.execute(sql`
     UPDATE user_subscriptions
@@ -237,16 +303,16 @@ async function handleRevenueCatCancellation(event: any) {
     WHERE user_id = ${app_user_id} AND status = 'active'
   `);
 
-  console.log(`✅ Subscription cancelled for user ${app_user_id} (expires at ${new Date(expiration_at_ms).toISOString()})`);
+  webhookLogger.success('Subscription cancelled', { source: 'revenuecat', userId: app_user_id, expiresAt: expiration_at_ms ? new Date(expiration_at_ms).toISOString() : undefined });
 }
 
 /**
  * Handle RevenueCat expiration events
  */
-async function handleRevenueCatExpiration(event: any) {
+async function handleRevenueCatExpiration(event: RevenueCatEvent): Promise<void> {
   const { app_user_id } = event.event;
 
-  console.log(`✅ Expiration event for user ${app_user_id}`);
+  webhookLogger.info('Processing expiration event', { source: 'revenuecat', userId: app_user_id });
 
   await db.transaction(async (tx) => {
     // Mark subscription as expired
@@ -265,16 +331,16 @@ async function handleRevenueCatExpiration(event: any) {
     `);
   });
 
-  console.log(`✅ User ${app_user_id} downgraded to starter tier after expiration`);
+  webhookLogger.success('User downgraded to starter tier', { source: 'revenuecat', userId: app_user_id, reason: 'expiration' });
 }
 
 /**
  * Handle RevenueCat billing issue events
  */
-async function handleRevenueCatBillingIssue(event: any) {
+async function handleRevenueCatBillingIssue(event: RevenueCatEvent): Promise<void> {
   const { app_user_id } = event.event;
 
-  console.log(`⚠️  Billing issue for user ${app_user_id}`);
+  webhookLogger.warn('Billing issue detected', { source: 'revenuecat', userId: app_user_id });
 
   await db.execute(sql`
     UPDATE user_subscriptions
@@ -283,7 +349,7 @@ async function handleRevenueCatBillingIssue(event: any) {
     WHERE user_id = ${app_user_id} AND status = 'active'
   `);
 
-  console.log(`⚠️  Subscription marked as past_due for user ${app_user_id}`);
+  webhookLogger.warn('Subscription marked as past_due', { source: 'revenuecat', userId: app_user_id });
 }
 
 /**

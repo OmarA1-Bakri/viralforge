@@ -22,6 +22,9 @@ import { revenueCat } from "@/lib/revenueCat";
 import { retryWithBackoff } from "@/lib/retryHelper";
 import { queueFailedSync } from "@/lib/offlineQueue";
 
+// Constants for purchase flow timing
+const WEBHOOK_PROCESSING_DELAY_MS = 2000; // 2s delay to allow RevenueCat webhook processing
+
 interface SubscriptionTier {
   id: string;
   name: string;
@@ -194,7 +197,7 @@ export default function SubscriptionSettings() {
             );
 
             // ✅ 2. Wait for webhook processing (RevenueCat takes 1-2s typically)
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise(resolve => setTimeout(resolve, WEBHOOK_PROCESSING_DELAY_MS));
 
             // ✅ 3. THEN invalidate queries to fetch updated state
             await queryClient.invalidateQueries({
