@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -54,7 +54,33 @@ export default function LaunchPadAnalyzer() {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [roastMode, setRoastMode] = useState(false);
   const [analysisProgress, setAnalysisProgress] = useState(0);
-  const [platform, setPlatform] = useState("tiktok"); // Default to TikTok
+  const [platform] = useState("youtube"); // YouTube-only for mobile
+  const [trendSuggestions, setTrendSuggestions] = useState<any>(null);
+  const [selectedTrend, setSelectedTrend] = useState<any>(null);
+
+  // Load trend suggestions from sessionStorage on mount
+  useEffect(() => {
+    const suggestions = sessionStorage.getItem('trendSuggestions');
+    const trend = sessionStorage.getItem('selectedTrend');
+    
+    if (suggestions) {
+      try {
+        setTrendSuggestions(JSON.parse(suggestions));
+        sessionStorage.removeItem('trendSuggestions'); // Clear after loading
+      } catch (e) {
+        console.error('Failed to parse trend suggestions:', e);
+      }
+    }
+    
+    if (trend) {
+      try {
+        setSelectedTrend(JSON.parse(trend));
+        sessionStorage.removeItem('selectedTrend'); // Clear after loading
+      } catch (e) {
+        console.error('Failed to parse selected trend:', e);
+      }
+    }
+  }, []);
 
   // Mutation for thumbnail upload
   const uploadThumbnailMutation = useMutation({
@@ -160,15 +186,15 @@ export default function LaunchPadAnalyzer() {
 
   // Mutation for content analysis
   const analyzeContentMutation = useMutation({
-    mutationFn: async ({ title, thumbnailDescription, platform, roastMode }: {
+    mutationFn: async ({ title, thumbnailUrl, platform, roastMode }: {
       title: string;
-      thumbnailDescription?: string;
+      thumbnailUrl?: string;
       platform: string;
       roastMode: boolean;
     }) => {
       const response = await apiRequest('POST', '/api/content/analyze', {
         title: title.trim() || undefined,
-        thumbnailDescription: thumbnailDescription || undefined,
+        thumbnailUrl: thumbnailUrl || undefined,
         platform,
         roastMode
       });
@@ -241,17 +267,10 @@ export default function LaunchPadAnalyzer() {
       });
     }, 300);
 
-    // Get thumbnail description if available
-    let thumbnailDescription: string | undefined;
-    if (thumbnailFile) {
-      // For now, use a simple description. In the future, we could use AI to analyze the actual image
-      thumbnailDescription = `Thumbnail image: ${thumbnailFile.name}`;
-    }
-
     try {
       await analyzeContentMutation.mutateAsync({
         title: title.trim(),
-        thumbnailDescription,
+        thumbnailUrl: thumbnailUrl || undefined,
         platform,
         roastMode
       });
@@ -308,6 +327,58 @@ export default function LaunchPadAnalyzer() {
       </div>
 
       <div className="px-4 pt-4 space-y-6">
+        {/* Trend Suggestions Banner */}
+        {trendSuggestions && selectedTrend && (
+          <Card className="p-4 bg-gradient-to-r from-primary/10 to-accent/10 border-primary/20">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <Zap className="w-5 h-5 text-primary" />
+              </div>
+              <div className="flex-1 space-y-2">
+                <div>
+                  <h3 className="font-semibold text-sm mb-1">AI Advice for Trend</h3>
+                  <p className="text-xs text-muted-foreground">{selectedTrend.title}</p>
+                </div>
+                
+                {trendSuggestions.advice && (
+                  <div className="p-3 bg-background/50 rounded-lg">
+                    <p className="text-sm">{trendSuggestions.advice}</p>
+                  </div>
+                )}
+                
+                {trendSuggestions.titleSuggestions && trendSuggestions.titleSuggestions.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium mb-2">💡 Suggested Titles:</p>
+                    <div className="space-y-1">
+                      {trendSuggestions.titleSuggestions.slice(0, 3).map((suggestion: string, i: number) => (
+                        <button
+                          key={i}
+                          onClick={() => setTitle(suggestion)}
+                          className="w-full text-left p-2 text-xs bg-background/50 hover:bg-background rounded border border-border/50 hover:border-primary/30 transition-colors"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    setTrendSuggestions(null);
+                    setSelectedTrend(null);
+                  }}
+                  className="text-xs"
+                >
+                  Dismiss
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
+
         {/* Input Section */}
         <Card className="p-4 space-y-4">
           <h2 className="font-semibold text-foreground">Content to Analyze</h2>

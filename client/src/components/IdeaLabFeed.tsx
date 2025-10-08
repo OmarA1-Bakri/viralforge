@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import TrendCard from "./TrendCard";
 import ProcessingIndicator from "./ProcessingIndicator";
 import { Button } from "@/components/ui/button";
@@ -6,124 +6,161 @@ import { RefreshCw, Sparkles } from "lucide-react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import viralForgeAILogo from "@assets/viralforge_1758689165504.png";
+import { ProfileAnalysisModal } from "./ProfileAnalysisModal";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
-// TikTok-first mock data - todo: replace with real API
+// YouTube-focused mock data for instant UX (mobile-first, YouTube-only)
 const mockTrends = [
   {
-    id: "trend-1",
-    title: "React to viral TikTok dances with your dog",
-    description: "Pet + dance content is exploding! Perfect for pet accounts looking to trend.",
-    category: "Pets & Animals",
-    platform: "tiktok",
+    id: 1,
+    title: "Shorts: React to viral moments with your unique take",
+    description: "Reaction Shorts are dominating! Perfect for creators with strong personality.",
+    category: "Entertainment",
+    platform: "youtube",
     hotness: "hot" as const,
     engagement: 24,
     timeAgo: "2h ago",
-    suggestion: "Film your dog 'reacting' to dance trends. Show their confused expressions and add funny captions like 'When humans do the thing again...'",
-    hashtags: ["#dogsoftiktok", "#petreacts", "#dancechallenge", "#viral"],
-    sound: "Oh No (Dance Trend Mix)",
-    soundUrl: "trending-dance-mix-1",
-    duration: "15s"
+    suggestion: "Pick trending news or viral videos. Add your authentic reaction with quick cuts. Hook: 'You won't believe what happened next...'",
+    hashtags: ["#YouTubeShorts", "#ViralReaction", "#TrendingNow", "#Shorts"],
+    sound: "Trending Audio Mix",
+    soundUrl: "trending-youtube-mix-1",
+    duration: "60s"
   },
   {
-    id: "trend-2",
-    title: "POV: You're explaining complex topics in 15 seconds",
-    description: "Educational micro-content is having a massive moment. Perfect for knowledge creators.",
+    id: 2,
+    title: "Quick tutorials: Teach one thing in under 60 seconds",
+    description: "Educational Shorts are exploding on YouTube. Knowledge creators, this is your moment.",
     category: "Education",
-    platform: "tiktok",
+    platform: "youtube",
     hotness: "rising" as const,
     engagement: 18,
     timeAgo: "4h ago",
-    suggestion: "Pick a complex topic in your niche. Break it down into 3 simple points with visual aids. Use the hook: 'You think you understand [topic], but you don't...'",
-    hashtags: ["#learnontiktok", "#education", "#explained", "#mindblown"],
-    sound: "Aesthetic Study Vibes",
-    soundUrl: "study-vibes-beat",
-    duration: "15s"
+    suggestion: "Pick one micro-skill in your niche. Show 3 quick steps with clear visuals. Hook: 'Here's what nobody tells you about [topic]...'",
+    hashtags: ["#Tutorial", "#LearnOnYouTube", "#QuickTips", "#Shorts"],
+    sound: "Educational Beat",
+    soundUrl: "edu-youtube-beat",
+    duration: "45s"
   },
   {
-    id: "trend-3",
-    title: "Day in my life as a [your profession]",
-    description: "Behind-the-scenes content builds authentic connections with audiences.",
+    id: 3,
+    title: "Behind-the-scenes: Show your creative process",
+    description: "BTS content builds authentic connections and keeps viewers coming back.",
     category: "Lifestyle",
-    platform: "tiktok",
+    platform: "youtube",
     hotness: "relevant" as const,
     engagement: 12,
     timeAgo: "6h ago",
-    suggestion: "Show your actual daily routine with honest moments. Include the struggles, not just highlights. Use trending audio with quick cuts.",
-    hashtags: ["#dayinmylife", "#authentic", "#workflow", "#creator"],
-    sound: "That Girl Energy (Aesthetic)",
-    soundUrl: "that-girl-energy",
-    duration: "30s"
+    suggestion: "Film your workflow with honest moments. Show struggles, not just wins. Hook: 'Day [X] of building my [project]...'",
+    hashtags: ["#BehindTheScenes", "#CreatorLife", "#Process", "#YouTube"],
+    sound: "Chill Vlog Vibes",
+    soundUrl: "chill-vlog-mix",
+    duration: "60s"
   },
   {
-    id: "trend-4",
-    title: "Rating viral life hacks from 1-10",
-    description: "Review and rating content gets huge engagement. Easy to batch create.",
+    id: 4,
+    title: "Challenge videos: Test and rate trending products/ideas",
+    description: "Challenge and review content drives massive engagement on YouTube Shorts.",
     category: "Reviews",
-    platform: "tiktok",
+    platform: "youtube",
     hotness: "hot" as const,
     engagement: 31,
     timeAgo: "1h ago",
-    suggestion: "Test 5 viral life hacks. Rate each honestly with quick explanations. End with your own hack that actually works.",
-    hashtags: ["#lifehacks", "#rating", "#viral", "#tested"],
-    sound: "Rating Things (Viral Mix)",
-    soundUrl: "rating-viral-mix",
-    duration: "15s"
+    suggestion: "Test 3-5 trending products or life hacks. Rate honestly with quick explanations. End with your top pick and why.",
+    hashtags: ["#Challenge", "#Review", "#Tested", "#YouTubeShorts"],
+    sound: "Upbeat Challenge Mix",
+    soundUrl: "challenge-youtube-mix",
+    duration: "60s"
   }
 ];
 
 interface IdeaLabFeedProps {
-  onTrendSave?: (id: string) => void;
-  onTrendRemix?: (id: string) => void;
+  onTrendSave?: (id: string | number) => void;
+  onTrendRemix?: (id: string | number) => void;
   onNavigate?: (tab: "dashboard" | "idea-lab" | "launch-pad" | "multiplier" | "preferences") => void;
 }
 
 export default function IdeaLabFeed({ onTrendSave, onTrendRemix, onNavigate }: IdeaLabFeedProps) {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [selectedTrend, setSelectedTrend] = useState<any>(null);
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+  const { toast } = useToast();
+  const { user } = useAuth();
 
   // Fetch user preferences for personalization
   const { data: userPrefs } = useQuery({
-    queryKey: ['/api/user/preferences'],
+    queryKey: ['/api/preferences', user?.id],
     queryFn: async () => {
+      if (!user?.id) return null;
       try {
-        const response = await apiRequest('GET', '/api/user/preferences');
+        const response = await apiRequest('GET', `/api/preferences/${user.id}`);
         const data = await response.json();
         console.log('[IdeaLab] User preferences:', data);
-        return data;
+        return data?.preferences || null;
       } catch (error) {
         console.log('[IdeaLab] No user preferences found, using defaults');
         return null;
       }
     },
+    enabled: !!user?.id,
   });
+
+  // Get preferred platform from user preferences (default to youtube to match user's request)
+  const preferredPlatform = useMemo(() =>
+    userPrefs?.bestPerformingPlatforms?.[0] || 'youtube',
+    [userPrefs?.bestPerformingPlatforms]
+  );
 
   // Fetch existing trends from database (personalized if preferences exist)
   const { data: existingTrends, isLoading: isLoadingTrends, error: trendsError } = useQuery({
-    queryKey: ['/api/trends', { platform: 'tiktok', categories: userPrefs?.preferredCategories }],
+    queryKey: ['/api/trends', { platform: preferredPlatform, categories: userPrefs?.preferredCategories }],
     enabled: true,
     queryFn: async () => {
-      const params = new URLSearchParams({ platform: 'tiktok' });
+      const params = new URLSearchParams({ platform: preferredPlatform });
       if (userPrefs?.preferredCategories?.length > 0) {
         params.append('categories', userPrefs.preferredCategories.join(','));
       }
       const response = await apiRequest('GET', `/api/trends?${params}`);
       const data = await response.json();
-      console.log('[IdeaLab] Trends loaded:', data);
+      console.log('[IdeaLab] Trends loaded:', JSON.stringify({
+        hasTrends: !!data.trends,
+        trendsCount: data.trends?.length || 0,
+        trendsArray: data.trends,
+        cached: data.cached,
+        refreshing: data.refreshing
+      }));
       return data;
     },
     retry: 2,
-    staleTime: 30000,
+    staleTime: 0, // Always fetch fresh trends - no caching
+    gcTime: 0, // Don't keep old data in garbage collection
   });
 
   // AI-powered trend discovery mutation
   const discoverTrendsMutation = useMutation({
     mutationFn: async () => {
-      console.log("🎯 Discovering new TikTok trends via AI...");
+      console.log(`🎯 Discovering personalized ${preferredPlatform} trends via AI...`);
+      console.log('[IdeaLab] Raw userPrefs:', JSON.stringify(userPrefs, null, 2));
       try {
+        // Use user preferences for personalized trend discovery
+        const category = userPrefs?.preferredCategories?.[0] || 'All';
+        const contentType = userPrefs?.contentStyle || 'viral';
+        const targetAudience = userPrefs?.targetAudience || 'gen-z';
+
+        console.log('[IdeaLab] Discovery params:', {
+          category,
+          contentType,
+          targetAudience,
+          preferredCategories: userPrefs?.preferredCategories,
+          hasCategoriesArray: Array.isArray(userPrefs?.preferredCategories),
+          categoriesLength: userPrefs?.preferredCategories?.length
+        });
+
         const response = await apiRequest('POST', '/api/trends/discover', {
-          platform: 'tiktok',
-          category: 'All',
-          contentType: 'viral',
-          targetAudience: 'creators'
+          platform: preferredPlatform,
+          category,
+          contentType,
+          targetAudience
         });
         console.log("✅ AI trend discovery completed", response);
         return response;
@@ -134,9 +171,14 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix, onNavigate }: I
     },
     onSuccess: (data) => {
       console.log("🔄 Invalidating queries and updating...", data);
-      // Invalidate and refetch trends with exact key
-      queryClient.invalidateQueries({ queryKey: ['/api/trends', { platform: 'tiktok' }] });
+      // Invalidate ALL trends queries (regardless of categories)
+      queryClient.invalidateQueries({ queryKey: ['/api/trends'] });
       setLastUpdated(new Date());
+
+      toast({
+        title: "✨ Ideas Refreshed",
+        description: "New personalized trend ideas generated!",
+      });
     },
     onError: (error) => {
       console.error("💥 Mutation failed:", error);
@@ -146,13 +188,47 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix, onNavigate }: I
   const trends = existingTrends?.trends || [];
   const isRefreshing = discoverTrendsMutation.isPending;
 
+  // Debug logging
+  console.log('[IdeaLab] Component state:', JSON.stringify({
+    trendsLength: trends.length,
+    isLoadingTrends,
+    isRefreshing,
+    hasExistingTrends: !!existingTrends,
+    existingTrendsKeys: existingTrends ? Object.keys(existingTrends) : []
+  }));
+
+  // Check if user has customized preferences (not just defaults)
+  const hasCustomPreferences = useMemo(() => {
+    if (!userPrefs) return false;
+    return (
+      userPrefs.preferredCategories?.length > 0 ||
+      (userPrefs.contentStyle && userPrefs.contentStyle !== 'entertainment') ||
+      (userPrefs.targetAudience && userPrefs.targetAudience !== 'gen-z')
+    );
+  }, [userPrefs]);
+
   // Auto-refresh trends when component mounts or preferences change
   useEffect(() => {
-    if (userPrefs?.preferredCategories?.length > 0) {
-      console.log('[IdeaLab] Auto-refreshing trends with categories:', userPrefs.preferredCategories);
+    // Skip if already refreshing
+    if (isRefreshing || isLoadingTrends) return;
+
+    // Always discover trends on first load if none exist
+    if (trends.length === 0) {
+      console.log('[IdeaLab] No trends found, auto-discovering...');
+      discoverTrendsMutation.mutate();
+      return;
+    }
+
+    // Auto-refresh when user has customized preferences
+    if (hasCustomPreferences) {
+      console.log('[IdeaLab] Custom preferences detected, refreshing trends:', {
+        categories: userPrefs?.preferredCategories,
+        contentStyle: userPrefs?.contentStyle,
+        targetAudience: userPrefs?.targetAudience
+      });
       discoverTrendsMutation.mutate();
     }
-  }, [userPrefs?.preferredCategories?.join(',')]); // Only trigger when categories actually change
+  }, [hasCustomPreferences]);
 
   // Show mock data only if no API key is configured and no trends exist
   const showMockData = trends.length === 0 && !isLoadingTrends && !isRefreshing;
@@ -172,19 +248,42 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix, onNavigate }: I
   };
 
   const handleRefresh = async () => {
-    console.log("🔄 Manually refreshing TikTok trends via AI...");
+    console.log(`🔄 Manually refreshing ${preferredPlatform} trends via AI...`);
     discoverTrendsMutation.mutate();
   };
 
-  const handleTrendSave = (id: string) => {
+  const handleTrendSave = (id: string | number) => {
     console.log("Saving trend:", id);
     onTrendSave?.(id);
   };
 
-  const handleTrendRemix = (id: string) => {
+  const handleTrendRemix = (id: string | number) => {
     console.log("Using trend for content creation:", id);
-    onTrendRemix?.(id);
-    // Navigate to Launch Pad to create content based on this trend
+    // Find the trend object - handle both string and number IDs
+    const trend = displayTrends.find((t: any) => t.id == id); // Use == for loose equality
+    if (trend) {
+      setSelectedTrend(trend);
+      setShowAnalysisModal(true);
+    }
+  };
+
+  const handleSuggestionsGenerated = (response: any) => {
+    // Transform API response to match LaunchPadAnalyzer expectations
+    const suggestions = {
+      advice: response.personalizedAdvice || "",
+      titleSuggestions: [] // The API doesn't return title suggestions, just the full advice
+    };
+
+    // Store transformed suggestions in sessionStorage to pass to Launch Pad
+    sessionStorage.setItem('trendSuggestions', JSON.stringify(suggestions));
+    sessionStorage.setItem('selectedTrend', JSON.stringify(selectedTrend));
+
+    toast({
+      title: "AI Advice Generated!",
+      description: "Check Launch Pad for personalized suggestions",
+    });
+
+    // Navigate to Launch Pad
     onNavigate?.("launch-pad");
   };
 
@@ -273,6 +372,16 @@ export default function IdeaLabFeed({ onTrendSave, onTrendRemix, onNavigate }: I
           </div>
         </div>
       </div>
+
+      {/* Profile Analysis Modal */}
+      {selectedTrend && (
+        <ProfileAnalysisModal
+          open={showAnalysisModal}
+          onClose={() => setShowAnalysisModal(false)}
+          trend={selectedTrend}
+          onSuggestionsGenerated={handleSuggestionsGenerated}
+        />
+      )}
     </div>
   );
 }

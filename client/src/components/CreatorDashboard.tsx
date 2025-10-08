@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import viralForgeAILogo from "@assets/viralforge_1758689165504.png";
+import { ViralScoreCard, DetailedAnalysisCard } from "@/components/ViralScoreCard";
+import { ProfileReviewModal } from "@/components/ProfileReviewModal";
 
 // Mock data and formatNumber function are not provided in the original code,
 // assuming they are either defined elsewhere or should be removed if not used.
@@ -96,6 +98,34 @@ interface CreatorDashboardProps {
 
 export default function CreatorDashboard({ onNavigate }: CreatorDashboardProps = {}) {
   const [timeframe, setTimeframe] = useState<"week" | "month" | "year">("week");
+  const [showProfileModal, setShowProfileModal] = useState(false);
+
+  // Fetch creator profile data
+  const { data: profileData, refetch: refetchProfile } = useQuery({
+    queryKey: ['/api/profile/report'],
+    queryFn: async () => {
+      try {
+        const response = await apiRequest('GET', '/api/profile/report');
+        if (!response.ok) {
+          if (response.status === 404) return null; // No profile yet
+          throw new Error('Failed to fetch profile');
+        }
+        const data = await response.json();
+        console.log('[Dashboard] Profile data loaded:', JSON.stringify({
+          hasProfile: !!data?.profile,
+          hasReport: !!data?.report,
+          viralScore: data?.profile?.viralScore,
+          reportFields: data?.report ? Object.keys(data.report) : [],
+          quickWinsCount: data?.report?.quickWins?.length || 0,
+        }));
+        return data;
+      } catch (error) {
+        console.error('[Dashboard] Failed to fetch profile:', error);
+        return null; // Silently fail if no profile exists
+      }
+    },
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
 
   // Fetch dashboard statistics
   const { data: statsData, isLoading: statsLoading, error: statsError } = useQuery({
@@ -151,7 +181,7 @@ export default function CreatorDashboard({ onNavigate }: CreatorDashboardProps =
     bestContentType: 'Mixed Content',
     optimalPostingTime: '6-8 PM',
     topTrendingHashtag: '#viral',
-    bestPlatform: 'TikTok',
+    bestPlatform: 'YouTube',
     avgEngagementRate: 0
   };
 
@@ -336,6 +366,31 @@ export default function CreatorDashboard({ onNavigate }: CreatorDashboardProps =
       </div>
 
       <div className="px-4 pt-4 space-y-6">
+        {/* Creator Profile Viral Score */}
+        <ViralScoreCard
+          viralScore={profileData?.profile?.viralScore}
+          previousViralScore={profileData?.profile?.previousViralScore}
+          previousAnalyzedAt={profileData?.profile?.previousAnalyzedAt}
+          confidenceInterval={profileData?.report?.confidenceInterval}
+          platformScores={profileData?.profile ? {
+            youtube: profileData.profile.youtubeScore,
+          } : undefined}
+          lastAnalyzedAt={profileData?.profile?.lastAnalyzedAt}
+          analysisStatus={
+            // Only show 'failed' if there was an analysis attempt (has lastAnalyzedAt)
+            // Otherwise default to 'pending' for clean initial state
+            profileData?.profile?.analysisStatus === 'failed' && profileData?.profile?.lastAnalyzedAt
+              ? 'failed'
+              : profileData?.profile?.viralScore
+              ? 'completed'
+              : 'pending'
+          }
+          onAnalyze={() => setShowProfileModal(true)}
+        />
+
+        {/* Detailed Analysis - Show advice to improve */}
+        <DetailedAnalysisCard report={profileData?.report} />
+
         {/* Loading State */}
         {statsLoading && (
           <div className="flex items-center justify-center py-8">
@@ -357,14 +412,14 @@ export default function CreatorDashboard({ onNavigate }: CreatorDashboardProps =
             <StatCard
               icon={Eye}
               label="Total Views"
-              value={stats.totalViews}
-              change={stats.weeklyGrowth}
+              value={formatNumber(stats.totalViews)}
+              change={stats.weeklyGrowth > 0 ? Number(stats.weeklyGrowth.toFixed(1)) : undefined}
               color="blue"
             />
             <StatCard
               icon={Heart}
               label="Total Likes"
-              value={stats.totalLikes}
+              value={formatNumber(stats.totalLikes)}
               change={15.2}
               color="primary"
             />
@@ -378,7 +433,7 @@ export default function CreatorDashboard({ onNavigate }: CreatorDashboardProps =
             <StatCard
               icon={TrendingUp}
               label="Click Rate"
-              value={stats.avgClickRate}
+              value={stats.avgClickRate.toFixed(1)}
               suffix="%"
               change={2.1}
               color="orange"
@@ -471,48 +526,7 @@ export default function CreatorDashboard({ onNavigate }: CreatorDashboardProps =
           </div>
         </Card>
 
-        {/* Recent Activity */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-muted-foreground" />
-              <h2 className="font-semibold">Recent Activity</h2>
-            </div>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-xs"
-              onClick={() => {
-                // TODO: Navigate to full activity page or show modal
-                console.log("View All activity clicked");
-              }}
-            >
-              View All
-            </Button>
-          </div>
-
-          <div className="space-y-2">
-            {activityLoading ? (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                <span className="ml-2 text-xs text-muted-foreground">Loading activity...</span>
-              </div>
-            ) : activityError ? (
-              <div className="text-center py-4 space-y-2">
-                <div className="text-xs text-destructive">Failed to load recent activity</div>
-                <div className="text-xs text-muted-foreground">Network error or server unavailable</div>
-              </div>
-            ) : activities.length > 0 ? (
-              activities.map((item) => (
-                <ActivityItem key={item.id} item={item} />
-              ))
-            ) : (
-              <div className="text-center py-4 text-xs text-muted-foreground">
-                No recent activity for selected timeframe
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Recent Activity - Hidden until user has real activity */}
 
         {/* Quick Actions */}
         <Card className="p-4 rounded-xl hover-elevate hover-cyan-glow interactive mb-8">
@@ -556,6 +570,15 @@ export default function CreatorDashboard({ onNavigate }: CreatorDashboardProps =
           </div>
         </Card>
       </div>
+
+      {/* Profile Review Modal */}
+      <ProfileReviewModal
+        open={showProfileModal}
+        onOpenChange={setShowProfileModal}
+        onAnalysisComplete={() => {
+          refetchProfile();
+        }}
+      />
     </div>
   );
 }

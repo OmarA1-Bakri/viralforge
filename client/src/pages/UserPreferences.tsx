@@ -12,11 +12,13 @@ import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { User, Target, Palette, Monitor, Clock, Trophy, Sparkles, LogOut, CreditCard } from "lucide-react";
+import { User, Target, Palette, Monitor, Clock, Trophy, Sparkles, LogOut, CreditCard, Link } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { analytics } from "@/lib/analytics";
 import { apiRequest } from "@/lib/queryClient";
 import SubscriptionSettings from "@/components/SubscriptionSettings";
+import { OAuthSettings } from "./OAuthSettings";
+import { ScheduledAnalysisSettings } from "@/components/ScheduledAnalysisSettings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const preferencesSchema = z.object({
@@ -47,14 +49,28 @@ export default function UserPreferences() {
   };
 
   // Fetch preference options
-  const { data: options, isLoading: optionsLoading } = useQuery<{ success: boolean; options: any }>({
+  const { data: options, isLoading: optionsLoading, error: optionsError } = useQuery<{ success: boolean; options: any }>({
     queryKey: ['/api/preferences/options'],
-    staleTime: 5 * 60 * 1000 // 5 minutes
+    queryFn: async () => {
+      console.log('[Preferences] Fetching options...');
+      const response = await apiRequest('GET', '/api/preferences/options');
+      const data = await response.json();
+      console.log('[Preferences] Options received:', data);
+      return data;
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 3
   });
 
   // Fetch current user preferences
   const { data: currentPrefs } = useQuery<{ success: boolean; preferences: any }>({
-    queryKey: ['/api/preferences/demo-user'],
+    queryKey: ['/api/preferences', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return { success: false, preferences: null };
+      const response = await apiRequest('GET', `/api/preferences/${user.id}`);
+      return response.json();
+    },
+    enabled: !!user?.id,
     staleTime: 2 * 60 * 1000 // 2 minutes
   });
 
@@ -112,8 +128,8 @@ export default function UserPreferences() {
       });
 
       // Invalidate and refetch to update the "Current Preferences" section
-      await queryClient.invalidateQueries({ queryKey: ['/api/preferences/demo-user'] });
-      await queryClient.refetchQueries({ queryKey: ['/api/preferences/demo-user'] });
+      await queryClient.invalidateQueries({ queryKey: ['/api/preferences', user?.id] });
+      await queryClient.refetchQueries({ queryKey: ['/api/preferences', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['/api/preferences'] });
       queryClient.invalidateQueries({ queryKey: ['/api/trends'] });
     },
@@ -142,8 +158,20 @@ export default function UserPreferences() {
     );
   }
 
+  if (optionsError) {
+    console.error('[Preferences] Error loading options:', optionsError);
+    return (
+      <div className="flex items-center justify-center min-h-96">
+        <div className="text-center">
+          <p className="text-destructive mb-4">Failed to load preferences options</p>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6 max-w-4xl mx-auto p-6">
+    <div className="space-y-6 max-w-4xl mx-auto p-6 pb-32" style={{ paddingTop: '72px' }}>
       <div className="text-center mb-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
@@ -167,14 +195,22 @@ export default function UserPreferences() {
       </div>
 
       <Tabs defaultValue="preferences" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6">
+        <TabsList className="grid w-full grid-cols-4 mb-6">
           <TabsTrigger value="preferences" className="flex items-center gap-2">
             <Palette className="h-4 w-4" />
             Preferences
           </TabsTrigger>
+          <TabsTrigger value="schedule" className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Schedule
+          </TabsTrigger>
           <TabsTrigger value="subscription" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
             Subscription
+          </TabsTrigger>
+          <TabsTrigger value="accounts" className="flex items-center gap-2">
+            <Link className="h-4 w-4" />
+            Accounts
           </TabsTrigger>
         </TabsList>
 
@@ -382,8 +418,8 @@ export default function UserPreferences() {
                     <FormDescription>
                       Select the platforms you create content for
                     </FormDescription>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {options?.options?.platforms?.map((platform: string) => (
+                    <div className="grid grid-cols-2 gap-3 mt-2">
+                      {options?.options?.platforms?.filter((p: string) => p === 'youtube')?.map((platform: string) => (
                         <FormField
                           key={platform}
                           control={form.control}
@@ -513,8 +549,16 @@ export default function UserPreferences() {
       )}
         </TabsContent>
 
+        <TabsContent value="schedule">
+          <ScheduledAnalysisSettings userId={user?.id || ''} />
+        </TabsContent>
+
         <TabsContent value="subscription">
           <SubscriptionSettings />
+        </TabsContent>
+
+        <TabsContent value="accounts">
+          <OAuthSettings />
         </TabsContent>
       </Tabs>
     </div>

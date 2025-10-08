@@ -38,8 +38,8 @@ export default function MultiplierProcessor() {
   const [uploadMode, setUploadMode] = useState<"youtube" | "upload">("youtube");
   const [isUploading, setIsUploading] = useState(false);
   const [jobs, setJobs] = useState<ProcessingJob[]>([]);
-  const [targetPlatform, setTargetPlatform] = useState("tiktok"); // Default to TikTok
-  const [clipDuration, setClipDuration] = useState(15); // Default 15s for TikTok
+  const [targetPlatform] = useState("youtube"); // YouTube-only for mobile
+  const [clipDuration, setClipDuration] = useState(60); // Default 60s for YouTube Shorts
   
   // Ref to track jobs state for the progress simulation
   const jobsRef = useRef<ProcessingJob[]>([]);
