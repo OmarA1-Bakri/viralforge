@@ -24,7 +24,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.viralforge.ai"
+        applicationId = "android.viralforge.ai"
         minSdkVersion = rootProject.ext.minSdkVersion
         targetSdkVersion = rootProject.ext.targetSdkVersion
         versionCode = 3
@@ -65,6 +65,15 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+
+    // Firebase BoM
+    implementation platform('com.google.firebase:firebase-bom:34.3.0')
+
+    // Firebase Auth for Google/YouTube OAuth
+    implementation 'com.google.firebase:firebase-auth'
+
+    // Firebase Analytics (optional)
+    implementation 'com.google.firebase:firebase-analytics'
 }
 
 apply from: 'capacitor.build.gradle'
