@@ -30,15 +30,15 @@ public class ExampleConnector {
     self.dataConnect = dataConnect
 
     // init operations 
-    self.createMovieMutation = CreateMovieMutation(dataConnect: dataConnect)
-    self.upsertUserMutation = UpsertUserMutation(dataConnect: dataConnect)
-    self.addReviewMutation = AddReviewMutation(dataConnect: dataConnect)
-    self.deleteReviewMutation = DeleteReviewMutation(dataConnect: dataConnect)
     self.listMoviesQuery = ListMoviesQuery(dataConnect: dataConnect)
     self.listUsersQuery = ListUsersQuery(dataConnect: dataConnect)
     self.listUserReviewsQuery = ListUserReviewsQuery(dataConnect: dataConnect)
     self.getMovieByIdQuery = GetMovieByIdQuery(dataConnect: dataConnect)
     self.searchMovieQuery = SearchMovieQuery(dataConnect: dataConnect)
+    self.createMovieMutation = CreateMovieMutation(dataConnect: dataConnect)
+    self.upsertUserMutation = UpsertUserMutation(dataConnect: dataConnect)
+    self.addReviewMutation = AddReviewMutation(dataConnect: dataConnect)
+    self.deleteReviewMutation = DeleteReviewMutation(dataConnect: dataConnect)
     
   }
 
@@ -47,15 +47,15 @@ public class ExampleConnector {
   }
 
   // MARK: Operations
-public let createMovieMutation: CreateMovieMutation
-public let upsertUserMutation: UpsertUserMutation
-public let addReviewMutation: AddReviewMutation
-public let deleteReviewMutation: DeleteReviewMutation
 public let listMoviesQuery: ListMoviesQuery
 public let listUsersQuery: ListUsersQuery
 public let listUserReviewsQuery: ListUserReviewsQuery
 public let getMovieByIdQuery: GetMovieByIdQuery
 public let searchMovieQuery: SearchMovieQuery
+public let createMovieMutation: CreateMovieMutation
+public let upsertUserMutation: UpsertUserMutation
+public let addReviewMutation: AddReviewMutation
+public let deleteReviewMutation: DeleteReviewMutation
 
 
 }

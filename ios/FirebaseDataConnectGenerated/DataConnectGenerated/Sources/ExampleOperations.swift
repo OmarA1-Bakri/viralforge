@@ -49,522 +49,6 @@ public enum SearchQueryFormat: String, Codable, Sendable {
 
 
 
-public class CreateMovieMutation{
-
-  let dataConnect: DataConnect
-
-  init(dataConnect: DataConnect) {
-    self.dataConnect = dataConnect
-  }
-
-  public static let OperationName = "CreateMovie"
-
-  public typealias Ref = MutationRef<CreateMovieMutation.Data,CreateMovieMutation.Variables>
-
-  public struct Variables: OperationVariable {
-  
-        
-        public var
-title: String
-
-  
-        
-        public var
-genre: String
-
-  
-        
-        public var
-imageUrl: String
-
-
-    
-    
-    
-    public init (
-        
-title: String
-,
-        
-genre: String
-,
-        
-imageUrl: String
-
-        
-        ) {
-        self.title = title
-        self.genre = genre
-        self.imageUrl = imageUrl
-        
-
-        
-    }
-
-    public static func == (lhs: Variables, rhs: Variables) -> Bool {
-      
-        return lhs.title == rhs.title && 
-              lhs.genre == rhs.genre && 
-              lhs.imageUrl == rhs.imageUrl
-              
-    }
-
-    
-public func hash(into hasher: inout Hasher) {
-  
-  hasher.combine(title)
-  
-  hasher.combine(genre)
-  
-  hasher.combine(imageUrl)
-  
-}
-
-    enum CodingKeys: String, CodingKey {
-      
-      case title
-      
-      case genre
-      
-      case imageUrl
-      
-    }
-
-    public func encode(to encoder: Encoder) throws {
-      var container = encoder.container(keyedBy: CodingKeys.self)
-      let codecHelper = CodecHelper<CodingKeys>()
-      
-      
-      try codecHelper.encode(title, forKey: .title, container: &container)
-      
-      
-      
-      try codecHelper.encode(genre, forKey: .genre, container: &container)
-      
-      
-      
-      try codecHelper.encode(imageUrl, forKey: .imageUrl, container: &container)
-      
-      
-    }
-
-  }
-
-  public struct Data: Decodable, Sendable {
-
-
-
-public var 
-movie_insert: MovieKey
-
-  }
-
-  public func ref(
-        
-title: String
-,
-genre: String
-,
-imageUrl: String
-
-        ) -> MutationRef<CreateMovieMutation.Data,CreateMovieMutation.Variables>  {
-        var variables = CreateMovieMutation.Variables(title:title,genre:genre,imageUrl:imageUrl)
-        
-
-        let ref = dataConnect.mutation(name: "CreateMovie", variables: variables, resultsDataType:CreateMovieMutation.Data.self)
-        return ref as MutationRef<CreateMovieMutation.Data,CreateMovieMutation.Variables>
-   }
-
-  @MainActor
-   public func execute(
-        
-title: String
-,
-genre: String
-,
-imageUrl: String
-
-        ) async throws -> OperationResult<CreateMovieMutation.Data> {
-        var variables = CreateMovieMutation.Variables(title:title,genre:genre,imageUrl:imageUrl)
-        
-        
-        let ref = dataConnect.mutation(name: "CreateMovie", variables: variables, resultsDataType:CreateMovieMutation.Data.self)
-        
-        return try await ref.execute()
-        
-   }
-}
-
-
-
-
-
-
-public class UpsertUserMutation{
-
-  let dataConnect: DataConnect
-
-  init(dataConnect: DataConnect) {
-    self.dataConnect = dataConnect
-  }
-
-  public static let OperationName = "UpsertUser"
-
-  public typealias Ref = MutationRef<UpsertUserMutation.Data,UpsertUserMutation.Variables>
-
-  public struct Variables: OperationVariable {
-  
-        
-        public var
-username: String
-
-
-    
-    
-    
-    public init (
-        
-username: String
-
-        
-        ) {
-        self.username = username
-        
-
-        
-    }
-
-    public static func == (lhs: Variables, rhs: Variables) -> Bool {
-      
-        return lhs.username == rhs.username
-              
-    }
-
-    
-public func hash(into hasher: inout Hasher) {
-  
-  hasher.combine(username)
-  
-}
-
-    enum CodingKeys: String, CodingKey {
-      
-      case username
-      
-    }
-
-    public func encode(to encoder: Encoder) throws {
-      var container = encoder.container(keyedBy: CodingKeys.self)
-      let codecHelper = CodecHelper<CodingKeys>()
-      
-      
-      try codecHelper.encode(username, forKey: .username, container: &container)
-      
-      
-    }
-
-  }
-
-  public struct Data: Decodable, Sendable {
-
-
-
-public var 
-user_upsert: UserKey
-
-  }
-
-  public func ref(
-        
-username: String
-
-        ) -> MutationRef<UpsertUserMutation.Data,UpsertUserMutation.Variables>  {
-        var variables = UpsertUserMutation.Variables(username:username)
-        
-
-        let ref = dataConnect.mutation(name: "UpsertUser", variables: variables, resultsDataType:UpsertUserMutation.Data.self)
-        return ref as MutationRef<UpsertUserMutation.Data,UpsertUserMutation.Variables>
-   }
-
-  @MainActor
-   public func execute(
-        
-username: String
-
-        ) async throws -> OperationResult<UpsertUserMutation.Data> {
-        var variables = UpsertUserMutation.Variables(username:username)
-        
-        
-        let ref = dataConnect.mutation(name: "UpsertUser", variables: variables, resultsDataType:UpsertUserMutation.Data.self)
-        
-        return try await ref.execute()
-        
-   }
-}
-
-
-
-
-
-
-public class AddReviewMutation{
-
-  let dataConnect: DataConnect
-
-  init(dataConnect: DataConnect) {
-    self.dataConnect = dataConnect
-  }
-
-  public static let OperationName = "AddReview"
-
-  public typealias Ref = MutationRef<AddReviewMutation.Data,AddReviewMutation.Variables>
-
-  public struct Variables: OperationVariable {
-  
-        
-        public var
-movieId: UUID
-
-  
-        
-        public var
-rating: Int
-
-  
-        
-        public var
-reviewText: String
-
-
-    
-    
-    
-    public init (
-        
-movieId: UUID
-,
-        
-rating: Int
-,
-        
-reviewText: String
-
-        
-        ) {
-        self.movieId = movieId
-        self.rating = rating
-        self.reviewText = reviewText
-        
-
-        
-    }
-
-    public static func == (lhs: Variables, rhs: Variables) -> Bool {
-      
-        return lhs.movieId == rhs.movieId && 
-              lhs.rating == rhs.rating && 
-              lhs.reviewText == rhs.reviewText
-              
-    }
-
-    
-public func hash(into hasher: inout Hasher) {
-  
-  hasher.combine(movieId)
-  
-  hasher.combine(rating)
-  
-  hasher.combine(reviewText)
-  
-}
-
-    enum CodingKeys: String, CodingKey {
-      
-      case movieId
-      
-      case rating
-      
-      case reviewText
-      
-    }
-
-    public func encode(to encoder: Encoder) throws {
-      var container = encoder.container(keyedBy: CodingKeys.self)
-      let codecHelper = CodecHelper<CodingKeys>()
-      
-      
-      try codecHelper.encode(movieId, forKey: .movieId, container: &container)
-      
-      
-      
-      try codecHelper.encode(rating, forKey: .rating, container: &container)
-      
-      
-      
-      try codecHelper.encode(reviewText, forKey: .reviewText, container: &container)
-      
-      
-    }
-
-  }
-
-  public struct Data: Decodable, Sendable {
-
-
-
-public var 
-review_upsert: ReviewKey
-
-  }
-
-  public func ref(
-        
-movieId: UUID
-,
-rating: Int
-,
-reviewText: String
-
-        ) -> MutationRef<AddReviewMutation.Data,AddReviewMutation.Variables>  {
-        var variables = AddReviewMutation.Variables(movieId:movieId,rating:rating,reviewText:reviewText)
-        
-
-        let ref = dataConnect.mutation(name: "AddReview", variables: variables, resultsDataType:AddReviewMutation.Data.self)
-        return ref as MutationRef<AddReviewMutation.Data,AddReviewMutation.Variables>
-   }
-
-  @MainActor
-   public func execute(
-        
-movieId: UUID
-,
-rating: Int
-,
-reviewText: String
-
-        ) async throws -> OperationResult<AddReviewMutation.Data> {
-        var variables = AddReviewMutation.Variables(movieId:movieId,rating:rating,reviewText:reviewText)
-        
-        
-        let ref = dataConnect.mutation(name: "AddReview", variables: variables, resultsDataType:AddReviewMutation.Data.self)
-        
-        return try await ref.execute()
-        
-   }
-}
-
-
-
-
-
-
-public class DeleteReviewMutation{
-
-  let dataConnect: DataConnect
-
-  init(dataConnect: DataConnect) {
-    self.dataConnect = dataConnect
-  }
-
-  public static let OperationName = "DeleteReview"
-
-  public typealias Ref = MutationRef<DeleteReviewMutation.Data,DeleteReviewMutation.Variables>
-
-  public struct Variables: OperationVariable {
-  
-        
-        public var
-movieId: UUID
-
-
-    
-    
-    
-    public init (
-        
-movieId: UUID
-
-        
-        ) {
-        self.movieId = movieId
-        
-
-        
-    }
-
-    public static func == (lhs: Variables, rhs: Variables) -> Bool {
-      
-        return lhs.movieId == rhs.movieId
-              
-    }
-
-    
-public func hash(into hasher: inout Hasher) {
-  
-  hasher.combine(movieId)
-  
-}
-
-    enum CodingKeys: String, CodingKey {
-      
-      case movieId
-      
-    }
-
-    public func encode(to encoder: Encoder) throws {
-      var container = encoder.container(keyedBy: CodingKeys.self)
-      let codecHelper = CodecHelper<CodingKeys>()
-      
-      
-      try codecHelper.encode(movieId, forKey: .movieId, container: &container)
-      
-      
-    }
-
-  }
-
-  public struct Data: Decodable, Sendable {
-
-
-
-public var 
-review_delete: ReviewKey?
-
-  }
-
-  public func ref(
-        
-movieId: UUID
-
-        ) -> MutationRef<DeleteReviewMutation.Data,DeleteReviewMutation.Variables>  {
-        var variables = DeleteReviewMutation.Variables(movieId:movieId)
-        
-
-        let ref = dataConnect.mutation(name: "DeleteReview", variables: variables, resultsDataType:DeleteReviewMutation.Data.self)
-        return ref as MutationRef<DeleteReviewMutation.Data,DeleteReviewMutation.Variables>
-   }
-
-  @MainActor
-   public func execute(
-        
-movieId: UUID
-
-        ) async throws -> OperationResult<DeleteReviewMutation.Data> {
-        var variables = DeleteReviewMutation.Variables(movieId:movieId)
-        
-        
-        let ref = dataConnect.mutation(name: "DeleteReview", variables: variables, resultsDataType:DeleteReviewMutation.Data.self)
-        
-        return try await ref.execute()
-        
-   }
-}
-
-
-
-
-
-
 public class ListMoviesQuery{
 
   let dataConnect: DataConnect
@@ -1667,6 +1151,522 @@ movies: [Movie]
         
         let refCast = ref as! QueryRefObservation<SearchMovieQuery.Data,SearchMovieQuery.Variables>
         return try await refCast.execute()
+        
+   }
+}
+
+
+
+
+
+
+public class CreateMovieMutation{
+
+  let dataConnect: DataConnect
+
+  init(dataConnect: DataConnect) {
+    self.dataConnect = dataConnect
+  }
+
+  public static let OperationName = "CreateMovie"
+
+  public typealias Ref = MutationRef<CreateMovieMutation.Data,CreateMovieMutation.Variables>
+
+  public struct Variables: OperationVariable {
+  
+        
+        public var
+title: String
+
+  
+        
+        public var
+genre: String
+
+  
+        
+        public var
+imageUrl: String
+
+
+    
+    
+    
+    public init (
+        
+title: String
+,
+        
+genre: String
+,
+        
+imageUrl: String
+
+        
+        ) {
+        self.title = title
+        self.genre = genre
+        self.imageUrl = imageUrl
+        
+
+        
+    }
+
+    public static func == (lhs: Variables, rhs: Variables) -> Bool {
+      
+        return lhs.title == rhs.title && 
+              lhs.genre == rhs.genre && 
+              lhs.imageUrl == rhs.imageUrl
+              
+    }
+
+    
+public func hash(into hasher: inout Hasher) {
+  
+  hasher.combine(title)
+  
+  hasher.combine(genre)
+  
+  hasher.combine(imageUrl)
+  
+}
+
+    enum CodingKeys: String, CodingKey {
+      
+      case title
+      
+      case genre
+      
+      case imageUrl
+      
+    }
+
+    public func encode(to encoder: Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      let codecHelper = CodecHelper<CodingKeys>()
+      
+      
+      try codecHelper.encode(title, forKey: .title, container: &container)
+      
+      
+      
+      try codecHelper.encode(genre, forKey: .genre, container: &container)
+      
+      
+      
+      try codecHelper.encode(imageUrl, forKey: .imageUrl, container: &container)
+      
+      
+    }
+
+  }
+
+  public struct Data: Decodable, Sendable {
+
+
+
+public var 
+movie_insert: MovieKey
+
+  }
+
+  public func ref(
+        
+title: String
+,
+genre: String
+,
+imageUrl: String
+
+        ) -> MutationRef<CreateMovieMutation.Data,CreateMovieMutation.Variables>  {
+        var variables = CreateMovieMutation.Variables(title:title,genre:genre,imageUrl:imageUrl)
+        
+
+        let ref = dataConnect.mutation(name: "CreateMovie", variables: variables, resultsDataType:CreateMovieMutation.Data.self)
+        return ref as MutationRef<CreateMovieMutation.Data,CreateMovieMutation.Variables>
+   }
+
+  @MainActor
+   public func execute(
+        
+title: String
+,
+genre: String
+,
+imageUrl: String
+
+        ) async throws -> OperationResult<CreateMovieMutation.Data> {
+        var variables = CreateMovieMutation.Variables(title:title,genre:genre,imageUrl:imageUrl)
+        
+        
+        let ref = dataConnect.mutation(name: "CreateMovie", variables: variables, resultsDataType:CreateMovieMutation.Data.self)
+        
+        return try await ref.execute()
+        
+   }
+}
+
+
+
+
+
+
+public class UpsertUserMutation{
+
+  let dataConnect: DataConnect
+
+  init(dataConnect: DataConnect) {
+    self.dataConnect = dataConnect
+  }
+
+  public static let OperationName = "UpsertUser"
+
+  public typealias Ref = MutationRef<UpsertUserMutation.Data,UpsertUserMutation.Variables>
+
+  public struct Variables: OperationVariable {
+  
+        
+        public var
+username: String
+
+
+    
+    
+    
+    public init (
+        
+username: String
+
+        
+        ) {
+        self.username = username
+        
+
+        
+    }
+
+    public static func == (lhs: Variables, rhs: Variables) -> Bool {
+      
+        return lhs.username == rhs.username
+              
+    }
+
+    
+public func hash(into hasher: inout Hasher) {
+  
+  hasher.combine(username)
+  
+}
+
+    enum CodingKeys: String, CodingKey {
+      
+      case username
+      
+    }
+
+    public func encode(to encoder: Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      let codecHelper = CodecHelper<CodingKeys>()
+      
+      
+      try codecHelper.encode(username, forKey: .username, container: &container)
+      
+      
+    }
+
+  }
+
+  public struct Data: Decodable, Sendable {
+
+
+
+public var 
+user_upsert: UserKey
+
+  }
+
+  public func ref(
+        
+username: String
+
+        ) -> MutationRef<UpsertUserMutation.Data,UpsertUserMutation.Variables>  {
+        var variables = UpsertUserMutation.Variables(username:username)
+        
+
+        let ref = dataConnect.mutation(name: "UpsertUser", variables: variables, resultsDataType:UpsertUserMutation.Data.self)
+        return ref as MutationRef<UpsertUserMutation.Data,UpsertUserMutation.Variables>
+   }
+
+  @MainActor
+   public func execute(
+        
+username: String
+
+        ) async throws -> OperationResult<UpsertUserMutation.Data> {
+        var variables = UpsertUserMutation.Variables(username:username)
+        
+        
+        let ref = dataConnect.mutation(name: "UpsertUser", variables: variables, resultsDataType:UpsertUserMutation.Data.self)
+        
+        return try await ref.execute()
+        
+   }
+}
+
+
+
+
+
+
+public class AddReviewMutation{
+
+  let dataConnect: DataConnect
+
+  init(dataConnect: DataConnect) {
+    self.dataConnect = dataConnect
+  }
+
+  public static let OperationName = "AddReview"
+
+  public typealias Ref = MutationRef<AddReviewMutation.Data,AddReviewMutation.Variables>
+
+  public struct Variables: OperationVariable {
+  
+        
+        public var
+movieId: UUID
+
+  
+        
+        public var
+rating: Int
+
+  
+        
+        public var
+reviewText: String
+
+
+    
+    
+    
+    public init (
+        
+movieId: UUID
+,
+        
+rating: Int
+,
+        
+reviewText: String
+
+        
+        ) {
+        self.movieId = movieId
+        self.rating = rating
+        self.reviewText = reviewText
+        
+
+        
+    }
+
+    public static func == (lhs: Variables, rhs: Variables) -> Bool {
+      
+        return lhs.movieId == rhs.movieId && 
+              lhs.rating == rhs.rating && 
+              lhs.reviewText == rhs.reviewText
+              
+    }
+
+    
+public func hash(into hasher: inout Hasher) {
+  
+  hasher.combine(movieId)
+  
+  hasher.combine(rating)
+  
+  hasher.combine(reviewText)
+  
+}
+
+    enum CodingKeys: String, CodingKey {
+      
+      case movieId
+      
+      case rating
+      
+      case reviewText
+      
+    }
+
+    public func encode(to encoder: Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      let codecHelper = CodecHelper<CodingKeys>()
+      
+      
+      try codecHelper.encode(movieId, forKey: .movieId, container: &container)
+      
+      
+      
+      try codecHelper.encode(rating, forKey: .rating, container: &container)
+      
+      
+      
+      try codecHelper.encode(reviewText, forKey: .reviewText, container: &container)
+      
+      
+    }
+
+  }
+
+  public struct Data: Decodable, Sendable {
+
+
+
+public var 
+review_upsert: ReviewKey
+
+  }
+
+  public func ref(
+        
+movieId: UUID
+,
+rating: Int
+,
+reviewText: String
+
+        ) -> MutationRef<AddReviewMutation.Data,AddReviewMutation.Variables>  {
+        var variables = AddReviewMutation.Variables(movieId:movieId,rating:rating,reviewText:reviewText)
+        
+
+        let ref = dataConnect.mutation(name: "AddReview", variables: variables, resultsDataType:AddReviewMutation.Data.self)
+        return ref as MutationRef<AddReviewMutation.Data,AddReviewMutation.Variables>
+   }
+
+  @MainActor
+   public func execute(
+        
+movieId: UUID
+,
+rating: Int
+,
+reviewText: String
+
+        ) async throws -> OperationResult<AddReviewMutation.Data> {
+        var variables = AddReviewMutation.Variables(movieId:movieId,rating:rating,reviewText:reviewText)
+        
+        
+        let ref = dataConnect.mutation(name: "AddReview", variables: variables, resultsDataType:AddReviewMutation.Data.self)
+        
+        return try await ref.execute()
+        
+   }
+}
+
+
+
+
+
+
+public class DeleteReviewMutation{
+
+  let dataConnect: DataConnect
+
+  init(dataConnect: DataConnect) {
+    self.dataConnect = dataConnect
+  }
+
+  public static let OperationName = "DeleteReview"
+
+  public typealias Ref = MutationRef<DeleteReviewMutation.Data,DeleteReviewMutation.Variables>
+
+  public struct Variables: OperationVariable {
+  
+        
+        public var
+movieId: UUID
+
+
+    
+    
+    
+    public init (
+        
+movieId: UUID
+
+        
+        ) {
+        self.movieId = movieId
+        
+
+        
+    }
+
+    public static func == (lhs: Variables, rhs: Variables) -> Bool {
+      
+        return lhs.movieId == rhs.movieId
+              
+    }
+
+    
+public func hash(into hasher: inout Hasher) {
+  
+  hasher.combine(movieId)
+  
+}
+
+    enum CodingKeys: String, CodingKey {
+      
+      case movieId
+      
+    }
+
+    public func encode(to encoder: Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      let codecHelper = CodecHelper<CodingKeys>()
+      
+      
+      try codecHelper.encode(movieId, forKey: .movieId, container: &container)
+      
+      
+    }
+
+  }
+
+  public struct Data: Decodable, Sendable {
+
+
+
+public var 
+review_delete: ReviewKey?
+
+  }
+
+  public func ref(
+        
+movieId: UUID
+
+        ) -> MutationRef<DeleteReviewMutation.Data,DeleteReviewMutation.Variables>  {
+        var variables = DeleteReviewMutation.Variables(movieId:movieId)
+        
+
+        let ref = dataConnect.mutation(name: "DeleteReview", variables: variables, resultsDataType:DeleteReviewMutation.Data.self)
+        return ref as MutationRef<DeleteReviewMutation.Data,DeleteReviewMutation.Variables>
+   }
+
+  @MainActor
+   public func execute(
+        
+movieId: UUID
+
+        ) async throws -> OperationResult<DeleteReviewMutation.Data> {
+        var variables = DeleteReviewMutation.Variables(movieId:movieId)
+        
+        
+        let ref = dataConnect.mutation(name: "DeleteReview", variables: variables, resultsDataType:DeleteReviewMutation.Data.self)
+        
+        return try await ref.execute()
         
    }
 }

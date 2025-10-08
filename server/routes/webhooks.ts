@@ -39,7 +39,15 @@ export function registerWebhookRoutes(app: Express) {
         return res.status(400).send(`Webhook Error: ${err.message}`);
       }
 
-      console.log(`✅ Received Stripe webhook: ${event.type}`);
+      const eventId = event.id;
+
+      // Check for replay attack (idempotency)
+      if (await isEventProcessed(eventId, 'stripe')) {
+        webhookLogger.warn('Duplicate event (already processed)', { source: 'stripe', eventId, eventType: event.type });
+        return res.json({ received: true, duplicate: true });
+      }
+
+      webhookLogger.info('Webhook received', { source: 'stripe', eventType: event.type, eventId });
 
       try {
         switch (event.type) {
@@ -65,12 +73,15 @@ export function registerWebhookRoutes(app: Express) {
             break;
 
           default:
-            console.log(`ℹ️  Unhandled webhook event type: ${event.type}`);
+            webhookLogger.warn('Unhandled event type', { source: 'stripe', eventType: event.type, eventId });
         }
+
+        // Mark event as processed to prevent replay
+        await markEventProcessed(eventId, event.type, 'stripe');
 
         res.json({ received: true });
       } catch (error) {
-        console.error("❌ Error processing webhook:", error);
+        webhookLogger.error("Webhook processing failed", error, { source: 'stripe' });
         res.status(500).json({ error: "Webhook processing failed" });
       }
     }
@@ -121,8 +132,8 @@ async function isEventProcessed(eventId: string, source: string): Promise<boolea
     `);
     return result.rows.length > 0;
   } catch (error) {
-    webhookLogger.error('Error checking event processed status', error, { source: source as any, eventId });
-    return false; // Fail open to prevent blocking legitimate events
+    webhookLogger.error('Cannot verify idempotency - failing closed', error, { source: source as any, eventId });
+    return true; // FAIL CLOSED: Treat as duplicate when database unavailable (prevents replay attacks during outages)
   }
 }
 

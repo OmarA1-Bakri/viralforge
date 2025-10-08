@@ -160,9 +160,11 @@ describe('Webhook Security Tests', () => {
       };
     }
 
-    function validateEvent(event: any): event is RevenueCatEvent {
+    function validateEvent(event: any): boolean {
+      if (!event || typeof event !== 'object') {
+        return false;
+      }
       return (
-        event &&
         typeof event.id === 'string' &&
         typeof event.type === 'string' &&
         event.event &&
