@@ -80,24 +80,25 @@
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
-  /* Depth System - Two-Layer Shadows (Shadow.md) */
-  --shadow-depth-sm: inset 0 1px 0 0 rgb(255 255 255 / 0.05), 0 1px 2px 0 rgb(0 0 0 / 0.3);
-  --shadow-depth-md: inset 0 1px 0 0 rgb(255 255 255 / 0.08), 0 4px 8px 0 rgb(0 0 0 / 0.4);
-  --shadow-depth-lg: inset 0 2px 0 0 rgb(255 255 255 / 0.1), 0 12px 24px 0 rgb(0 0 0 / 0.5);
+  /* Depth System - Two-Layer Shadows (Shadow.md) - Dark Mode */
+  --shadow-depth-sm: inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-depth-md: inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 4px 8px 0 rgba(0, 0, 0, 0.4);
+  --shadow-depth-lg: inset 0 2px 0 0 rgba(255, 255, 255, 0.1), 0 12px 24px 0 rgba(0, 0, 0, 0.5);
 
-  /* Background Layers - Hierarchical Depth */
-  --layer-1-bg: 0 0% 5.5%;   /* Deepest - page background */
+  /* Background Layers - Hierarchical Depth (Dark Mode) */
+  --layer-1-bg: 0 0% 5%;     /* Deepest - page background */
   --layer-1-fg: 0 0% 92%;
-  --layer-2-bg: 0 0% 10%;    /* Medium - cards */
+  --layer-2-bg: 0 0% 11%;    /* Medium - cards (6% difference) */
   --layer-2-fg: 0 0% 92%;
-  --layer-3-bg: 0 0% 16%;    /* Light - interactive */
+  --layer-3-bg: 0 0% 17%;    /* Light - interactive (6% difference) */
   --layer-3-fg: 0 0% 95%;
-  --layer-4-bg: 0 0% 22%;    /* Lightest - active/hover */
+  --layer-4-bg: 0 0% 23%;    /* Lightest - active/hover (6% difference) */
   --layer-4-fg: 0 0% 98%;
 
-  /* Gradient Shine Presets */
+  /* Gradient Shine Presets (Dark Mode) */
   --gradient-shine-top: hsl(0 0% 11%);
   --gradient-shine-bottom: hsl(0 0% 9%);
+  --shine-highlight: rgba(255, 255, 255, 0.3);
 
   /* Automatically computed borders - intensity can be controlled by the user by the --opaque-button-border-intensity setting */
 
@@ -193,10 +194,10 @@
     --shadow-xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.10), 0px 8px 10px -1px hsl(0 0% 0% / 0.10);
     --shadow-2xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.10);
 
-    /* Depth System - Light Mode Shadows */
-    --shadow-depth-sm: inset 0 1px 0 0 rgb(255 255 255 / 0.9), 0 1px 2px 0 rgb(0 0 0 / 0.12);
-    --shadow-depth-md: inset 0 1px 0 0 rgb(255 255 255 / 1), 0 4px 8px 0 rgb(0 0 0 / 0.08), 0 1px 3px 0 rgb(0 0 0 / 0.06);
-    --shadow-depth-lg: inset 0 2px 0 0 rgb(255 255 255 / 1), 0 12px 24px 0 rgb(0 0 0 / 0.1), 0 4px 8px 0 rgb(0 0 0 / 0.08);
+    /* Depth System - Light Mode Shadows (2 layers, not 3) */
+    --shadow-depth-sm: inset 0 1px 0 0 rgba(255, 255, 255, 0.9), 0 1px 2px 0 rgba(0, 0, 0, 0.12);
+    --shadow-depth-md: inset 0 1px 0 0 rgba(255, 255, 255, 0.9), 0 4px 8px 0 rgba(0, 0, 0, 0.1);
+    --shadow-depth-lg: inset 0 2px 0 0 rgba(255, 255, 255, 0.95), 0 12px 24px 0 rgba(0, 0, 0, 0.12);
 
     /* Background Layers - Light Mode */
     --layer-1-bg: var(--gray-50);    /* 93% */
@@ -211,6 +212,7 @@
     /* Gradient Shine - Light Mode */
     --gradient-shine-top: hsl(0 0% 84%);
     --gradient-shine-bottom: hsl(0 0% 78%);
+    --shine-highlight: rgba(0, 0, 0, 0.1);  /* Use BLACK for light mode */
   }
 }
 
@@ -377,6 +379,24 @@
   --shadow-lg: 0px 2px 0px 0px hsl(0 0% 0% / 0.25), 0px 4px 6px -1px hsl(0 0% 0% / 0.25);
   --shadow-xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.25), 0px 8px 10px -1px hsl(0 0% 0% / 0.25);
   --shadow-2xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.25);
+
+  /* Depth System - Dark Mode Overrides (for manual .dark class toggle) */
+  --shadow-depth-sm: inset 0 1px 0 0 rgba(255, 255, 255, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-depth-md: inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 4px 8px 0 rgba(0, 0, 0, 0.4);
+  --shadow-depth-lg: inset 0 2px 0 0 rgba(255, 255, 255, 0.1), 0 12px 24px 0 rgba(0, 0, 0, 0.5);
+
+  --layer-1-bg: 0 0% 5%;
+  --layer-1-fg: 0 0% 92%;
+  --layer-2-bg: 0 0% 11%;
+  --layer-2-fg: 0 0% 92%;
+  --layer-3-bg: 0 0% 17%;
+  --layer-3-fg: 0 0% 95%;
+  --layer-4-bg: 0 0% 23%;
+  --layer-4-fg: 0 0% 98%;
+
+  --gradient-shine-top: hsl(0 0% 11%);
+  --gradient-shine-bottom: hsl(0 0% 9%);
+  --shine-highlight: rgba(255, 255, 255, 0.3);
 }
 
 /* Custom hover effects and brand elements */
@@ -453,7 +473,32 @@
   /* Gradient Shine Utilities */
   .gradient-shine {
     background: linear-gradient(to bottom, var(--gradient-shine-top), var(--gradient-shine-bottom));
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), var(--shadow-depth-sm);
+    box-shadow: inset 0 1px 0 var(--shine-highlight), var(--shadow-depth-sm);
+  }
+
+  /* Accessibility: Reduced Motion */
+  @media (prefers-reduced-motion: reduce) {
+    .shadow-depth-sm,
+    .shadow-depth-md,
+    .shadow-depth-lg {
+      transition: none !important;
+    }
+  }
+
+  /* Accessibility: High Contrast Mode */
+  @media (prefers-contrast: high) {
+    .shadow-depth-sm { box-shadow: none; border: 1px solid currentColor; }
+    .shadow-depth-md { box-shadow: none; border: 2px solid currentColor; }
+    .shadow-depth-lg { box-shadow: none; border: 3px solid currentColor; }
+  }
+
+  /* Print: Remove shadows */
+  @media print {
+    .shadow-depth-sm,
+    .shadow-depth-md,
+    .shadow-depth-lg {
+      box-shadow: none !important;
+    }
   }
 }
 
