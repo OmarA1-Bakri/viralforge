@@ -78,28 +78,55 @@ function generateSassFile(colors) {
 
 `;
 
-  // Group colors by category
-  const categories = {
-    'Primary Colors': ['primary', 'primary-foreground'],
-    'Accent Colors': ['accent', 'accent-foreground'],
-    'Secondary Colors': ['secondary', 'secondary-foreground'],
-    'Background Colors': ['background', 'foreground', 'card', 'card-foreground'],
-    'UI Colors': ['border', 'input', 'ring', 'muted', 'muted-foreground'],
-    'Semantic Colors': ['destructive', 'destructive-foreground'],
-    'Chart Colors': ['chart-1', 'chart-2', 'chart-3', 'chart-4', 'chart-5'],
-    'Sidebar Colors': Object.keys(colors).filter(k => k.startsWith('sidebar')),
-    'Popover Colors': ['popover', 'popover-foreground', 'popover-border']
-  };
+  // Dynamically group colors by prefix (primary, accent, gray, success, etc.)
+  const grouped = {};
 
-  Object.entries(categories).forEach(([category, colorNames]) => {
-    content += `// ${category}\n`;
+  Object.keys(colors).forEach(name => {
+    // Extract prefix (e.g., "primary" from "primary-50", "sidebar" from "sidebar-ring")
+    const prefix = name.split('-')[0];
+
+    if (!grouped[prefix]) {
+      grouped[prefix] = [];
+    }
+    grouped[prefix].push(name);
+  });
+
+  // Define category order (shades grouped together, legacy vars separate)
+  const categoryOrder = [
+    'primary', 'accent', 'gray', 'success', 'warning', 'info', 'error',
+    'background', 'foreground', 'card', 'border', 'input', 'ring',
+    'muted', 'secondary', 'destructive', 'chart',
+    'sidebar', 'popover'
+  ];
+
+  // Sort groups by category order, then alphabetically for unlisted
+  const sortedPrefixes = Object.keys(grouped).sort((a, b) => {
+    const aIndex = categoryOrder.indexOf(a);
+    const bIndex = categoryOrder.indexOf(b);
+
+    if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+    if (aIndex !== -1) return -1;
+    if (bIndex !== -1) return 1;
+    return a.localeCompare(b);
+  });
+
+  // Generate Sass variables grouped by prefix
+  sortedPrefixes.forEach(prefix => {
+    const categoryName = prefix.charAt(0).toUpperCase() + prefix.slice(1);
+    const colorNames = grouped[prefix].sort((a, b) => {
+      // Sort shade numbers (50, 100, 200...) numerically
+      const aNum = parseInt(a.match(/-(\d+)$/)?.[1] || '0');
+      const bNum = parseInt(b.match(/-(\d+)$/)?.[1] || '0');
+      if (aNum && bNum) return aNum - bNum;
+      return a.localeCompare(b);
+    });
+
+    content += `// ${categoryName} Colors\n`;
 
     colorNames.forEach(name => {
-      if (colors[name]) {
-        const safeName = name.replace(/-/g, '_');
-        content += `$color_${safeName}_hsl: hsl(${colors[name].hsl});\n`;
-        content += `$color_${safeName}: ${colors[name].hex};\n`;
-      }
+      const safeName = name.replace(/-/g, '_');
+      content += `$color_${safeName}_hsl: hsl(${colors[name].hsl});\n`;
+      content += `$color_${safeName}: ${colors[name].hex};\n`;
     });
 
     content += '\n';
@@ -143,11 +170,22 @@ const plugin = (opts = {}) => {
                 varName.includes('elevate') ||
                 varName.includes('button-outline') ||
                 varName.includes('badge-outline') ||
-                varName.includes('opaque-button-border')) {
+                varName.includes('opaque-button-border') ||
+                varName.includes('shadow') ||
+                varName.includes('radius') ||
+                varName.includes('spacing') ||
+                varName.includes('tracking') ||
+                varName.includes('font-')) {
               return;
             }
 
-            // Parse HSL values to HEX
+            // Skip var() references (backward compat mappings)
+            // We only want direct HSL values like "184 88% 62%"
+            if (value.includes('var(')) {
+              return;
+            }
+
+            // Parse HSL values to HEX (only extracts direct HSL values)
             const hex = parseHslToHex(value);
             if (hex) {
               colors[varName] = {

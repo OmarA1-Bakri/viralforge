@@ -20,6 +20,7 @@ import LoadingPage from "@/components/LoadingPage";
 import UserPreferences from "@/pages/UserPreferences";
 import NotFound from "@/pages/not-found";
 import StatusBarTest from "@/components/StatusBarTest";
+import { ColorSystemTest } from "@/components/ColorSystemTest";
 
 function MainApp() {
   const [activeTab, setActiveTab] = useState<"dashboard" | "idea-lab" | "launch-pad" | "multiplier" | "preferences">("dashboard");
@@ -78,6 +79,9 @@ function Router() {
     <Switch>
       <Route path="/test-status-bar">
         <StatusBarTest />
+      </Route>
+      <Route path="/test-colors">
+        <ColorSystemTest />
       </Route>
       <Route path="/">
         <ProtectedRoute>

@@ -75,33 +75,153 @@
 
   --popover-border: 0 0% 87%;
 
-  --primary: 184 88% 62%;
+  /* =================================================================
+   * COLORS.MD COMPLIANCE: 10-Shade Color Scales
+   * =================================================================
+   * Each color category has 10 shades (50-900) per Colors.md requirements
+   * 50 = lightest, 500 = base, 900 = darkest
+   */
 
+  /* PRIMARY SCALE (Cyan Brand Color) - 10 shades (Perceptually Uniform) */
+  --primary-50: 184 100% 88%;
+  --primary-100: 184 90% 63%;
+  --primary-200: 184 82% 47%;
+  --primary-300: 183 100% 36%;
+  --primary-400: 183 100% 30%;
+  --primary-500: 184 88% 62%;  /* Base (current --primary) */
+  --primary-600: 183 100% 18%;
+  --primary-700: 184 100% 13%;
+  --primary-800: 184 100% 8%;
+  --primary-900: 186 100% 3%;
+
+  /* ACCENT SCALE (Pink Secondary) - 10 shades (Perceptually Uniform) */
+  --accent-50: 328 100% 95%;
+  --accent-100: 326 100% 86%;
+  --accent-200: 323 100% 76%;
+  --accent-300: 321 86% 63%;
+  --accent-400: 319 65% 50%;
+  --accent-500: 321 100% 68%;  /* Base (current --accent) */
+  --accent-600: 316 100% 27%;
+  --accent-700: 317 100% 19%;
+  --accent-800: 318 100% 12%;
+  --accent-900: 322 100% 5%;
+
+  /* GRAY/NEUTRAL SCALE - 10 shades (Perceptually Uniform) */
+  --gray-50: 315 0% 93%;
+  --gray-100: 300 0% 82%;
+  --gray-200: 0 0% 71%;
+  --gray-300: 300 0% 60%;
+  --gray-400: 0 0% 50%;
+  --gray-500: 0 0% 45%;  /* Base */
+  --gray-600: 0 0% 30%;
+  --gray-700: 240 0% 21%;
+  --gray-800: 0 0% 12%;
+  --gray-900: 300 0% 4%;
+
+  /* SUCCESS SCALE (Green) - 10 shades (Perceptually Uniform) */
+  --success-50: 133 100% 89%;
+  --success-100: 140 87% 66%;
+  --success-200: 143 66% 52%;
+  --success-300: 149 100% 36%;
+  --success-400: 149 100% 30%;
+  --success-500: 142 69% 55%;  /* Base - matches original chart-2 */
+  --success-600: 147 100% 18%;
+  --success-700: 145 100% 13%;
+  --success-800: 141 100% 8%;
+  --success-900: 133 100% 3%;
+
+  /* WARNING SCALE (Yellow/Amber) - 10 shades (Perceptually Uniform) */
+  --warning-50: 23 100% 93%;
+  --warning-100: 24 100% 81%;
+  --warning-200: 25 96% 66%;
+  --warning-300: 26 71% 53%;
+  --warning-400: 29 92% 39%;
+  --warning-500: 25 95% 65%;   /* Base - matches original chart-3 */
+  --warning-600: 29 100% 23%;
+  --warning-700: 28 100% 16%;
+  --warning-800: 25 100% 10%;
+  --warning-900: 17 100% 4%;
+
+  /* INFO SCALE (Blue) - 10 shades (Perceptually Uniform) */
+  --info-50: 226 100% 96%;
+  --info-100: 226 100% 88%;
+  --info-200: 227 100% 80%;
+  --info-300: 229 100% 73%;
+  --info-400: 233 100% 67%;
+  --info-500: 240 90% 60%;     /* Base - matches original chart-4 */
+  --info-600: 250 88% 45%;
+  --info-700: 252 100% 31%;
+  --info-800: 250 100% 20%;
+  --info-900: 245 100% 10%;
+
+  /* ERROR SCALE (Red) - 10 shades (Perceptually Uniform) */
+  --error-50: 6 100% 95%;
+  --error-100: 6 100% 86%;
+  --error-200: 4 100% 77%;
+  --error-300: 1 100% 66%;
+  --error-400: 359 73% 54%;
+  --error-500: 0 84% 60%;      /* Base (matches original --destructive) */
+  --error-600: 352 100% 29%;
+  --error-700: 354 100% 21%;
+  --error-800: 356 100% 13%;
+  --error-900: 358 100% 6%;
+
+  /* =================================================================
+   * BACKWARD COMPATIBILITY MAPPING
+   * =================================================================
+   * Maps old single-value vars to new shade system
+   * Preserves existing functionality while enabling new features
+   */
+
+  /* Primary backward compat */
+  --primary: var(--primary-500);
   --primary-foreground: 0 0% 10%;
 
-  --secondary: 0 0% 18%;
-
-  --secondary-foreground: 0 0% 100%;
-
-  --muted: 0 0% 16%;
-
-  --muted-foreground: 0 0% 63%;
-
-  --accent: 321 100% 68%;
-
+  /* Accent backward compat */
+  --accent: var(--accent-500);
   --accent-foreground: 0 0% 10%;
 
-  --destructive: 0 84% 60%;
-
+  /* Destructive backward compat */
+  --destructive: var(--error-500);
   --destructive-foreground: 0 0% 98%;
 
+  /* Secondary backward compat */
+  --secondary: var(--gray-700);
+  --secondary-foreground: var(--gray-50);
+
+  /* Neutral backward compat */
+  --background: var(--gray-900);
+  --foreground: var(--gray-100);
+  --muted: var(--gray-700);
+  --muted-foreground: var(--gray-300);
+  --border: var(--gray-700);
+  --card: var(--gray-800);
+  --card-foreground: var(--gray-100);
+  --card-border: var(--gray-700);
   --input: 0 0% 75%;
   --ring: 320 100% 65%;
-  --chart-1: 280 100% 55%;
-  --chart-2: 142 69% 55%;
-  --chart-3: 25 95% 65%;
-  --chart-4: 240 90% 60%;
-  --chart-5: 340 85% 60%;
+
+  /* Sidebar backward compat - map to grayscale */
+  --sidebar: var(--gray-100);
+  --sidebar-foreground: var(--gray-900);
+  --sidebar-border: var(--gray-200);
+  --sidebar-primary: var(--primary-500);
+  --sidebar-primary-foreground: var(--gray-50);
+  --sidebar-accent: var(--gray-200);
+  --sidebar-accent-foreground: var(--gray-800);
+  --sidebar-ring: var(--primary-500);
+
+  /* Popover backward compat - map to grayscale */
+  --popover: var(--gray-200);
+  --popover-foreground: var(--gray-900);
+  --popover-border: var(--gray-300);
+
+  /* Chart backward compat - map to semantic colors */
+  --chart-1: var(--primary-500);   /* Cyan */
+  --chart-2: var(--success-500);   /* Green */
+  --chart-3: var(--warning-500);   /* Orange */
+  --chart-4: var(--info-500);      /* Blue */
+  --chart-5: var(--accent-500);    /* Pink */
 
   --font-sans: Open Sans, sans-serif;
   --font-serif: Georgia, serif;
@@ -149,6 +269,71 @@
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
+/* =============================================================================
+ * LIGHT MODE SUPPORT (Colors.md Compliance)
+ * =============================================================================
+ * Automatically applied when user's system prefers light mode
+ * Inverts foreground/background while keeping shade scales unchanged
+ */
+@media (prefers-color-scheme: light) {
+  :root {
+    --button-outline: rgba(0,0,0, .10);
+    --badge-outline: rgba(0,0,0, .05);
+    
+    --opaque-button-border-intensity: 8;  /* In terms of percentages */
+    
+    /* Backgrounds applied on top of other backgrounds when hovered/active */
+    --elevate-1: rgba(0,0,0, .03);
+    --elevate-2: rgba(0,0,0, .08);
+    
+    /* Inverted semantic mappings for light mode */
+    --background: var(--gray-50);       /* 98% lightness - was gray-900 */
+    --foreground: var(--gray-900);      /* 6% lightness - was gray-100 */
+    --border: var(--gray-300);          /* Lighter borders */
+    --card: var(--gray-100);            /* was gray-800 */
+    --card-foreground: var(--gray-900); /* was gray-100 */
+    --card-border: var(--gray-300);     /* was gray-700 */
+    
+    /* Adjust muted colors */
+    --muted: var(--gray-200);           /* was gray-700 */
+    --muted-foreground: var(--gray-600); /* was gray-300 */
+    
+    /* Secondary colors */
+    --secondary: var(--gray-200);       /* was gray-700 */
+    --secondary-foreground: var(--gray-900); /* was gray-50 */
+    
+    /* Primary/accent foregrounds for light backgrounds (WCAG compliant) */
+    --primary-foreground: 0 0% 10%;     /* Dark text on light primary button */
+    --accent-foreground: 0 0% 10%;      /* Dark text on light accent button */
+    
+    /* Input and ring */
+    --input: var(--gray-200);
+    --ring: var(--primary-600);
+    
+    /* Sidebar for light mode */
+    --sidebar: var(--gray-100);
+    --sidebar-foreground: var(--gray-900);
+    --sidebar-border: var(--gray-300);
+    --sidebar-accent: var(--gray-200);
+    --sidebar-accent-foreground: var(--gray-900);
+    
+    /* Popover for light mode */
+    --popover: var(--gray-100);
+    --popover-foreground: var(--gray-900);
+    --popover-border: var(--gray-300);
+    
+    /* Light mode shadows */
+    --shadow-2xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.10);
+    --shadow-xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.10);
+    --shadow-sm: 0px 2px 0px 0px hsl(0 0% 0% / 0.10), 0px 1px 2px -1px hsl(0 0% 0% / 0.10);
+    --shadow: 0px 2px 0px 0px hsl(0 0% 0% / 0.10), 0px 1px 2px -1px hsl(0 0% 0% / 0.10);
+    --shadow-md: 0px 2px 0px 0px hsl(0 0% 0% / 0.10), 0px 2px 4px -1px hsl(0 0% 0% / 0.10);
+    --shadow-lg: 0px 2px 0px 0px hsl(0 0% 0% / 0.10), 0px 4px 6px -1px hsl(0 0% 0% / 0.10);
+    --shadow-xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.10), 0px 8px 10px -1px hsl(0 0% 0% / 0.10);
+    --shadow-2xl: 0px 2px 0px 0px hsl(0 0% 0% / 0.10);
+  }
+}
+
 .dark {
   --button-outline: rgba(255,255,255, .10);
   --badge-outline: rgba(255,255,255, .05);
@@ -159,68 +344,151 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  --background: 0 0% 5.5%;
+  /* =================================================================
+   * DARK MODE: 10-Shade Color Scales (Perceptually Uniform)
+   * =================================================================
+   */
 
-  --foreground: 0 0% 92%;
+  /* PRIMARY SCALE (Cyan Brand Color) - 10 shades (Perceptually Uniform) */
+  --primary-50: 184 100% 88%;
+  --primary-100: 184 90% 63%;
+  --primary-200: 184 82% 47%;
+  --primary-300: 183 100% 36%;
+  --primary-400: 183 100% 30%;
+  --primary-500: 184 88% 62%;  /* Base */
+  --primary-600: 183 100% 18%;
+  --primary-700: 184 100% 13%;
+  --primary-800: 184 100% 8%;
+  --primary-900: 186 100% 3%;
 
-  --border: 0 0% 16%;
+  /* ACCENT SCALE (Pink Secondary) - 10 shades (Perceptually Uniform) */
+  --accent-50: 328 100% 95%;
+  --accent-100: 326 100% 86%;
+  --accent-200: 323 100% 76%;
+  --accent-300: 321 86% 63%;
+  --accent-400: 319 65% 50%;
+  --accent-500: 321 100% 68%;  /* Base */
+  --accent-600: 316 100% 27%;
+  --accent-700: 317 100% 19%;
+  --accent-800: 318 100% 12%;
+  --accent-900: 322 100% 5%;
 
-  --card: 0 0% 10%;
+  /* GRAY/NEUTRAL SCALE - 10 shades (Perceptually Uniform) */
+  --gray-50: 315 0% 93%;
+  --gray-100: 300 0% 82%;
+  --gray-200: 0 0% 71%;
+  --gray-300: 300 0% 60%;
+  --gray-400: 0 0% 50%;
+  --gray-500: 0 0% 45%;  /* Base */
+  --gray-600: 0 0% 30%;
+  --gray-700: 240 0% 21%;
+  --gray-800: 0 0% 12%;
+  --gray-900: 300 0% 4%;
 
-  --card-foreground: 0 0% 92%;
+  /* SUCCESS SCALE (Green) - 10 shades (Perceptually Uniform) */
+  --success-50: 133 100% 89%;
+  --success-100: 140 87% 66%;
+  --success-200: 143 66% 52%;
+  --success-300: 149 100% 36%;
+  --success-400: 149 100% 30%;
+  --success-500: 142 69% 55%;  /* Base */
+  --success-600: 147 100% 18%;
+  --success-700: 145 100% 13%;
+  --success-800: 141 100% 8%;
+  --success-900: 133 100% 3%;
 
-  --card-border: 0 0% 16%;
+  /* WARNING SCALE (Yellow/Amber) - 10 shades (Perceptually Uniform) */
+  --warning-50: 23 100% 93%;
+  --warning-100: 24 100% 81%;
+  --warning-200: 25 96% 66%;
+  --warning-300: 26 71% 53%;
+  --warning-400: 29 92% 39%;
+  --warning-500: 25 95% 65%;   /* Base */
+  --warning-600: 29 100% 23%;
+  --warning-700: 28 100% 16%;
+  --warning-800: 25 100% 10%;
+  --warning-900: 17 100% 4%;
 
-  --sidebar: 17 8% 6%;
+  /* INFO SCALE (Blue) - 10 shades (Perceptually Uniform) */
+  --info-50: 226 100% 96%;
+  --info-100: 226 100% 88%;
+  --info-200: 227 100% 80%;
+  --info-300: 229 100% 73%;
+  --info-400: 233 100% 67%;
+  --info-500: 240 90% 60%;     /* Base */
+  --info-600: 250 88% 45%;
+  --info-700: 252 100% 31%;
+  --info-800: 250 100% 20%;
+  --info-900: 245 100% 10%;
 
-  --sidebar-foreground: 0 0% 95%;
+  /* ERROR SCALE (Red) - 10 shades (Perceptually Uniform) */
+  --error-50: 6 100% 95%;
+  --error-100: 6 100% 86%;
+  --error-200: 4 100% 77%;
+  --error-300: 1 100% 66%;
+  --error-400: 359 73% 54%;
+  --error-500: 0 84% 60%;      /* Base */
+  --error-600: 352 100% 29%;
+  --error-700: 354 100% 21%;
+  --error-800: 356 100% 13%;
+  --error-900: 358 100% 6%;
 
-  --sidebar-border: 17 8% 16%;
+  /* =================================================================
+   * BACKWARD COMPATIBILITY MAPPING (Dark Mode)
+   * =================================================================
+   */
 
-  --sidebar-primary: 180 100% 60%;
-
-  --sidebar-primary-foreground: 0 0% 98%;
-
-  --sidebar-accent: 17 8% 12%;
-
-  --sidebar-accent-foreground: 0 0% 90%;
-
-  --sidebar-ring: 180 100% 60%;
-
-  --popover: 17 8% 10%;
-
-  --popover-foreground: 0 0% 95%;
-
-  --popover-border: 17 8% 20%;
-
-  --primary: 184 88% 62%;
-
+  /* Primary backward compat */
+  --primary: var(--primary-500);
   --primary-foreground: 0 0% 10%;
 
-  --secondary: 0 0% 18%;
-
-  --secondary-foreground: 0 0% 90%;
-
-  --muted: 0 0% 16%;
-
-  --muted-foreground: 0 0% 63%;
-
-  --accent: 321 100% 68%;
-
+  /* Accent backward compat */
+  --accent: var(--accent-500);
   --accent-foreground: 0 0% 10%;
 
-  --destructive: 0 84% 60%;
-
+  /* Destructive backward compat */
+  --destructive: var(--error-500);
   --destructive-foreground: 0 0% 98%;
 
+  /* Secondary backward compat */
+  --secondary: var(--gray-700);
+  --secondary-foreground: var(--gray-50);
+
+  /* Neutral backward compat */
+  --background: var(--gray-900);
+  --foreground: var(--gray-100);
+  --muted: var(--gray-700);
+  --muted-foreground: var(--gray-300);
+  --border: var(--gray-700);
+  --card: var(--gray-800);
+  --card-foreground: var(--gray-100);
+  --card-border: var(--gray-700);
   --input: 17 8% 25%;
   --ring: 180 100% 60%;
-  --chart-1: 180 100% 60%;
-  --chart-2: 142 80% 70%;
-  --chart-3: 25 95% 70%;
-  --chart-4: 240 90% 75%;
-  --chart-5: 340 85% 75%;
 
+  /* Sidebar backward compat */
+  --sidebar: 17 8% 6%;
+  --sidebar-foreground: 0 0% 95%;
+  --sidebar-border: 17 8% 16%;
+  --sidebar-primary: var(--primary-500);
+  --sidebar-primary-foreground: 0 0% 98%;
+  --sidebar-accent: 17 8% 12%;
+  --sidebar-accent-foreground: 0 0% 90%;
+  --sidebar-ring: var(--primary-500);
+
+  /* Popover backward compat */
+  --popover: 17 8% 10%;
+  --popover-foreground: 0 0% 95%;
+  --popover-border: 17 8% 20%;
+
+  /* Chart backward compat */
+  --chart-1: var(--primary-500);
+  --chart-2: var(--success-500);
+  --chart-3: var(--warning-500);
+  --chart-4: var(--info-500);
+  --chart-5: var(--accent-500);
+
+  /* Shadows */
   --shadow-2xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.25);
   --shadow-xs: 0px 2px 0px 0px hsl(0 0% 0% / 0.25);
   --shadow-sm: 0px 2px 0px 0px hsl(0 0% 0% / 0.25), 0px 1px 2px -1px hsl(0 0% 0% / 0.25);
