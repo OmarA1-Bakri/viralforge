@@ -17,9 +17,20 @@ Agent Roles:
 
 import os
 import asyncio
+import logging
 from typing import Dict, List, Any, Optional
 from datetime import datetime, timedelta
 from pathlib import Path
+
+try:
+    import httpx
+except ImportError:
+    httpx = None
+
+from server.exceptions import ServiceUnavailableError
+from server.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 from crewai import Agent, Task, Crew, Process, LLM
 from crewai.knowledge.source.string_knowledge_source import StringKnowledgeSource
@@ -52,17 +63,20 @@ class ViralForgeAgentSystem:
     
     def __init__(self):
         """Initialize the multi-agent system with specialized crews."""
+        self.settings = get_settings()
+        self.feature_flags = self.settings.feature_flags
         self.llm = self._setup_llm()
-        self.knowledge = self._setup_knowledge()
+        self.knowledge = self._setup_knowledge() if self.feature_flags.inject_knowledge_sources else []
         self.tools = self._setup_tools()
         self.agents = self._create_agents()
         self.crews = self._create_crews()
+        self.crew_tools_url = self.settings.crew_tools_url
         
     def _setup_llm(self) -> LLM:
         """Configure the LLM for all agents using OpenRouter."""
         return LLM(
             model="openrouter/x-ai/grok-4-fast",  # Using Grok-4-fast via OpenRouter (free tier)
-            api_key=os.getenv("OPENROUTER_API_KEY"),
+            api_key=self.settings.openrouter_api_key,
             base_url="https://openrouter.ai/api/v1",
             temperature=0.7,
             max_tokens=4000
@@ -94,42 +108,48 @@ class ViralForgeAgentSystem:
     
     def _setup_tools(self) -> Dict[str, Any]:
         """Initialize all tools needed by agents."""
-        # Get custom social media tools
-        social_tools = get_crew_social_tools(
-            base_url=os.getenv("CREW_TOOLS_URL", "http://localhost:8001")
-        )
+        tools = {}
         
-        return {
-            # Custom Social Media Discovery Tools (from crew-social-tools)
-            "twitter_search": social_tools["twitter"],
-            "youtube_search": social_tools["youtube"],
-            "reddit_scan": social_tools["reddit"],
-            "instagram_fetch": social_tools["instagram"],
-            "ddg_search": social_tools["ddg"],
-            "social_aggregator": social_tools["aggregator"],
+        # Check if YouTube-only mode is enabled
+        if self.feature_flags.youtube_only_mode and self.feature_flags.use_crewai_youtube_tools:
+            # Use CrewAI's built-in YouTube RAG tools
+            logger.info("🎬 YouTube-only mode enabled with CrewAI RAG tools")
+            try:
+                from crewai_tools import YoutubeVideoSearchTool, YoutubeChannelSearchTool
+                tools["youtube_video_search"] = YoutubeVideoSearchTool()
+                tools["youtube_channel_search"] = YoutubeChannelSearchTool()
+                logger.info("✅ CrewAI YouTube RAG tools loaded successfully")
+            except ImportError as e:
+                logger.error(f"❌ Failed to import CrewAI YouTube tools: {e}")
+                logger.error("Install with: pip install 'crewai[tools]'")
+                raise
             
-            # Other Discovery Tools
-            "web_scraper": ScrapeWebsiteTool(),
-            # Note: Advanced search tools disabled - require API keys
-            # "advanced_search": TavilySearchTool(api_key=os.getenv("TAVILY_API_KEY")),
-            # "web_crawler": FirecrawlCrawlWebsiteTool(api_key=os.getenv("FIRECRAWL_API_KEY")),
+            # Add general-purpose tools
+            tools["web_scraper"] = ScrapeWebsiteTool()
+            tools["file_writer"] = FileWriterTool()
             
-            # Analysis Tools
-            # "vision_analyzer": VisionTool(),
-            # "csv_analyzer": CSVSearchTool(),  # Requires CHROMA_OPENAI_API_KEY
-            # "code_interpreter": CodeInterpreterTool(),
-            # "rag_tool": RagTool(),
-
-            # Content Creation Tools
-            # "image_generator": DallETool(api_key=os.getenv("OPENAI_API_KEY")),
-            "file_writer": FileWriterTool(),
-
-            # Database & Storage
-            # "db_query": PGSearchTool(db_uri=os.getenv("DATABASE_URL")),
-
-            # Automation & Integration
-            # "zapier": ZapierActionTool(api_key=os.getenv("ZAPIER_NLA_API_KEY")),
-        }
+        else:
+            # Use existing multi-platform tools
+            logger.info("🌐 Multi-platform mode enabled with custom social tools")
+            social_tools = get_crew_social_tools(base_url=self.crew_tools_url)
+            
+            tools.update({
+                # Custom Social Media Discovery Tools (from crew-social-tools)
+                "twitter_search": social_tools["twitter"],
+                "youtube_search": social_tools["youtube"],
+                "reddit_scan": social_tools["reddit"],
+                "instagram_fetch": social_tools["instagram"],
+                "ddg_search": social_tools["ddg"],
+                "social_aggregator": social_tools["aggregator"],
+                
+                # Other Discovery Tools
+                "web_scraper": ScrapeWebsiteTool(),
+                
+                # Content Creation Tools
+                "file_writer": FileWriterTool(),
+            })
+        
+        return tools
     
     def _create_agents(self) -> Dict[str, Agent]:
         """Create specialized agents with distinct roles and capabilities."""
@@ -154,6 +174,7 @@ class ViralForgeAgentSystem:
                 self.tools["ddg_search"],
                 self.tools["web_scraper"]
             ],
+            knowledge_sources=self.knowledge,
             verbose=True,
             allow_delegation=False,
             memory=True,
@@ -174,6 +195,7 @@ class ViralForgeAgentSystem:
             tools=[
                 self.tools["file_writer"]
             ],
+            knowledge_sources=self.knowledge,
             verbose=True,
             allow_delegation=False,
             memory=True,
@@ -193,6 +215,7 @@ class ViralForgeAgentSystem:
             tools=[
                 self.tools["file_writer"]
             ],
+            knowledge_sources=self.knowledge,
             verbose=True,
             allow_delegation=False,
             memory=True,
@@ -212,6 +235,7 @@ class ViralForgeAgentSystem:
             tools=[
                 self.tools["file_writer"]
             ],
+            knowledge_sources=self.knowledge,
             verbose=True,
             allow_delegation=False,
             memory=True,
@@ -231,6 +255,7 @@ class ViralForgeAgentSystem:
             tools=[
                 self.tools["file_writer"]
             ],
+            knowledge_sources=self.knowledge,
             verbose=True,
             allow_delegation=False,
             memory=True,
@@ -287,6 +312,55 @@ class ViralForgeAgentSystem:
         
         return crews
     
+    async def _check_service_health(self) -> Dict[str, bool]:
+        """
+        Check health of external service dependencies.
+        
+        Returns:
+            Dictionary mapping service names to their health status (True = healthy)
+            
+        Raises:
+            ServiceUnavailableError: If a critical service is unavailable
+        """
+        if httpx is None:
+            logger.warning("httpx not installed, skipping service health checks")
+            return {"crew_social_tools": True}  # Assume healthy if can't check
+        
+        health = {}
+        
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(f"{self.crew_tools_url}/health")
+                health["crew_social_tools"] = response.status_code == 200
+                
+                if not health["crew_social_tools"]:
+                    logger.warning(
+                        f"crew-social-tools health check returned status {response.status_code}"
+                    )
+        except httpx.TimeoutException:
+            logger.error("crew-social-tools health check timed out after 5 seconds")
+            health["crew_social_tools"] = False
+        except httpx.ConnectError:
+            logger.error(f"crew-social-tools service not reachable at {self.crew_tools_url}")
+            health["crew_social_tools"] = False
+        except Exception as e:
+            logger.error(f"crew-social-tools health check failed: {e}")
+            health["crew_social_tools"] = False
+        
+        # Raise exception if critical service is down
+        if not health["crew_social_tools"]:
+            raise ServiceUnavailableError(
+                service_name="crew-social-tools",
+                message=(
+                    f"crew-social-tools service is unavailable at {self.crew_tools_url}. "
+                    "Please ensure the service is running:
+"
+                    "  cd server/crew-social-tools && python main.py"
+                )
+            )
+        
+        return health
+    
     async def discover_trends(self, platforms: List[str] = None, niches: List[str] = None) -> Dict[str, Any]:
         """
         Run the discovery crew to find trending opportunities.
@@ -298,6 +372,16 @@ class ViralForgeAgentSystem:
         Returns:
             Dictionary containing discovered trends and opportunities
         """
+        # Check service health before executing
+        try:
+            await self._check_service_health()
+        except ServiceUnavailableError as e:
+            return {
+                "status": "error",
+                "error": str(e),
+                "error_type": "service_unavailable",
+                "timestamp": datetime.now().isoformat()
+            }
         
         platforms = platforms or ['youtube', 'tiktok', 'instagram']
         niches = niches or ['general']
@@ -367,6 +451,16 @@ class ViralForgeAgentSystem:
         Returns:
             Dictionary containing created content and metadata
         """
+        # Check service health before executing
+        try:
+            await self._check_service_health()
+        except ServiceUnavailableError as e:
+            return {
+                "status": "error",
+                "error": str(e),
+                "error_type": "service_unavailable",
+                "timestamp": datetime.now().isoformat()
+            }
         
         creation_task = Task(
             description=f"""
@@ -429,6 +523,17 @@ class ViralForgeAgentSystem:
         Returns:
             Complete pipeline execution results
         """
+        # Check service health before executing
+        try:
+            await self._check_service_health()
+        except ServiceUnavailableError as e:
+            return {
+                "status": "error",
+                "error": str(e),
+                "error_type": "service_unavailable",
+                "user_id": user_id,
+                "timestamp": datetime.now().isoformat()
+            }
         
         pipeline_tasks = [
             # 1. Trend Discovery

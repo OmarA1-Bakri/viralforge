@@ -1,8 +1,39 @@
 [project]
-name = "repl-nix-workspace"
-version = "0.1.0"
-description = "Add your description here"
+name = "viralforge"
+version = "1.0.0"
+description = "YouTube-focused viral content discovery and creation system powered by CrewAI"
+readme = "README.md"
 requires-python = ">=3.11"
-dependencies = [
-    "tiktok-trending>=0.0.9",
+license = {text = "MIT"}
+authors = [
+    {name = "ViralForge Team"}
 ]
+
+dependencies = [
+    "crewai[tools]>=0.80.0",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "httpx>=0.27.2",
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.11.9",
+    "pydantic-settings>=2.10.1",
+    "psycopg2-binary>=2.9.9",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.crewai]
+# Entry points for CrewAI CLI commands
+main_module = "viralforge.main"
+crew_class = "viralforge.crew.ViralForgeCrew"
+
+[project.scripts]
+viralforge = "viralforge.main:run"
+viralforge-train = "viralforge.main:train"
+viralforge-replay = "viralforge.main:replay"
+viralforge-test = "viralforge.main:test"

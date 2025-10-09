@@ -113,7 +113,7 @@ If you find issues in YOUR OWN implementation during self-review:
 2. Document what you caught in the CONCERNS section
 3. Explain why the fix is better
 
-#### 13. **Build Version Verification**
+#### 13. **Build Version Verification**a
 ALWAYS CHECK THAT THE BUILD VERSION IS IN FACT THE LATEST VERSION:**
 
 #### RULE 14. **AI MODEL CONFIGURATION**

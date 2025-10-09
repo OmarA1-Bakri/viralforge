@@ -1,0 +1,594 @@
+# ViralForge Tasks Configuration
+# YouTube Viral Content Discovery and Creation Workflow
+# Optimized using CrewAI best practices with step-by-step processes and quality criteria
+
+discover_youtube_trends:
+  description: >
+    Discover trending YouTube content and viral opportunities for the following niches: {niches}.
+
+    STEP-BY-STEP PROCESS:
+    1. Use YoutubeChannelSearchTool to identify the top 5-10 channels in each niche
+       based on subscriber count, recent view performance, and upload consistency
+    2. For each top channel, use YoutubeVideoSearchTool to analyze their last 10 videos
+       that achieved 500K+ views, extracting:
+       - Hook patterns (first 8 seconds): What grabs attention immediately
+       - Title formulas: Structure, keywords, emotional triggers, curiosity gaps
+       - Thumbnail elements: Visual patterns, faces, text overlays, contrast
+       - Content format: Length, pacing, editing style, production value
+    3. Cross-reference findings with viral_patterns.md knowledge base to validate
+       patterns against proven viral formulas
+    4. Identify content gaps: Topics with high search volume but low quality competition
+       using semantic search within successful channels to find underserved sub-niches
+    5. Extract specific viral opportunities with concrete examples and performance data
+
+    QUALITY REQUIREMENTS:
+    - Analyze minimum 5 channels per niche (50+ videos total)
+    - Provide specific video URLs as evidence for each pattern
+    - Include actual performance metrics (views, CTR estimates, engagement rates)
+    - Cross-reference at least 3 patterns from viral_patterns.md knowledge base
+
+    Use the YouTube RAG tools to perform semantic searches within video transcripts
+    and channel content. Focus on patterns that are currently trending (last 30-90 days)
+    but not yet saturated.
+  expected_output: >
+    Comprehensive YouTube Trend Analysis Report containing:
+
+    1. TRENDING TOPICS (minimum 10 topics):
+       - Topic name and sub-niche
+       - Why it's trending now (catalyst, search volume, competition level)
+       - Specific video examples with URLs and performance metrics
+       - Estimated viral window (how long the trend will last)
+
+    2. VIRAL CONTENT PATTERNS (minimum 5 patterns):
+       - Pattern name and description
+       - Where it's working (specific channels/videos with URLs)
+       - Performance data (average views, CTR, retention estimates)
+       - How to adapt it without copying (original angle recommendations)
+       - Knowledge base validation (which viral_patterns.md formula it matches)
+
+    3. CONTENT GAPS AND OPPORTUNITIES (minimum 3 opportunities):
+       - Gap description (what's missing in the niche)
+       - Evidence of demand (search volume, comment analysis, competitor gaps)
+       - Why it's an opportunity (low competition + high potential)
+       - Recommended approach to fill the gap
+
+    4. RECOMMENDED CONTENT ANGLES (minimum 5 angles):
+       - Content angle/format
+       - Target niche and audience
+       - Viral potential score (1-10 with justification)
+       - Suggested title direction and thumbnail concept
+       - Specific videos to study for inspiration (URLs + why)
+
+    MINIMUM REQUIREMENTS:
+    - 10+ trending topics with specific examples
+    - 5+ viral patterns with performance data
+    - 3+ untapped opportunities with evidence
+    - All recommendations backed by specific video examples (URLs required)
+  agent: trend_scout
+
+analyze_youtube_performance:
+  description: >
+    Analyze the discovered YouTube trends to identify specific performance drivers,
+    optimization tactics, and algorithm-friendly strategies.
+
+    STEP-BY-STEP PROCESS:
+    1. Review the trend analysis report from the discovery phase
+    2. Use YoutubeVideoSearchTool to deep-dive into the top 10 highest-performing
+       videos identified, extracting:
+       - Hook effectiveness: Analyze first 8-15 seconds for retention tactics
+       - Title CTR drivers: Emotional triggers, curiosity gaps, keyword placement
+       - Thumbnail psychology: Facial expressions, color contrast, text clarity
+       - Retention patterns: Where viewers stay vs drop off (based on pacing analysis)
+    3. Use YoutubeChannelSearchTool to analyze successful channels' overall strategy:
+       - Upload frequency and timing patterns
+       - Content series and playlist structures
+       - Community engagement tactics (comments, polls, community posts)
+    4. Benchmark performance metrics against niche averages:
+       - CTR benchmarks (typical range: 2-10%, viral videos: 10-20%+)
+       - Average View Duration targets (aim for 50%+ retention)
+       - Engagement rate (likes+comments per 100 views)
+    5. Cross-reference patterns with platform_guidelines.md and content_strategies.md
+       to validate algorithmic compliance
+    6. Identify specific, actionable optimization tactics with examples
+
+    QUALITY REQUIREMENTS:
+    - Analyze minimum 10 videos in depth for retention and engagement patterns
+    - Provide specific metrics and benchmarks (not vague generalizations)
+    - Include concrete examples with video URLs for each recommendation
+    - Validate all tactics against knowledge base documentation
+
+    Focus on identifying WHY content performs, not just WHAT performs. Provide
+    data-driven insights that can be systematically replicated.
+  expected_output: >
+    Detailed YouTube Performance Analysis Report containing:
+
+    1. CTR OPTIMIZATION ANALYSIS:
+       - Thumbnail best practices with specific examples (minimum 5 tactics)
+       - Title formula analysis with CTR predictions (minimum 5 formulas)
+       - Curiosity gap techniques that drive clicks (minimum 3 techniques)
+       - Benchmarks: Good (5-8%), Great (8-12%), Viral (12%+)
+
+    2. RETENTION PATTERN ANALYSIS:
+       - Hook patterns that maximize first 30 seconds retention (minimum 5 patterns)
+       - Pacing strategies that maintain engagement (examples from successful videos)
+       - Pattern interrupt techniques (when and how often to use them)
+       - Retention curve targets: 50% at halfway point, 30% completion rate
+
+    3. ALGORITHMIC RANKING FACTORS:
+       - Watch time optimization tactics (minimum 5 tactics)
+       - Session time strategies (how to trigger binge-watching)
+       - Engagement signals to optimize (likes, comments, shares, CTR, AVD)
+       - Algorithm-friendly content structure recommendations
+
+    4. COMPETITIVE POSITIONING INSIGHTS:
+       - How top performers differentiate in the niche
+       - Underutilized tactics competitors are missing
+       - Format variations with different performance profiles
+       - Opportunity assessment: Where to compete vs where to differentiate
+
+    5. ACTIONABLE RECOMMENDATIONS (minimum 10 recommendations):
+       - Each recommendation must include:
+         * Specific tactic with clear implementation steps
+         * Example from successful video (URL + timestamp if applicable)
+         * Expected impact on performance metrics
+         * Priority level (High/Medium/Low) with justification
+
+    MINIMUM REQUIREMENTS:
+    - 5+ CTR tactics with examples
+    - 5+ retention tactics with examples
+    - 10+ specific, actionable recommendations
+    - All metrics include benchmarks and targets
+  agent: content_analyzer
+  context:
+    - discover_youtube_trends
+
+create_youtube_content:
+  description: >
+    Create a complete viral-ready YouTube content package based on trend insights
+    and performance analysis: {trend_data}
+
+    STEP-BY-STEP PROCESS:
+    1. Review insights from trend discovery and performance analysis phases
+    2. Select the highest-potential content angle (viral score 8+) from recommendations
+    3. Use YoutubeVideoSearchTool to study 3-5 successful videos in the chosen format,
+       extracting exact hook structures, pacing rhythms, and engagement tactics
+    4. Develop hook variations (minimum 5 options):
+       - Opening line that creates immediate curiosity
+       - Visual hook (what viewers see in first 3 seconds)
+       - Pattern interrupt within first 15 seconds
+       - Value proposition clearly stated by 30 seconds
+    5. Write full video script with timestamps and retention optimization:
+       - Structure with pattern interrupts every 60-90 seconds
+       - Curiosity loops with payoffs
+       - Clear segment transitions
+       - Engagement prompts (questions, polls, CTAs)
+    6. Create thumbnail concept variations (minimum 3):
+       - Apply psychological triggers from viral_patterns.md
+       - Include specific: facial expressions, text overlays, color schemes
+       - Reference successful thumbnail patterns from analysis
+    7. Generate title variations (minimum 5):
+       - Apply proven CTR formulas from content_strategies.md
+       - Test different emotional angles (curiosity, fear of missing out, value)
+       - Include primary keyword for SEO
+       - Predict CTR for each variation (estimate based on similar titles)
+    8. Design metadata and formatting:
+       - SEO-optimized description with timestamps
+       - Strategic hashtags (3-5 relevant tags)
+       - Chapter markers for better retention
+       - Playlist placement recommendations
+
+    QUALITY REQUIREMENTS:
+    - All content must be original (adapt patterns, don't copy)
+    - Every recommendation backed by examples from successful videos
+    - Include specific implementation details (not vague suggestions)
+    - Validate against viral_patterns.md and content_strategies.md
+
+    Focus on creating content that balances trending patterns with original angles.
+    The goal is maximum viral potential while maintaining uniqueness.
+  expected_output: >
+    Complete YouTube Content Package including:
+
+    1. VIDEO SCRIPT (full production-ready script):
+       - Complete script with timestamps (e.g., "0:00 - Hook", "0:08 - Value prop")
+       - Hook variations (minimum 5 options) with opening lines and visual concepts
+       - Pattern interrupts marked throughout (every 60-90 seconds)
+       - Engagement prompts clearly indicated (questions, CTAs, polls)
+       - Chapter markers with descriptive titles
+       - Total estimated runtime with pacing notes
+       - Retention optimization notes (where to add B-roll, graphics, etc.)
+
+    2. THUMBNAIL CONCEPTS (minimum 3 variations):
+       For each thumbnail:
+       - Visual concept description (composition, focal point, background)
+       - Facial expression and emotion (if using faces)
+       - Text overlay (exact wording, font size, placement)
+       - Color scheme with specific colors (based on psychology)
+       - Reference examples (URLs of similar successful thumbnails)
+       - Expected CTR estimate (with justification)
+
+    3. TITLE VARIATIONS (minimum 5 options):
+       For each title:
+       - Full title text (under 70 characters for visibility)
+       - CTR formula used (from content_strategies.md)
+       - Primary keyword placement
+       - Emotional trigger employed
+       - Predicted CTR (Low: 4-6%, Medium: 6-10%, High: 10%+)
+       - A/B testing recommendation (which 2 titles to test)
+
+    4. METADATA PACKAGE:
+       - SEO-optimized description (300-500 words)
+       - Strategic hashtags (3-5 tags with search volume justification)
+       - Suggested playlist placement
+       - Related videos to link in cards/end screen
+
+    5. RETENTION OPTIMIZATION TACTICS:
+       - Specific pattern interrupts with timestamps
+       - Curiosity loops and payoff timing
+       - Engagement prompt schedule
+       - Risk assessment: Where viewers might drop off + mitigation strategies
+
+    MINIMUM REQUIREMENTS:
+    - Full video script with timestamps
+    - 3+ thumbnail concepts with detailed specifications
+    - 5+ title variations with CTR predictions
+    - All recommendations backed by specific examples
+    - Originality score: 8/10+ (leverages patterns without copying)
+  agent: content_creator
+  context:
+    - discover_youtube_trends
+    - analyze_youtube_performance
+
+optimize_youtube_content:
+  description: >
+    Review and optimize the created YouTube content package for maximum viral potential
+    before publication.
+
+    STEP-BY-STEP PROCESS:
+    1. Review the complete content package from the creation phase
+    2. Evaluate hook effectiveness (first 8 seconds):
+       - Does it create immediate curiosity or shock?
+       - Is the value proposition clear by 30 seconds?
+       - Compare against viral hooks from viral_patterns.md
+       - Score: 1-10 with specific improvement recommendations
+    3. Analyze retention optimization:
+       - Are pattern interrupts spaced appropriately (60-90 seconds)?
+       - Do curiosity loops have clear payoffs?
+       - Is pacing varied to maintain engagement?
+       - Identify potential drop-off points with mitigation strategies
+    4. Evaluate thumbnail and title combinations:
+       - Test psychological triggers against viral_patterns.md
+       - Ensure thumbnail-title coherence (they must support each other)
+       - Predict CTR for each combination
+       - Recommend best A/B testing pairs
+    5. Verify algorithmic compliance:
+       - Check against platform_guidelines.md requirements
+       - Ensure watch time optimization tactics are included
+       - Validate engagement prompts are strategic (not spammy)
+    6. Predict viral potential:
+       - Score content on 10-point viral potential scale
+       - Provide specific justification for score
+       - Identify what could push it from 7/10 to 9/10
+    7. Recommend upload strategy and promotion tactics
+
+    QUALITY REQUIREMENTS:
+    - Provide specific scores with detailed justifications
+    - All recommendations must be actionable (not vague)
+    - Include examples from successful videos for comparison
+    - Validate against all three knowledge base documents
+
+    Focus on identifying gaps, weaknesses, and opportunities for improvement.
+    Be critical and data-driven in evaluation.
+  expected_output: >
+    YouTube Content Optimization Report containing:
+
+    1. HOOK EFFECTIVENESS ANALYSIS:
+       - Hook score (1-10) with detailed breakdown:
+         * First 3 seconds impact score
+         * 8-second curiosity gap score
+         * 30-second value proposition clarity score
+       - Specific improvements for each hook variation
+       - Best hook recommendation with reasoning
+       - Comparison to viral hooks from knowledge base
+
+    2. RETENTION RISK ASSESSMENT:
+       - Potential drop-off points identified (with timestamps)
+       - Mitigation strategy for each risk point
+       - Pattern interrupt effectiveness score (1-10)
+       - Pacing analysis: Where to speed up vs slow down
+       - Overall retention prediction: Target 50%+ at midpoint
+
+    3. THUMBNAIL & TITLE A/B TEST RECOMMENDATIONS:
+       - Best performing thumbnail-title combination (with CTR prediction)
+       - Second-best combination for A/B testing
+       - Specific psychological triggers in each (from viral_patterns.md)
+       - Expected CTR range: Conservative / Likely / Optimistic
+       - Which variation to launch with and when to switch
+
+    4. ALGORITHMIC COMPLIANCE CHECKLIST:
+       - Watch time optimization: ✅/❌ with notes
+       - Engagement signal optimization: ✅/❌ with notes
+       - Session time tactics: ✅/❌ with notes
+       - Metadata SEO: ✅/❌ with notes
+       - Overall algorithm-friendliness score (1-10)
+
+    5. VIRAL POTENTIAL SCORE (1-10 scale):
+       - Overall score with detailed justification
+       - Breakdown by factor:
+         * Hook strength (1-10)
+         * Trending alignment (1-10)
+         * Originality (1-10)
+         * Retention tactics (1-10)
+         * Thumbnail/Title CTR potential (1-10)
+       - What's holding it back from 10/10
+       - Specific changes that would boost score by 1-2 points
+
+    6. UPLOAD TIMING & PROMOTION STRATEGY:
+       - Recommended upload day and time (with timezone)
+       - Pre-launch promotion tactics
+       - First 24-hour critical period strategy
+       - When to boost with ads (if needed)
+       - Engagement response strategy
+
+    MINIMUM REQUIREMENTS:
+    - Detailed scores for hook, retention, CTR, viral potential (all with justifications)
+    - Minimum 5 specific improvement recommendations
+    - A/B testing plan with predicted outcomes
+    - Upload and promotion strategy with exact timing
+  agent: content_analyzer
+  context:
+    - create_youtube_content
+
+plan_youtube_publication:
+  description: >
+    Create a comprehensive YouTube publication schedule and distribution strategy
+    to maximize algorithmic promotion and audience reach.
+
+    STEP-BY-STEP PROCESS:
+    1. Review optimized content package and viral potential score
+    2. Determine optimal upload timing:
+       - Use YoutubeChannelSearchTool to research when top performers upload
+       - Consider target audience timezone and viewing patterns
+       - Account for YouTube algorithm's "freshness" preference (first 24 hours)
+       - Select specific date, time, and timezone
+    3. Design pre-launch promotion strategy:
+       - Community post teasers (3-5 posts in week before launch)
+       - Shorts teaser strategy (extract 60-second hook from main video)
+       - Email/notification timing (for existing audience)
+    4. Plan Shorts cross-promotion:
+       - Identify 3-5 viral moments to extract as Shorts
+       - Create Shorts upload schedule (1-2 per day post-launch)
+       - Design Shorts titles and thumbnails to drive to main video
+    5. Structure content series and playlists:
+       - Plan follow-up content ideas (3-5 related videos)
+       - Create binge-worthy playlist structure
+       - Design "part 2" hooks if applicable
+    6. Set up first 24-hour engagement monitoring:
+       - Define critical metrics to track (CTR, AVD, engagement rate)
+       - Create response strategy for comments
+       - Plan thumbnail/title swap timing if CTR underperforms
+    7. Design iteration and promotion strategy:
+       - When to boost with YouTube ads (if CTR > 8% after 24 hours)
+       - Community post schedule post-launch (polls, updates, behind-scenes)
+       - Follow-up content timing based on performance
+
+    QUALITY REQUIREMENTS:
+    - All timing decisions backed by data and examples
+    - Specific dates, times, timezones (no vague "afternoon" recommendations)
+    - Concrete promotion tactics with exact messaging
+    - Reference successful channel strategies from research
+
+    Focus on maximizing the first 24-48 hours which are critical for algorithmic
+    promotion. Create a systematic approach to launching, monitoring, and iterating.
+  expected_output: >
+    Complete YouTube Publication Plan including:
+
+    1. UPLOAD SCHEDULE:
+       - Exact upload date and time with timezone (e.g., "Tuesday, Oct 15, 2025, 2:00 PM EST")
+       - Rationale for timing (audience data, competitor analysis, algorithm preferences)
+       - Alternative backup date/time if needed
+       - Pre-upload checklist (metadata verified, thumbnail uploaded, end screen set, etc.)
+
+    2. PRE-LAUNCH PROMOTION STRATEGY (1 week before upload):
+       - Community post schedule (minimum 3 posts):
+         * Post 1 (7 days before): Teaser announcement with cryptic hint
+         * Post 2 (3 days before): Behind-the-scenes content or preview
+         * Post 3 (1 day before): Final reminder with thumbnail reveal
+       - Shorts teaser (60-second hook from main video):
+         * Upload timing: 24 hours before main video
+         * Exact messaging and CTA to main video
+       - Notification strategy for existing audience
+
+    3. SHORTS CROSS-PROMOTION PLAN:
+       - Viral moment extraction (minimum 3 Shorts):
+         * Short 1: Most compelling 60 seconds from main video
+         * Short 2: Secondary hook or surprising moment
+         * Short 3: Call-to-action or "part 2" teaser
+       - Shorts upload schedule (e.g., Day 2, 4, 7 post-launch)
+       - Each Short must drive traffic to main video with clear CTA
+
+    4. CONTENT SERIES STRUCTURE:
+       - Follow-up content ideas (minimum 3-5 related videos):
+         * Video 2: [Topic] - Upload timing
+         * Video 3: [Topic] - Upload timing
+       - Playlist structure for binge-watching
+       - "Part 2" hook strategy (if creating series)
+       - End screen and card placement to drive to related content
+
+    5. FIRST 24-HOUR MONITORING PLAN:
+       - Critical metrics checkpoints:
+         * 1 hour: Initial CTR check (target: 8%+)
+         * 6 hours: AVD and retention curve check (target: 50%+)
+         * 24 hours: Overall performance vs benchmarks
+       - Engagement response strategy:
+         * Pin comment timing and messaging
+         * Reply strategy for top comments (first 50 comments)
+         * Community tab update with milestone announcements
+       - Thumbnail/title swap triggers:
+         * If CTR < 4% after 6 hours → swap to variation #2
+         * If CTR 4-8% → monitor for 24 hours, then decide
+         * If CTR > 8% → don't change, let algorithm work
+
+    6. POST-LAUNCH ITERATION STRATEGY:
+       - Boost decision matrix:
+         * If CTR > 8% and retention > 50% at 24 hours → Boost with $50-100 ad spend
+         * If CTR 6-8% → Wait 48 hours, then boost if metrics hold
+         * If CTR < 6% → Analyze issues before spending
+       - Community post schedule (post-launch):
+         * Day 3: Milestone update + call for feedback
+         * Day 7: Poll for next video topic
+         * Day 14: Behind-the-scenes or "how it's going" update
+       - Follow-up content timing:
+         * If viral (100K+ views in 7 days) → Upload part 2 within 10 days
+         * If strong (50K+ views) → Upload related content within 14 days
+         * If moderate → Analyze and iterate before next upload
+
+    MINIMUM REQUIREMENTS:
+    - Exact upload date and time specified
+    - 3+ community posts scheduled with exact messaging
+    - 3+ Shorts extracted with upload schedule
+    - 24-hour monitoring plan with specific metrics and triggers
+    - Follow-up content plan (minimum 3 video ideas)
+  agent: publish_manager
+  context:
+    - optimize_youtube_content
+
+setup_performance_tracking:
+  description: >
+    Set up a comprehensive YouTube performance monitoring framework to track success,
+    identify optimization opportunities, and plan iteration strategies.
+
+    STEP-BY-STEP PROCESS:
+    1. Review the publication plan and expected performance benchmarks
+    2. Define success metrics and targets:
+       - Primary metrics: Views, CTR, AVD, Retention Curve
+       - Secondary metrics: Engagement rate (likes+comments/views), Traffic sources
+       - Tertiary metrics: Subscriber conversion, Session time
+    3. Set up performance benchmarks:
+       - Compare against niche averages (from channel research)
+       - Set tiered targets: Minimum acceptable / Good / Great / Viral
+       - Use data from analyze_youtube_performance phase
+    4. Create monitoring schedule with specific checkpoints:
+       - 1 hour, 6 hours, 24 hours, 7 days, 30 days, 90 days
+       - Define what to check at each checkpoint
+       - Set alert thresholds for underperformance
+    5. Design optimization trigger system:
+       - When to swap thumbnail/title (CTR-based triggers)
+       - When to boost with ads (performance thresholds)
+       - When to create follow-up content (engagement signals)
+       - When to modify metadata (SEO optimization opportunities)
+    6. Plan A/B testing and iteration strategy:
+       - Thumbnail variations to test over time
+       - Title variations for similar future content
+       - Hook patterns to validate or reject
+       - Format variations to experiment with
+    7. Use YoutubeVideoSearchTool and YoutubeChannelSearchTool to benchmark against
+       top performers' typical performance curves
+
+    QUALITY REQUIREMENTS:
+    - All metrics must have specific numeric targets (not vague goals)
+    - Benchmarks based on actual niche data from research
+    - Monitoring schedule with exact times and actions
+    - Clear decision rules for optimization triggers
+
+    Focus on creating a systematic, data-driven approach to measuring success and
+    planning improvements. The goal is continuous optimization, not just launch and forget.
+  expected_output: >
+    YouTube Performance Monitoring Framework containing:
+
+    1. SUCCESS METRICS DEFINITION:
+       - Primary Metrics (with targets):
+         * Views: Minimum / Good / Great / Viral (specific numbers)
+         * CTR: Minimum 4% / Good 8% / Great 12% / Viral 15%+
+         * Average View Duration: Minimum / Good / Great (% and minutes)
+         * Retention at 50% mark: Target percentage
+       - Secondary Metrics (with targets):
+         * Engagement Rate: (likes + comments) / views × 100
+         * Traffic Sources: % from Browse / Suggested / Search
+         * Audience Retention Curve: Benchmark shape
+       - Tertiary Metrics:
+         * Subscriber conversion rate: Subs gained / views × 100
+         * Session time generated: Minutes of additional watch time per view
+
+    2. PERFORMANCE BENCHMARKS (based on niche research):
+       - Niche average performance:
+         * Average CTR in niche
+         * Average retention in niche
+         * Average engagement rate
+       - Top performer benchmarks (90th percentile):
+         * What top 10% of niche achieves
+       - Our targets (tiered):
+         * Minimum acceptable: [Specific metrics]
+         * Good performance: [Specific metrics]
+         * Great performance: [Specific metrics]
+         * Viral performance: [Specific metrics]
+
+    3. MONITORING SCHEDULE (with specific checkpoints):
+       - 1 Hour Post-Launch:
+         * Check: Initial CTR (target: 6%+)
+         * Action: If CTR < 4%, prepare thumbnail swap
+       - 6 Hours Post-Launch:
+         * Check: CTR, AVD, early retention curve
+         * Action: Decide on thumbnail/title swap if needed
+       - 24 Hours Post-Launch:
+         * Check: All primary metrics vs targets
+         * Action: Boost decision, community post update
+       - 7 Days Post-Launch:
+         * Check: Long-term retention, traffic sources, engagement
+         * Action: Plan follow-up content if performing well
+       - 30 Days Post-Launch:
+         * Check: Total performance vs benchmarks
+         * Action: Document learnings, update knowledge base
+       - 90 Days Post-Launch:
+         * Check: Evergreen performance, long-tail traffic
+         * Action: Decide on refresh strategy (new thumbnail/title)
+
+    4. OPTIMIZATION TRIGGERS (automated decision rules):
+       - Thumbnail/Title Swap Triggers:
+         * If CTR < 4% after 6 hours → Swap immediately to variation #2
+         * If CTR 4-6% after 24 hours → Test variation #2 after 48 hours
+         * If CTR > 8% → Don't change, monitor
+       - Ad Boost Triggers:
+         * If CTR > 8% AND AVD > 50% at 24 hours → Boost with $50-100
+         * If CTR > 10% AND retention > 60% → Boost with $200-300
+         * If CTR < 6% → Fix issues before spending
+       - Follow-Up Content Triggers:
+         * If > 100K views in 7 days → Create part 2 immediately
+         * If > 50K views in 14 days → Create related content
+         * If engagement rate > 8% → Expand topic into series
+       - Metadata Optimization Triggers:
+         * If search traffic < 10% at 7 days → Improve description SEO
+         * If browse traffic > 60% → Leverage with similar content
+
+    5. A/B TESTING PLAN (systematic experimentation):
+       - Week 1-2: Test thumbnail variation #2 if initial CTR < 8%
+       - Week 3-4: Test title variation if CTR plateaus
+       - Month 2-3: Test different hook styles in similar content
+       - Ongoing: Document what works vs what doesn't
+       - Testing protocol:
+         * Only change ONE variable at a time
+         * Measure impact over 7-day periods
+         * Document results in performance log
+
+    6. ITERATION STRATEGY (continuous improvement):
+       - Pattern Validation:
+         * Which viral patterns worked as expected
+         * Which patterns underperformed (update knowledge base)
+         * New patterns discovered (add to viral_patterns.md)
+       - Format Optimization:
+         * Best performing video length
+         * Optimal pacing and pattern interrupt frequency
+         * Most effective thumbnail style for niche
+       - Next Video Improvements:
+         * Top 3 learnings to apply immediately
+         * Top 3 mistakes to avoid
+         * Recommended format adjustments
+
+    MINIMUM REQUIREMENTS:
+    - Specific numeric targets for all key metrics
+    - Monitoring schedule with 6+ checkpoints (1hr to 90 days)
+    - Clear optimization triggers with decision rules
+    - A/B testing plan for continuous improvement
+    - Iteration strategy for applying learnings to next content
+  agent: performance_tracker
+  context:
+    - plan_youtube_publication

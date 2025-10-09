@@ -71,7 +71,7 @@ export default function TrendCard({ trend, onSave, onRemix, onNavigate }: TrendC
         </Badge>
       </div>
 
-      <div className="p-5">
+      <div className="p-5 pb-4 pr-6">
         {/* Header - Clean & Focused */}
         <div className="mb-4 pr-20">
           <h3 className="font-bold text-lg leading-tight mb-2" data-testid={`trend-title-${trend.id}`}>
@@ -114,7 +114,7 @@ export default function TrendCard({ trend, onSave, onRemix, onNavigate }: TrendC
         </div>
 
         {/* Hashtags - Prettier Display */}
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap gap-2 mb-2">
           {trend.hashtags.slice(0, 3).map((tag, index) => (
             <span key={index} className="inline-flex items-center px-2 py-1 text-primary rounded-md text-xs font-medium border border-border/30 bg-transparent">
               #{tag}
@@ -129,7 +129,7 @@ export default function TrendCard({ trend, onSave, onRemix, onNavigate }: TrendC
 
         {/* Sound Track */}
         {trend.sound && (
-          <div className="flex items-center gap-2 rounded-lg p-3 mb-4 border border-border/30 bg-transparent">
+          <div className="flex items-center gap-2 rounded-lg p-3 mb-2 border border-border/30 bg-transparent">
             <div className="flex gap-0.5">
               <div className="w-1 h-3 bg-primary rounded-full animate-pulse" />
               <div className="w-1 h-2 bg-primary rounded-full animate-pulse" style={{ animationDelay: "100ms" }} />
@@ -200,10 +200,10 @@ export default function TrendCard({ trend, onSave, onRemix, onNavigate }: TrendC
             <Button
               size="sm"
               onClick={handleRemix}
-              className="gap-1.5 text-xs h-8 bg-gradient-to-r from-primary to-accent text-black hover:shadow-lg hover:shadow-primary/20"
+              className="gap-1 text-xs h-7 px-3 bg-gradient-to-r from-primary to-accent text-black hover:shadow-lg hover:shadow-primary/20"
               data-testid={`button-remix-${trend.id}`}
             >
-              <Shuffle className="w-3.5 h-3.5" />
+              <Shuffle className="w-3 h-3" />
               Use This
             </Button>
           </div>

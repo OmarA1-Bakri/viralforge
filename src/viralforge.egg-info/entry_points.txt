@@ -1,0 +1,5 @@
+[console_scripts]
+viralforge = viralforge.main:run
+viralforge-replay = viralforge.main:replay
+viralforge-test = viralforge.main:test
+viralforge-train = viralforge.main:train

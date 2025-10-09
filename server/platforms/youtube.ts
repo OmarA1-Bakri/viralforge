@@ -97,12 +97,12 @@ export class YouTubeService {
       const channel = channelData.items[0];
       const stats = channel.statistics;
 
-      // Get recent videos for performance analysis
-      const videosUrl = `${this.baseUrl}/search?part=snippet&channelId=${channelId}&order=date&maxResults=10&key=${this.apiKey}`;
+      // Get recent videos for performance analysis (fetch more to ensure good temporal distribution)
+      const videosUrl = `${this.baseUrl}/search?part=snippet&channelId=${channelId}&order=date&maxResults=50&key=${this.apiKey}`;
       const videosResponse = await fetch(videosUrl);
       const videosData = await videosResponse.json();
 
-      const topVideos: YouTubeVideo[] = videosData.items?.map((item: any) => ({
+      const allVideos: YouTubeVideo[] = videosData.items?.map((item: any) => ({
         id: item.id.videoId,
         title: item.snippet.title,
         description: item.snippet.description,
@@ -113,13 +113,32 @@ export class YouTubeService {
         tags: []
       })) || [];
 
+      // Select 1 video per week for better temporal distribution
+      const videosByWeek = new Map<string, YouTubeVideo>();
+
+      for (const video of allVideos) {
+        const publishDate = new Date(video.publishedAt);
+        // Get week identifier (year-weekNumber)
+        const weekStart = new Date(publishDate);
+        weekStart.setDate(publishDate.getDate() - publishDate.getDay()); // Start of week (Sunday)
+        const weekKey = `${weekStart.getFullYear()}-W${Math.ceil(weekStart.getDate() / 7)}`;
+
+        // Only keep first video of each week (most recent in that week)
+        if (!videosByWeek.has(weekKey)) {
+          videosByWeek.set(weekKey, video);
+        }
+      }
+
+      // Convert map to array and take up to 5 videos (1 per week)
+      const topVideos = Array.from(videosByWeek.values()).slice(0, 5);
+
       return {
         channelId,
         totalViews: parseInt(stats.viewCount) || 0,
         subscriberCount: parseInt(stats.subscriberCount) || 0,
         videoCount: parseInt(stats.videoCount) || 0,
         averageViewsPerVideo: Math.floor((parseInt(stats.viewCount) || 0) / (parseInt(stats.videoCount) || 1)),
-        topPerformingVideos: topVideos.slice(0, 5)
+        topPerformingVideos: topVideos
       };
 
     } catch (error) {

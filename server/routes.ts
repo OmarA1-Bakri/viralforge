@@ -100,11 +100,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // If no platform trends, enhance with AI discovery
       if (trends.length === 0) {
+        // Use user preferences for AI discovery, fallback to request params
         trends = await openRouterService.discoverTrends({
           platform,
-          category,
-          contentType,
-          targetAudience
+          category: userPrefs?.preferredCategories?.[0] || category,
+          contentType: userPrefs?.contentStyle || contentType,
+          targetAudience: userPrefs?.targetAudience || targetAudience
         }, userId);
       }
 
@@ -131,11 +132,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (storedTrends.length === 0 && trends.length > 0) {
         console.log(`⚠️ All ${trends.length} platform trends failed validation, falling back to AI discovery...`);
         try {
+          // Use user preferences for AI fallback, just like main discovery
           const aiTrends = await openRouterService.discoverTrends({
             platform,
-            category,
-            contentType,
-            targetAudience
+            category: userPrefs?.preferredCategories?.[0] || category,
+            contentType: userPrefs?.contentStyle || contentType,
+            targetAudience: userPrefs?.targetAudience || targetAudience
           }, userId);
           
           // Store AI trends with user context

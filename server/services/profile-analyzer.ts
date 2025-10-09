@@ -6,6 +6,11 @@ import type { UserPreferences } from '@shared/schema';
 import { VIRAL_RUBRIC_PROMPT } from './viral-scoring-rubric';
 
 /**
+ * Supported social media platforms for analysis
+ */
+export const SUPPORTED_PLATFORMS = ['tiktok', 'instagram', 'youtube'] as const;
+
+/**
  * Subscription tiers for profile analysis
  */
 export type SubscriptionTier = 'free' | 'pro' | 'creator';
@@ -88,9 +93,9 @@ export interface AnalyzedPost {
     storyline?: string;
     callToAction?: string;
   };
-  engagementRate?: number;
+  engagementRate?: number; // Can be undefined if metrics unavailable
   emotionalTriggers: string[];
-  postScore: number; // 0-100
+  postScore?: number; // 0-100, optional as AI analysis can fail
 
   // Feedback
   whatWorked: string;
@@ -187,9 +192,12 @@ export class ProfileAnalyzerService {
     // Step 2: Aggregate analysis into overall report
     const report = await this.generateReport(analyzedPosts, tier, preferences);
 
-    logger.info({ viralScore: report.viralScore, tier }, 'Profile analysis complete');
+    // Step 3: Validate AI findings for accuracy and consistency
+    const validatedReport = await this.validateFindings(report, analyzedPosts, preferences);
 
-    return { analyzedPosts, report };
+    logger.info({ viralScore: validatedReport.viralScore, tier }, 'Profile analysis complete');
+
+    return { analyzedPosts, report: validatedReport };
   }
 
   /**
@@ -307,11 +315,17 @@ Provide detailed analysis in JSON format:
 
   /**
    * Calculate engagement rate (normalized across platforms)
+   * FIXED: Proper handling of 0 views edge case
    */
   private calculateEngagementRate(post: ScrapedPost): number {
-    const views = post.viewCount || 1; // Avoid division by zero
-    const engagements = (post.likeCount || 0) + (post.commentCount || 0) + (post.shareCount || 0);
+    const views = post.viewCount ?? 0;
 
+    // If no views, engagement rate is 0 (not undefined)
+    if (views === 0) {
+      return 0;
+    }
+
+    const engagements = (post.likeCount || 0) + (post.commentCount || 0) + (post.shareCount || 0);
     return (engagements / views) * 100;
   }
 
@@ -374,30 +388,46 @@ Provide detailed analysis in JSON format:
 
   /**
    * Calculate overall Viral Score (0-100)
-   * Weighted by recency and engagement
+   * FIXED: Filters undefined postScore values to prevent NaN
    */
   private calculateViralScore(posts: AnalyzedPost[]): number {
     if (posts.length === 0) return 0;
 
-    // Weight more recent posts higher (simple average for now)
-    const avgScore = posts.reduce((sum, post) => sum + post.postScore, 0) / posts.length;
+    // Filter posts with valid scores (CRITICAL: prevent NaN)
+    const validPosts = posts.filter(p =>
+      p.postScore !== undefined &&
+      p.postScore !== null &&
+      !isNaN(p.postScore)
+    );
 
+    if (validPosts.length === 0) return 0;
+
+    const avgScore = validPosts.reduce((sum, post) => sum + post.postScore!, 0) / validPosts.length;
     return Math.round(avgScore);
   }
 
   /**
    * Calculate confidence interval based on sample size and variance
+   * FIXED: Filters undefined postScore values to prevent NaN
    */
   private calculateConfidenceInterval(posts: AnalyzedPost[]): { lower: number; upper: number } {
-    const scores = posts.map(p => p.postScore);
-    const mean = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+    // Filter valid scores (CRITICAL: prevent NaN)
+    const validScores = posts
+      .map(p => p.postScore)
+      .filter((score): score is number => score !== undefined && score !== null && !isNaN(score));
+
+    if (validScores.length === 0) {
+      return { lower: 0, upper: 0 };
+    }
+
+    const mean = validScores.reduce((sum, score) => sum + score, 0) / validScores.length;
 
     // Calculate standard deviation
-    const variance = scores.reduce((sum, score) => sum + Math.pow(score - mean, 2), 0) / scores.length;
+    const variance = validScores.reduce((sum, score) => sum + Math.pow(score - mean, 2), 0) / validScores.length;
     const stdDev = Math.sqrt(variance);
 
     // 95% confidence interval (±1.96 standard errors)
-    const standardError = stdDev / Math.sqrt(scores.length);
+    const standardError = stdDev / Math.sqrt(validScores.length);
     const marginOfError = 1.96 * standardError;
 
     return {
@@ -408,6 +438,7 @@ Provide detailed analysis in JSON format:
 
   /**
    * Calculate platform-specific scores
+   * FIXED: Filters undefined postScore values to prevent NaN
    */
   private calculatePlatformScores(posts: AnalyzedPost[]): {
     tiktok?: number;
@@ -417,9 +448,16 @@ Provide detailed analysis in JSON format:
     const scores: any = {};
 
     for (const platform of ['tiktok', 'instagram', 'youtube']) {
-      const platformPosts = posts.filter(p => p.platform === platform);
+      // Filter posts with valid scores for this platform (CRITICAL: prevent NaN)
+      const platformPosts = posts.filter(p =>
+        p.platform === platform &&
+        p.postScore !== undefined &&
+        p.postScore !== null &&
+        !isNaN(p.postScore)
+      );
+
       if (platformPosts.length > 0) {
-        const avgScore = platformPosts.reduce((sum, p) => sum + p.postScore, 0) / platformPosts.length;
+        const avgScore = platformPosts.reduce((sum, p) => sum + p.postScore!, 0) / platformPosts.length;
         scores[platform] = Math.round(avgScore);
       }
     }
@@ -609,6 +647,290 @@ Format:
       comparedToNiche: 'Analysis unavailable',
       growthPotential: 'Analysis unavailable',
     };
+  }
+
+  /**
+   * VALIDATION AGENT v3.1 - Production Ready
+   * Deterministic validation with CRITICAL/NON-CRITICAL split
+   * NO AI validation - only mathematical verification
+   */
+  private async validateFindings(
+    report: ViralScoreReport,
+    analyzedPosts: AnalyzedPost[],
+    preferences: UserPreferences | null
+  ): Promise<ViralScoreReport> {
+    const startTime = Date.now();
+
+    // Input validation
+    if (!report || typeof report !== 'object') {
+      throw new Error('Invalid report object provided to validation');
+    }
+
+    if (!Array.isArray(analyzedPosts) || analyzedPosts.length === 0) {
+      throw new Error('Cannot validate: no posts provided');
+    }
+
+    try {
+      // PHASE 1: CRITICAL validations (fast, <500ms) - MUST pass before delivery
+      const criticalResult = await this.runCriticalValidations(report, analyzedPosts);
+
+      if (!criticalResult.passed) {
+        // FAIL FAST with user-friendly error
+        const issue = criticalResult.issues[0];
+
+        logger.error({
+          userId: preferences?.userId,
+          reportId: report.postsAnalyzed,
+          issue: issue.rule,
+          message: issue.message,
+          executionTime: Date.now() - startTime
+        }, 'CRITICAL validation failed - rejecting report');
+
+        // User-friendly error messages
+        const userMessages: Record<string, { message: string; retryable: boolean }> = {
+          SCORE_OUT_OF_RANGE: {
+            message: 'Analysis produced invalid results. Please try again or contact support if this persists.',
+            retryable: true
+          },
+          SCORE_CONSISTENCY: {
+            message: 'Analysis quality check failed. This can happen with unusual content patterns. Please try again with different posts or contact support.',
+            retryable: true
+          },
+          POST_COUNT_MISMATCH: {
+            message: 'Internal error occurred during analysis. Please contact support with error code: POST_COUNT_MISMATCH',
+            retryable: false
+          }
+        };
+
+        const errorInfo = userMessages[issue.rule] || {
+          message: 'Analysis failed quality checks. Please try again.',
+          retryable: true
+        };
+
+        const error: any = new Error(errorInfo.message);
+        error.code = issue.rule;
+        error.retryable = errorInfo.retryable;
+        error.details = issue.message; // Technical details for logs
+        throw error;
+      }
+
+      // PHASE 2: NON-CRITICAL validations with timeout protection
+      let nonCriticalResult: { passed: boolean; warnings: string[] };
+      try {
+        const validationPromise = this.runNonCriticalValidations(report, analyzedPosts);
+        const timeoutPromise = new Promise<{ passed: boolean; warnings: string[] }>((_, reject) =>
+          setTimeout(() => reject(new Error('Non-critical validation timeout')), 2000)
+        );
+
+        nonCriticalResult = await Promise.race([validationPromise, timeoutPromise]);
+      } catch (error) {
+        // Non-critical failures don't block delivery
+        logger.warn({ error }, 'Non-critical validation failed - continuing');
+        nonCriticalResult = { passed: true, warnings: [] };
+      }
+
+      // Log validation metrics
+      const validationMetrics = {
+        executionTimeMs: Date.now() - startTime,
+        criticalPassed: criticalResult.passed,
+        nonCriticalPassed: nonCriticalResult.passed,
+        warningsCount: nonCriticalResult.warnings?.length || 0,
+        postsAnalyzed: analyzedPosts.length,
+        userId: preferences?.userId
+      };
+
+      logger.info(validationMetrics, 'Validation complete');
+
+      // Attach warnings if non-critical validations failed
+      if (nonCriticalResult.warnings && nonCriticalResult.warnings.length > 0) {
+        logger.warn({ warnings: nonCriticalResult.warnings, userId: preferences?.userId }, 'Non-critical validation warnings');
+      }
+
+      return report;
+
+    } catch (error: any) {
+      logger.error({
+        error: error.message,
+        code: error.code,
+        retryable: error.retryable,
+        userId: preferences?.userId,
+        executionTime: Date.now() - startTime
+      }, 'Validation failed');
+
+      throw error; // Re-throw with enhanced error info
+    }
+  }
+
+  /**
+   * CRITICAL validations - MUST pass or report is rejected
+   * Fast checks: score bounds, data integrity, basic consistency
+   */
+  private async runCriticalValidations(
+    report: ViralScoreReport,
+    posts: AnalyzedPost[]
+  ): Promise<{ passed: boolean; issues: any[] }> {
+    const issues: any[] = [];
+
+    // CHECK 1: Viral score must be in valid range [0, 100]
+    if (report.viralScore < 0 || report.viralScore > 100) {
+      issues.push({
+        severity: 'CRITICAL',
+        rule: 'SCORE_OUT_OF_RANGE',
+        message: `Viral score ${report.viralScore} is outside valid range [0, 100]`
+      });
+    }
+
+    // CHECK 2: Viral score must match expected calculation (with tolerance)
+    const expectedScore = this.calculateExpectedViralScore(posts);
+    const tolerance = this.calculateDynamicTolerance(posts, expectedScore);
+    const scoreDiff = Math.abs(report.viralScore - expectedScore);
+
+    if (scoreDiff > tolerance) {
+      issues.push({
+        severity: 'CRITICAL',
+        rule: 'SCORE_CONSISTENCY',
+        message: `Viral score ${report.viralScore} differs from expected ${expectedScore} by ${scoreDiff.toFixed(0)} (tolerance: ${tolerance.toFixed(0)})`
+      });
+    }
+
+    // CHECK 3: Posts analyzed count must match input
+    if (report.postsAnalyzed !== posts.length) {
+      issues.push({
+        severity: 'CRITICAL',
+        rule: 'POST_COUNT_MISMATCH',
+        message: `Report claims ${report.postsAnalyzed} posts but ${posts.length} were provided`
+      });
+    }
+
+    return {
+      passed: issues.length === 0,
+      issues
+    };
+  }
+
+  /**
+   * NON-CRITICAL validations - Attach warnings but don't block delivery
+   * Slower checks: engagement consistency, insight factuality
+   */
+  private async runNonCriticalValidations(
+    report: ViralScoreReport,
+    posts: AnalyzedPost[]
+  ): Promise<{ passed: boolean; warnings: string[] }> {
+    const warnings: string[] = [];
+
+    // CHECK 1: Platform scores consistency
+    for (const [platform, score] of Object.entries(report.platformScores)) {
+      const platformPosts = posts.filter(p => p.platform === platform);
+      if (platformPosts.length === 0) continue;
+
+      const avgEngagement = platformPosts.reduce((sum, p) => sum + (p.engagementRate || 0), 0) / platformPosts.length;
+      const expectedScore = Math.min(avgEngagement * 10, 100);
+      const diff = Math.abs(score - expectedScore);
+
+      if (diff > 25) {
+        warnings.push(`${platform} score ${score} differs from expected ${expectedScore.toFixed(0)} (diff: ${diff.toFixed(0)})`);
+      }
+    }
+
+    // CHECK 2: Sample size adequacy
+    if (posts.length < 3) {
+      warnings.push(`Only ${posts.length} posts analyzed - insights may be unreliable (recommend 5+ posts)`);
+    }
+
+    // CHECK 3: Insight factuality (basic heuristic)
+    const hasHighPerformer = posts.some(p => (p.postScore || 0) > 70);
+    const claimsHighPerformance = report.overallStrengths.some(s =>
+      /strong|high|excellent|great/i.test(s)
+    );
+
+    if (claimsHighPerformance && !hasHighPerformer) {
+      warnings.push('Report claims high performance but no posts scored >70');
+    }
+
+    return {
+      passed: warnings.length === 0,
+      warnings
+    };
+  }
+
+  /**
+   * Calculate expected viral score using weighted metrics
+   * Accounts for outliers, variance, and platform diversity
+   * NOTE: Recency removed - requires timestamps not available in AnalyzedPost
+   */
+  private calculateExpectedViralScore(posts: AnalyzedPost[]): number {
+    if (posts.length === 0) return 0;
+
+    // Filter posts with valid scores (CRITICAL: prevent NaN propagation)
+    const validPosts = posts.filter(p =>
+      p.postScore !== undefined &&
+      p.postScore !== null &&
+      p.engagementRate !== undefined &&
+      p.engagementRate !== null
+    );
+
+    if (validPosts.length === 0) {
+      throw new Error('Cannot calculate viral score: no posts have valid score/engagement data');
+    }
+
+    // Adjusted weights without recency (redistributed to other metrics)
+    const weights = {
+      avgEngagement: 0.35,     // +0.05 from removed recency
+      maxEngagement: 0.25,      // Captures viral outliers, +0.05 from recency
+      consistency: 0.25,        // Penalizes high variance, +0.05 from recency
+      platformDiversity: 0.15   // Multi-platform presence
+    };
+
+    const uniquePlatforms = new Set(validPosts.map(p => p.platform)).size;
+
+    const metrics = {
+      avgEngagement: validPosts.reduce((sum, p) => sum + (p.engagementRate || 0), 0) / validPosts.length,
+      maxEngagement: Math.max(...validPosts.map(p => p.engagementRate || 0)),
+      consistency: this.calculateConsistencyScore(validPosts),
+      platformDiversity: Math.min(uniquePlatforms / SUPPORTED_PLATFORMS.length, 1.0) // Normalize to supported platform count
+    };
+
+    const score = Object.entries(metrics).reduce((total, [key, value]) => {
+      return total + (value * weights[key as keyof typeof weights] * 100);
+    }, 0);
+
+    return Math.round(Math.max(0, Math.min(100, score)));
+  }
+
+  /**
+   * Calculate consistency score (0-1) - penalizes high variance
+   * FIXED: Filters null/undefined values to prevent NaN propagation
+   */
+  private calculateConsistencyScore(posts: AnalyzedPost[]): number {
+    // Filter valid engagement rates (CRITICAL: prevent NaN)
+    const validEngagements = posts
+      .map(p => p.engagementRate)
+      .filter((rate): rate is number => rate !== undefined && rate !== null && !isNaN(rate));
+
+    if (validEngagements.length === 0) return 0.5; // Neutral score if no valid data
+
+    const mean = validEngagements.reduce((sum, e) => sum + e, 0) / validEngagements.length;
+    const variance = validEngagements.reduce((sum, e) => sum + Math.pow(e - mean, 2), 0) / validEngagements.length;
+    const stdDev = Math.sqrt(variance);
+
+    // Low stddev = high consistency (max stddev of 10% normalized to 0-1)
+    return Math.max(0, 1 - (stdDev / 10));
+  }
+
+  /**
+   * Calculate dynamic tolerance based on variance and sample size
+   * Higher variance = higher tolerance for score differences
+   * FIXED: Simplified tolerance calculation, removed broken CV math
+   */
+  private calculateDynamicTolerance(posts: AnalyzedPost[], expectedScore: number): number {
+    // Percentage-based tolerance: 15% of expected score, minimum 10 points
+    const baseTolerance = Math.max(expectedScore * 0.15, 10);
+
+    // Sample size adjustment: +5% for small samples (<5 posts)
+    const sampleBonus = posts.length < 5 ? expectedScore * 0.05 : 0;
+
+    // Hard cap at 30 points to prevent accepting garbage
+    return Math.min(baseTolerance + sampleBonus, 30);
   }
 }
 
