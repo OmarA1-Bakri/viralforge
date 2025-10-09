@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { PostHogProvider } from "posthog-js/react";
 import App from "./App";
 import "./index.css";
+import "./styles/main.scss"; // Sass color system (parallel with Tailwind)
 import { revenueCat } from "./lib/revenueCat";
 import { applyStatusBarHeightCSS, setupStatusBarHeightListener } from "./lib/statusBarHeight";
 

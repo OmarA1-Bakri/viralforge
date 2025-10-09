@@ -1,0 +1,172 @@
+/**
+ * Sass Color Functions
+ *
+ * Performance-optimized color manipulation functions.
+ * Uses built-in Sass color module for maximum efficiency.
+ */
+
+@use "sass:color";
+@use "sass:math";
+
+// =============================================================================
+// COLOR MANIPULATION FUNCTIONS
+// =============================================================================
+
+/// Lighten a color by a percentage
+/// @param {Color} $color - The color to lighten
+/// @param {Number} $amount - Percentage to lighten (0-100)
+/// @return {Color} - Lightened color
+@function lighten-color($color, $amount) {
+  @return color.scale($color, $lightness: $amount * 1%);
+}
+
+/// Darken a color by a percentage
+/// @param {Color} $color - The color to darken
+/// @param {Number} $amount - Percentage to darken (0-100)
+/// @return {Color} - Darkened color
+@function darken-color($color, $amount) {
+  @return color.scale($color, $lightness: -$amount * 1%);
+}
+
+/// Add opacity/alpha to a color
+/// @param {Color} $color - The base color
+/// @param {Number} $opacity - Opacity value (0-1)
+/// @return {Color} - Color with opacity
+@function alpha-color($color, $opacity) {
+  @return color.change($color, $alpha: $opacity);
+}
+
+/// Generate a glow shadow (for GPU-composited glow effects)
+/// @param {Color} $color - The glow color
+/// @param {Number} $intensity - Glow intensity (0-1, default 0.2)
+/// @return {String} - CSS box-shadow value
+@function glow-shadow($color, $intensity: 0.2) {
+  @return 0 0 12px alpha-color($color, $intensity);
+}
+
+// =============================================================================
+// ACCESSIBILITY FUNCTIONS (WCAG Compliance)
+// =============================================================================
+
+/// Calculate relative luminance (WCAG formula)
+/// @param {Color} $color - Color to analyze
+/// @return {Number} - Relative luminance (0-1)
+@function relative-luminance($color) {
+  $r: color.red($color) / 255;
+  $g: color.green($color) / 255;
+  $b: color.blue($color) / 255;
+
+  $r: if($r <= 0.03928, $r / 12.92, math.pow(($r + 0.055) / 1.055, 2.4));
+  $g: if($g <= 0.03928, $g / 12.92, math.pow(($g + 0.055) / 1.055, 2.4));
+  $b: if($b <= 0.03928, $b / 12.92, math.pow(($b + 0.055) / 1.055, 2.4));
+
+  @return 0.2126 * $r + 0.7152 * $g + 0.0722 * $b;
+}
+
+/// Calculate contrast ratio between two colors (WCAG formula)
+/// @param {Color} $fg - Foreground color
+/// @param {Color} $bg - Background color
+/// @return {Number} - Contrast ratio (1-21)
+@function contrast-ratio($fg, $bg) {
+  $l1: relative-luminance($fg);
+  $l2: relative-luminance($bg);
+
+  @if $l1 > $l2 {
+    @return ($l1 + 0.05) / ($l2 + 0.05);
+  } @else {
+    @return ($l2 + 0.05) / ($l1 + 0.05);
+  }
+}
+
+/// Check if color pair meets WCAG AA standard (4.5:1)
+/// @param {Color} $fg - Foreground color
+/// @param {Color} $bg - Background color
+/// @return {Boolean} - True if passes WCAG AA
+@function meets-wcag-aa($fg, $bg) {
+  @return contrast-ratio($fg, $bg) >= 4.5;
+}
+
+/// Check if color pair meets WCAG AAA standard (7:1)
+/// @param {Color} $fg - Foreground color
+/// @param {Color} $bg - Background color
+/// @return {Boolean} - True if passes WCAG AAA
+@function meets-wcag-aaa($fg, $bg) {
+  @return contrast-ratio($fg, $bg) >= 7;
+}
+
+/// Auto-adjust lightness to meet WCAG AA contrast (4.5:1)
+/// WARNING: May produce colors that diverge from brand
+/// Use manual override in _color-overrides.scss when possible
+/// @param {Color} $color - Color to adjust
+/// @param {Color} $bg - Background color
+/// @param {Number} $target-ratio - Target contrast ratio (default 4.5)
+/// @return {Color} - Adjusted color
+@function ensure-contrast($color, $bg, $target-ratio: 4.5) {
+  $ratio: contrast-ratio($color, $bg);
+
+  @if $ratio >= $target-ratio {
+    @return $color; // Already meets target
+  }
+
+  // Determine if we should lighten or darken
+  $bg-luminance: relative-luminance($bg);
+  $should-lighten: $bg-luminance < 0.5;
+
+  // Binary search for minimum adjustment
+  $step: 5%;
+  $adjusted: $color;
+  $iterations: 0;
+  $max-iterations: 20; // Prevent infinite loops
+
+  @while contrast-ratio($adjusted, $bg) < $target-ratio and $iterations < $max-iterations {
+    @if $should-lighten {
+      $adjusted: lighten-color($adjusted, $step);
+    } @else {
+      $adjusted: darken-color($adjusted, $step);
+    }
+    $iterations: $iterations + 1;
+  }
+
+  // Warn if auto-adjusted (designer review needed)
+  @if $adjusted != $color {
+    @warn "Auto-adjusted #{$color} → #{$adjusted} for WCAG AA (#{$target-ratio}:1) on #{$bg}. Consider manual override.";
+  }
+
+  @return $adjusted;
+}
+
+// =============================================================================
+// UTILITY FUNCTIONS
+// =============================================================================
+
+/// Mix two colors
+/// @param {Color} $color1 - First color
+/// @param {Color} $color2 - Second color
+/// @param {Number} $weight - Weight of first color (0-100, default 50)
+/// @return {Color} - Mixed color
+@function mix-colors($color1, $color2, $weight: 50) {
+  @return color.mix($color1, $color2, $weight * 1%);
+}
+
+/// Invert a color
+/// @param {Color} $color - Color to invert
+/// @return {Color} - Inverted color
+@function invert-color($color) {
+  @return color.invert($color);
+}
+
+/// Desaturate a color
+/// @param {Color} $color - Color to desaturate
+/// @param {Number} $amount - Percentage to desaturate (0-100)
+/// @return {Color} - Desaturated color
+@function desaturate-color($color, $amount) {
+  @return color.scale($color, $saturation: -$amount * 1%);
+}
+
+/// Saturate a color
+/// @param {Color} $color - Color to saturate
+/// @param {Number} $amount - Percentage to saturate (0-100)
+/// @return {Color} - Saturated color
+@function saturate-color($color, $amount) {
+  @return color.scale($color, $saturation: $amount * 1%);
+}

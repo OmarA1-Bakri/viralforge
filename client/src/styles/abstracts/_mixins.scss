@@ -1,0 +1,238 @@
+/**
+ * Sass Color Mixins
+ *
+ * Reusable color patterns and effects.
+ * Performance-optimized for 60fps animations.
+ */
+
+@use "./functions" as fn;
+
+// =============================================================================
+// GRADIENT MIXINS
+// =============================================================================
+
+/// Brand gradient (Cyan → Pink)
+/// @param {Number} $direction - Gradient direction in degrees (default 135deg)
+/// @param {Color} $fallback - Fallback solid color (default primary)
+@mixin brand-gradient($direction: 135deg, $fallback: null) {
+  @if $fallback {
+    background: $fallback; // Fallback for old browsers
+  }
+  background: linear-gradient($direction, var(--color-primary-500), var(--color-accent-500));
+}
+
+/// Custom gradient
+/// @param {Number} $direction - Gradient direction
+/// @param {List} $colors - Color stops (e.g., #fff 0%, #000 100%)
+@mixin gradient($direction, $colors...) {
+  background: linear-gradient($direction, $colors);
+}
+
+/// Text gradient (for gradient text)
+/// @param {Number} $direction - Gradient direction (default 135deg)
+@mixin text-gradient($direction: 135deg) {
+  @include brand-gradient($direction);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-fill-color: transparent;
+}
+
+// =============================================================================
+// GLOW EFFECTS (GPU-Composited for Performance)
+// =============================================================================
+
+/// Hover glow effect using pseudo-element (GPU-accelerated)
+/// This approach is 10x faster than box-shadow animation
+/// @param {Color} $color - Glow color
+/// @param {Number} $intensity - Glow opacity (0-1, default 0.6)
+/// @param {Number} $blur - Blur radius in px (default 20px)
+@mixin hover-glow($color, $intensity: 0.6, $blur: 20px) {
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -10px;
+    background: radial-gradient(circle, $color, transparent 70%);
+    filter: blur($blur);
+    opacity: 0;
+    z-index: -1;
+    pointer-events: none;
+
+    // GPU acceleration
+    will-change: opacity;
+    transform: translateZ(0);
+  }
+
+  // Reduced motion support
+  @media (prefers-reduced-motion: no-preference) {
+    &:hover::after {
+      opacity: $intensity;
+      transition: opacity 0.3s ease;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    &:hover::after {
+      opacity: $intensity;
+      // No transition, instant change
+    }
+  }
+}
+
+/// Static glow (always visible)
+/// @param {Color} $color - Glow color
+/// @param {Number} $intensity - Glow opacity (0-1)
+/// @param {Number} $blur - Blur radius in px
+@mixin static-glow($color, $intensity: 0.4, $blur: 16px) {
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    background: radial-gradient(circle, $color, transparent 60%);
+    filter: blur($blur);
+    opacity: $intensity;
+    z-index: -1;
+    pointer-events: none;
+    transform: translateZ(0);
+  }
+}
+
+// =============================================================================
+// COLOR STATE MIXINS
+// =============================================================================
+
+/// Button color states (hover, active, disabled)
+/// @param {Color} $base-color - Base button color
+/// @param {Number} $hover-adjust - Lightness adjustment on hover (default -10%)
+/// @param {Number} $active-adjust - Lightness adjustment on active (default -15%)
+@mixin color-states($base-color, $hover-adjust: -10, $active-adjust: -15) {
+  background-color: $base-color;
+
+  @media (prefers-reduced-motion: no-preference) {
+    transition: background-color 0.2s ease;
+  }
+
+  &:hover:not(:disabled) {
+    background-color: fn.lighten-color($base-color, $hover-adjust);
+  }
+
+  &:active:not(:disabled) {
+    background-color: fn.lighten-color($base-color, $active-adjust);
+  }
+
+  &:disabled {
+    background-color: fn.alpha-color($base-color, 0.5);
+    cursor: not-allowed;
+  }
+}
+
+/// Focus ring (WCAG compliant)
+/// @param {Color} $color - Ring color (default primary)
+/// @param {Number} $width - Ring width in px (default 2px)
+@mixin focus-ring($color: var(--color-primary-500), $width: 2px) {
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 $width $color;
+  }
+}
+
+// =============================================================================
+// GLASS MORPHISM EFFECTS
+// =============================================================================
+
+/// Glass morphism background
+/// @param {Color} $bg-color - Background color
+/// @param {Number} $opacity - Background opacity (0-1, default 0.1)
+/// @param {Number} $blur - Backdrop blur in px (default 10px)
+@mixin glass($bg-color: #ffffff, $opacity: 0.1, $blur: 10px) {
+  background: fn.alpha-color($bg-color, $opacity);
+  backdrop-filter: blur($blur);
+  -webkit-backdrop-filter: blur($blur);
+
+  // Fallback for browsers without backdrop-filter
+  @supports not (backdrop-filter: blur($blur)) {
+    background: fn.alpha-color($bg-color, $opacity * 2);
+  }
+}
+
+// =============================================================================
+// SHADOW MIXINS
+// =============================================================================
+
+/// Elevation shadow (Material Design inspired)
+/// @param {Number} $level - Elevation level (1-5)
+@mixin elevation($level: 1) {
+  @if $level == 1 {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+  } @else if $level == 2 {
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.12);
+  } @else if $level == 3 {
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15), 0 3px 6px rgba(0, 0, 0, 0.10);
+  } @else if $level == 4 {
+    box-shadow: 0 15px 25px rgba(0, 0, 0, 0.15), 0 5px 10px rgba(0, 0, 0, 0.05);
+  } @else if $level == 5 {
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  }
+}
+
+// =============================================================================
+// THEME MIXINS
+// =============================================================================
+
+/// Apply dark theme colors
+@mixin dark-theme {
+  [data-theme="dark"] & {
+    @content;
+  }
+}
+
+/// Apply light theme colors
+@mixin light-theme {
+  [data-theme="light"] & {
+    @content;
+  }
+}
+
+// =============================================================================
+// ACCESSIBILITY MIXINS
+// =============================================================================
+
+/// Ensure WCAG AA contrast
+/// Warns if manual override needed
+/// @param {Color} $fg - Foreground color
+/// @param {Color} $bg - Background color
+@mixin ensure-accessible($fg, $bg) {
+  $ratio: fn.contrast-ratio($fg, $bg);
+
+  @if $ratio < 4.5 {
+    @warn "WCAG AA failure: #{$fg} on #{$bg} = #{$ratio}:1 (need 4.5:1). Using auto-adjusted color.";
+    color: fn.ensure-contrast($fg, $bg);
+  } @else {
+    color: $fg;
+  }
+}
+
+/// High contrast mode support
+@mixin high-contrast {
+  @media (prefers-contrast: high) {
+    @content;
+  }
+}
+
+/// Reduced motion support
+@mixin reduced-motion {
+  @media (prefers-reduced-motion: reduce) {
+    @content;
+  }
+}
+
+/// No reduced motion (animations allowed)
+@mixin motion-allowed {
+  @media (prefers-reduced-motion: no-preference) {
+    @content;
+  }
+}

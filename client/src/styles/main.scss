@@ -1,0 +1,110 @@
+/**
+ * ViralForge Sass Color System
+ *
+ * Main entry point for Sass-based color management.
+ * Imports generated colors, functions, and mixins.
+ *
+ * Performance: Compiled once at build time, zero runtime overhead.
+ */
+
+// =============================================================================
+// GENERATED COLORS (Auto-created by PostCSS plugin)
+// =============================================================================
+
+@use "./generated-colors" as colors;
+
+// =============================================================================
+// ABSTRACTS (Functions & Mixins)
+// =============================================================================
+
+@use "./abstracts/functions" as fn;
+@use "./abstracts/mixins" as mx;
+
+// =============================================================================
+// CSS CUSTOM PROPERTIES BRIDGE
+// =============================================================================
+
+/**
+ * Export Sass colors back to CSS custom properties
+ * This allows Tailwind utilities to use Sass-manipulated colors
+ */
+
+:root {
+  // Primary color shades (10-shade system for future expansion)
+  --color-primary-500: #{colors.$color_primary};
+  --color-primary-400: #{fn.lighten-color(colors.$color_primary_hsl, 10)};
+  --color-primary-600: #{fn.darken-color(colors.$color_primary_hsl, 10)};
+
+  // Accent color shades
+  --color-accent-500: #{colors.$color_accent};
+  --color-accent-400: #{fn.lighten-color(colors.$color_accent_hsl, 10)};
+  --color-accent-600: #{fn.darken-color(colors.$color_accent_hsl, 10)};
+
+  // Semantic colors (accessible variants)
+  --color-success: #{colors.$color_chart_2}; // Green (chart-2)
+  --color-warning: #{colors.$color_chart_3}; // Orange (chart-3)
+  --color-error: #{colors.$color_destructive};
+  --color-info: #{colors.$color_chart_4}; // Blue (chart-4)
+}
+
+// =============================================================================
+// UTILITY CLASSES (Optional Sass-based utilities)
+// =============================================================================
+
+/**
+ * These are OPTIONAL. Tailwind utilities should be preferred.
+ * Only use these for advanced effects that Tailwind can't do.
+ */
+
+// Brand gradient utility
+.bg-brand-gradient {
+  @include mx.brand-gradient();
+}
+
+.text-brand-gradient {
+  @include mx.text-gradient();
+}
+
+// Glow effects (GPU-accelerated)
+.hover-glow-primary {
+  @include mx.hover-glow(colors.$color_primary, 0.6);
+}
+
+.hover-glow-accent {
+  @include mx.hover-glow(colors.$color_accent, 0.6);
+}
+
+// Glass morphism
+.glass-light {
+  @include mx.glass(#ffffff, 0.1, 10px);
+}
+
+.glass-dark {
+  @include mx.glass(#000000, 0.1, 10px);
+}
+
+// Elevation shadows
+.elevation-1 {
+  @include mx.elevation(1);
+}
+
+.elevation-2 {
+  @include mx.elevation(2);
+}
+
+.elevation-3 {
+  @include mx.elevation(3);
+}
+
+// =============================================================================
+// DEVELOPMENT HELPERS
+// =============================================================================
+
+/**
+ * Accessibility check utility (development only)
+ * Uncomment to enable contrast ratio warnings in console
+ */
+
+// @debug "Primary on Background: #{fn.contrast-ratio(colors.$color_primary, colors.$color_background)}:1";
+// @debug "Accent on Background: #{fn.contrast-ratio(colors.$color_accent, colors.$color_background)}:1";
+// @debug "Foreground on Background: #{fn.contrast-ratio(colors.$color_foreground, colors.$color_background)}:1";

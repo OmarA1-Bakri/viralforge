@@ -13,6 +13,18 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
     ],
+    css: {
+      preprocessorOptions: {
+        scss: {
+          // Use modern Sass compiler (faster, better features)
+          api: 'modern-compiler',
+          // Enable import resolution
+          loadPaths: [path.resolve(import.meta.dirname, 'client/src/styles')],
+          // Quieter output
+          quietDeps: true,
+        },
+      },
+    },
     // Expose environment variables to the client
     define: {
       'import.meta.env.VITE_API_URL': JSON.stringify(env.VITE_API_URL),
