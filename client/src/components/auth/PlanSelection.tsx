@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,104 +12,68 @@ interface PlanSelectionProps {
   onBack?: () => void;
 }
 
-const PLANS = [
-  {
-    id: 'free',
-    name: 'free',
-    display_name: 'Free',
-    description: 'Perfect for getting started',
-    price_monthly: 0,
-    productId: null, // No purchase needed
-    features: [
-      '3 video analyses per month',
-      '5 AI-generated content ideas',
-      '10 trend bookmarks',
-      'Basic analytics',
-    ],
-    limits: {
-      videoAnalysis: 3,
-      contentGeneration: 5,
-      trendBookmarks: 10,
-      videoClips: 0
-    }
-  },
-  {
-    id: 'pro',
-    name: 'pro',
-    display_name: 'Pro',
-    description: 'For serious content creators',
-    price_monthly: 1499, // $14.99
-    productId: PRODUCT_IDS.pro_monthly,
-    popular: true,
-    features: [
-      'Unlimited video analyses',
-      'Unlimited AI content generation',
-      'Unlimited trend bookmarks',
-      'Advanced analytics dashboard',
-      'Video clip generation (50/month)',
-      'Priority support',
-    ],
-    limits: {
-      videoAnalysis: -1,
-      contentGeneration: -1,
-      trendBookmarks: -1,
-      videoClips: 50
-    }
-  },
-  {
-    id: 'creator',
-    name: 'creator',
-    display_name: 'Creator',
-    description: 'For professional creators & agencies',
-    price_monthly: 4999, // $49.99
-    productId: PRODUCT_IDS.creator_monthly,
-    features: [
-      'Everything in Creator Pro',
-      'Unlimited video clips',
-      'Team collaboration tools',
-      'API access',
-      'Custom integrations',
-      'Dedicated support',
-    ],
-    limits: {
-      videoAnalysis: -1,
-      contentGeneration: -1,
-      trendBookmarks: -1,
-      videoClips: -1
-    }
-  },
-];
+interface SubscriptionTier {
+  id: string;
+  name: string;
+  display_name: string;
+  description: string;
+  price_monthly: number;
+  price_yearly: number;
+  features: string[];
+  limits: {
+    videoAnalysis: number;
+    contentGeneration: number;
+    trendBookmarks: number;
+    videoClips: number;
+  };
+}
+
+// Map tier IDs to RevenueCat product IDs
+const PRODUCT_ID_MAP: Record<string, string | null> = {
+  starter: null,
+  creator: PRODUCT_IDS.creator_monthly,
+  pro: PRODUCT_IDS.pro_monthly,
+  studio: PRODUCT_IDS.studio_monthly
+};
 
 export const PlanSelection: React.FC<PlanSelectionProps> = ({ onSelectPlan, onBack }) => {
-  const [selectedPlan, setSelectedPlan] = useState<string>('free');
+  const [selectedPlan, setSelectedPlan] = useState<string>('starter');
   const [isPurchasing, setIsPurchasing] = useState(false);
   const { toast } = useToast();
+
+  // Fetch tiers from API (same endpoint as settings)
+  const { data: tiersData, isLoading } = useQuery<{ success: boolean; tiers: SubscriptionTier[] }>({
+    queryKey: ['/api/subscriptions/tiers'],
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+  });
 
   const formatPrice = (cents: number) => {
     return `$${(cents / 100).toFixed(2)}`;
   };
 
   const handleContinue = async () => {
-    const plan = PLANS.find(p => p.id === selectedPlan);
+    const plan = tiersData?.tiers.find(p => p.id === selectedPlan);
     if (!plan) return;
 
-    // Free plan - no purchase needed, just continue to registration
-    if (plan.productId === null) {
+    const productId = PRODUCT_ID_MAP[plan.id];
+
+    // Free tier - no purchase needed, just continue to registration
+    if (productId === null) {
       onSelectPlan(selectedPlan);
       return;
     }
 
-    // Paid plan - initiate RevenueCat purchase
+    // Paid tier - initiate RevenueCat purchase
     setIsPurchasing(true);
     try {
-      const result = await revenueCat.purchasePackage(plan.productId);
-      
+      const result = await revenueCat.purchasePackage(productId);
+
       if (result.success) {
         toast({
           title: "Purchase successful!",
           description: `You've subscribed to ${plan.display_name}`,
         });
-        
+
         // Continue to registration with the selected plan
         onSelectPlan(selectedPlan);
       } else {
@@ -130,6 +95,16 @@ export const PlanSelection: React.FC<PlanSelectionProps> = ({ onSelectPlan, onBa
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const tiers = tiersData?.tiers || [];
+
   return (
     <div className="flex items-center justify-center min-h-screen p-4 bg-background">
       <div className="w-full max-w-4xl">
@@ -141,9 +116,10 @@ export const PlanSelection: React.FC<PlanSelectionProps> = ({ onSelectPlan, onBa
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {PLANS.map((plan) => {
+          {tiers.map((plan) => {
             const isSelected = selectedPlan === plan.id;
-            const isPro = plan.popular;
+            const isPro = plan.name === 'pro';
+            const isStudio = plan.name === 'studio';
 
             return (
               <Card
@@ -165,7 +141,7 @@ export const PlanSelection: React.FC<PlanSelectionProps> = ({ onSelectPlan, onBa
                 <CardHeader>
                   <div className="flex items-center justify-between mb-2">
                     <CardTitle className="flex items-center gap-2">
-                      {plan.name === 'creator' && <Crown className="h-5 w-5 text-primary" />}
+                      {isStudio && <Crown className="h-5 w-5 text-primary" />}
                       {plan.display_name}
                     </CardTitle>
                     <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center ${
@@ -217,7 +193,7 @@ export const PlanSelection: React.FC<PlanSelectionProps> = ({ onSelectPlan, onBa
               </>
             ) : (
               <>
-                Continue with {PLANS.find(p => p.id === selectedPlan)?.display_name}
+                Continue with {tiers.find(p => p.id === selectedPlan)?.display_name}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </>
             )}
