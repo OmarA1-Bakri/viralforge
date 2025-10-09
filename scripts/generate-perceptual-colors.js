@@ -57,7 +57,6 @@ function formatHslString(hsl) {
  */
 function generatePerceptualScale(baseHsl, options = {}) {
   const {
-    lightnessRange = [0.95, 0.15], // Lightness range in OKLCH (0-1)
     maintainHue = true,             // Keep hue constant across shades
     maintainChroma = true,          // Keep chroma constant (or reduce at extremes)
   } = options;
@@ -69,6 +68,23 @@ function generatePerceptualScale(baseHsl, options = {}) {
   const shades = {};
   const shadeNumbers = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900];
 
+  // Calculate lightness range that accommodates the base color (shade 500)
+  // Shade 500 is at index 5 (0-based), which should be 50% through the range
+  // But we adjust to the actual base color's OKLCH lightness
+  const baseLightness = baseOklch.l;
+
+  // Generate lighter shades (50-400): distribute evenly from 0.95 to just above baseLightness
+  const lightShades = [50, 100, 200, 300, 400];
+  const lightSteps = lightShades.length;
+  const lightMax = 0.95;
+  const lightMin = baseLightness + 0.01; // Just above base to maintain order
+
+  // Generate darker shades (600-900): distribute evenly from just below baseLightness to 0.15
+  const darkShades = [600, 700, 800, 900];
+  const darkSteps = darkShades.length;
+  const darkMax = baseLightness - 0.01; // Just below base to maintain order
+  const darkMin = 0.15;
+
   shadeNumbers.forEach((shade, index) => {
     if (shade === 500) {
       // Shade 500 is the base - keep it exactly as provided
@@ -76,11 +92,19 @@ function generatePerceptualScale(baseHsl, options = {}) {
       return;
     }
 
-    // Calculate perceptually uniform lightness
-    // Index 0-9 maps to lightness from light to dark
-    const lightnessStep = index / (shadeNumbers.length - 1);
-    const [maxL, minL] = lightnessRange;
-    const targetLightness = maxL - (lightnessStep * (maxL - minL));
+    let targetLightness;
+
+    if (shade < 500) {
+      // Lighter shades (50-400)
+      const lightIndex = lightShades.indexOf(shade);
+      const step = lightIndex / (lightSteps - 1);
+      targetLightness = lightMax - (step * (lightMax - lightMin));
+    } else {
+      // Darker shades (600-900)
+      const darkIndex = darkShades.indexOf(shade);
+      const step = darkIndex / (darkSteps - 1);
+      targetLightness = darkMax - (step * (darkMax - darkMin));
+    }
 
     // Create new color in OKLCH space
     let newOklch = {
