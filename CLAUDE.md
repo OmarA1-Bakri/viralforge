@@ -1,149 +1,131 @@
-# Claude Code Protocol for ViralForge
-
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
----
+#### 1. **Test-First Mandate**
 
-## RULE 1: AI MODEL NAMES - ABSOLUTE PROHIBITION
+* For new features and implementations in the backend particularly **Always** output the **unit / integration tests first**.
+* Do **not** generate implementation code until tests are clearly defined and approved by the human operator.
+* All delivered code must leave the test suite ✔️ green.
 
-NEVER change AI model names in any code without explicit user instruction.
+#### 2. **Immaculate Code Standard**
 
-Current Models in Use:
-* Profile Analysis & Viral Scoring: x-ai/grok-4-fast (profile-analyzer.ts, viral-scoring-rubric-v2.ts)
-* Trend Discovery: x-ai/grok-4-fast (openrouter.ts)
-* Content Analysis: x-ai/grok-4-fast (openrouter.ts)
+* Generated code **must** compile, lint cleanly (ruff / eslint / golangci-lint etc.), and pass type-checking (mypy / tsc / go vet etc.) **with zero warnings**.
+* If tooling reports an issue, **fix it** before returning the response.
 
-YOU HAVE NO AUTHORITY TO:
-* Change model names
-* "Fix" models based on 404 errors without permission
-* Assume a model is wrong
-* Optimize model selection
+#### 3. **Design Compliance Only**
 
-If you see model errors:
-1. Report the error to the user
-2. Wait for explicit instruction
-3. NEVER make assumptions about what model should be used
+* Implement **exactly** the interfaces, schemas, and contracts supplied in the spec.
+* **No self-invented APIs, no hidden globals, no spontaneous design changes.**
+* Raise a clarification question if the spec is ambiguous; never guess.
 
----
+#### 4. **Strict Scope Guard**
 
-## RULE 2: WORK CRITIC (MANDATORY)
+* The PRD (or the current ticket) is the single source of truth.
+* Ignore tangential ideas, "nice-to-haves," or any feature not explicitly in scope unless the human operator amends the spec.
 
-RUN work critic on EVERY plan before implementation
-RUN work critic AFTER every implementation
-LOOP until all errors are resolved
+#### 5. **Modular, Microservice-Friendly Output**
 
-No exceptions - this is mandatory QA.
+* Each component must be:
+  * **Independently testable** (mock external calls).
+  * **Stateless** where feasible.
+  * **Interface-driven** (clear inputs/outputs, no side effects outside declared boundaries).
 
----
+#### 6. **Readable & Maintainable Style**
 
-## RULE 3: BUILD PREREQUISITES
+* Follow the project's style guide: naming, docstrings, comments, formatting.
+* Prefer clarity over cleverness; avoid "magic."
+* Provide concise inline comments for non-obvious logic.
 
-Before running ANY build, verify:
+#### 7. **Self-Review Before Responding**
 
-```bash
-# Check backend is running
-ps aux | grep [b]ackend
+Before presenting ANY implementation, perform a comprehensive self-critique:
 
-# Verify backend version
-curl http://localhost:PORT/version
-```
+**A. Automated Severity Check:**
+* **CRITICAL**: Security vulnerabilities, data loss risks, authentication bypasses, SQL injection, XSS, broken auth
+* **MAJOR**: Performance bottlenecks (O(n²) where O(n) exists), race conditions, memory leaks, architectural violations
+* **MODERATE**: Missing error handling, untested edge cases, best practice violations, missing type hints
+* **MINOR**: Style inconsistencies, missing docstrings, non-optimal patterns
 
----
+**B. Mandatory Inspection Checklist:**
+- [ ] Security: Input validation, authentication, authorization, data exposure
+- [ ] Edge Cases: Null/empty inputs, boundary values, concurrent access, large datasets
+- [ ] Error Handling: All failure modes caught, logged with context, user-facing messages appropriate
+- [ ] Performance: No unnecessary loops, queries optimized, caching where appropriate
+- [ ] Testing: Unit tests cover critical paths, mocks for external services
+- [ ] Best Practices: Follows project patterns, type-safe, properly documented
 
-## RULE 4: GIT WORKFLOW (MANDATORY - EVERY CHANGE)
+**C. Confidence Rating (REQUIRED):**
+Every implementation must include:
+CONFIDENCE: [HIGH | MEDIUM | LOW]
+CONCERNS: [List any remaining doubts, potential issues, or areas needing review]
+TESTED: [Which test groups will validate this: unit/ai/api/etc.]
 
-On EVERY change:
+**D. Self-Critique Format:**
+If ANY of these conditions are true, include a "⚠️ SELF-CRITIQUE" section:
+- Implementation has MODERATE+ severity issues
+- Confidence is MEDIUM or LOW
+- Non-obvious algorithmic choices were made
+- Security-sensitive code is involved
+- Performance could be a concern
 
-1. Make change
-2. Test it works
-3. RUN WORK CRITIC
-4. Then and only then:
-```bash
-git add .
-git commit -m "descriptive message"
-git push origin <branch-name>
-```
+**E. Fix Before Presenting:**
+- All CRITICAL issues MUST be resolved before responding
+- MAJOR issues should be fixed unless they require architectural decisions
+- Document MODERATE/MINOR issues that remain
 
-EVERY TIME. NO EXCEPTIONS. NO SHORTCUTS.
+**F. No False Confidence:**
+- Never present code as "production-ready" without thorough validation
+- If unsure about security/performance, state it explicitly
+- Better to admit uncertainty than ship vulnerable code
 
----
+#### 8. **Error Handling Discipline**
 
-## RULE 5: BRANCH AWARENESS
+* Surface-level errors: return structured error objects / HTTP codes as per spec.
+* Internal errors: log with actionable context, no silent failures, no `print` debugging left behind.
 
-Before ANY work:
+#### 9. **Prompt Efficiency**
 
-```bash
-# Always check current branch FIRST
-git branch --show-current
+* Respond with **complete, final** code blocks—no incremental partials.
+* Minimize chatter; deliver code + concise explanations.
+* If unsure, ask **one targeted question** rather than proceeding with assumptions.
 
-# Verify what's actually in the branch
-git log --oneline -10
+#### 10. **Escalation Protocol**
 
-# Know what features are where
-git log --all --oneline --graph
-```
+* On any conflict between these rules and a user instruction, **pause** and ask for clarification.
+* If a required external dependency is undefined, request explicit version or mock strategy before coding.
 
-DON'T ASSUME - VERIFY
+#### 11. **Running Commands is Your Duty**
 
----
+* In all situations you are never to expect the user to run a command on your behalf
+* If the user wants to run a command or perform an action themselves, he/she will tell you explicity that they want to run the command
+* In the vast majoity of cases you are expected to run the code.
 
-## RULE 6: ASK BEFORE ACTING
+#### 12. **Proactive Issue Detection**
 
-When user reports something is broken:
+When reviewing existing code or implementing changes:
+* **Challenge your own assumptions**: "Is this actually secure? What breaks this?"
+* **Red-team your implementation**: Think like an attacker or malicious user
+* **Stress-test mentally**: What happens under load? With bad data? In edge cases?
+* **Compare alternatives**: Is there a better pattern/library/approach?
+* **Check against project standards**: Does this match existing patterns in the codebase?
 
-1. ASK for logs/error messages FIRST
-2. ASK for steps to reproduce
-3. CONFIRM understanding before making ANY changes
-4. DON'T immediately start "fixing" things
+If you find issues in YOUR OWN implementation during self-review:
+1. Fix them immediately
+2. Document what you caught in the CONCERNS section
+3. Explain why the fix is better
 
----
+#### 13. **Build Version Verification**
+ALWAYS CHECK THAT THE BUILD VERSION IS IN FACT THE LATEST VERSION:**
 
-## RULE 7: STOP ASSUMING
+#### RULE 14. **AI MODEL CONFIGURATION**
+- **NEVER** change AI model names in any code
+- Before touching any AI model configuration: CHECK WITHT THE USER
 
-Your memory is a WEAKNESS. Deal in FACTS.
+#### RULE 15. **WORK CRITIC (MANDATORY)**
+- **RUN** work critic on EVERY plan before implementation
+- **RUN** work critic AFTER every implementation
+- **LOOP** until all errors are resolved
+- No exceptions - this is mandatory QA
 
-* "This branch should have X" -> git log | grep "X"
-* "This is YouTube-only" -> grep -r "youtube" src/
-* "I remember this code" -> cat file.js
-* Trust memory -> Trust git and grep
 
-If a branch is YouTube-only, CHECK the actual code first.
-If a branch should have commits, VERIFY with git log first.
-Don't trust memory - trust git and grep.
 
----
 
-## RULE 8: WHEN STUCK/CONFUSED
-
-1. STOP immediately
-2. DON'T keep making changes hoping something works
-3. ASK user for direction
-4. State clearly: "I'm uncertain about X. Can you clarify?"
-
----
-
-## QUICK REFERENCE CHECKLIST
-
-Before starting ANY task:
-- Check current branch: git branch --show-current
-- Verify branch contents: git log --oneline
-- Review this document for AI model rules
-
-Before making changes:
-- Ask for logs/evidence if fixing a bug
-- Confirm understanding with user
-- Verify assumptions with git/grep
-
-After making changes:
-- Test it works
-- Run work critic (MANDATORY)
-- Git add, commit, push (MANDATORY)
-
-If confused:
-- STOP
-- Ask user
-- Don't guess
-
----
-
-*End of protocol.*

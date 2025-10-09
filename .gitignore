@@ -32,8 +32,11 @@ coverage/
 # Development artifacts
 .cache/
 server.pid
+*.pid
 *.log
 logs/
+.firebase/logs/
+.crush/logs/
 
 # Android signing keys - NEVER COMMIT
 android/keystore.properties
