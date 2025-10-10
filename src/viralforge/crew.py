@@ -6,12 +6,13 @@ analyzing, and creating viral YouTube content.
 """
 
 import os
-from typing import List, Dict, Any
+from typing import List
 from pathlib import Path
 
-from crewai import Agent, Crew, Process, Task, LLM
+from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
 from crewai.knowledge.source.string_knowledge_source import StringKnowledgeSource
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 # Import YouTube RAG tools
 from .tools.youtube_rag_tools import get_youtube_rag_tools
@@ -49,14 +50,28 @@ class ViralForgeCrew():
         self.inject_knowledge = os.getenv('FEATURE_FLAGS__INJECT_KNOWLEDGE_SOURCES', 'true').lower() == 'true'
 
     def _setup_llm(self):
-        """Configure the LLM for all agents."""
-        self.llm = LLM(
-            model="openrouter/x-ai/grok-4-fast",
-            api_key=os.getenv("OPENROUTER_API_KEY"),
-            base_url="https://openrouter.ai/api/v1",
+        """Configure the LLM models for agents using Google Gemini."""
+        # Support both GOOGLE_API_KEY and GOOGLE_AI_API_KEY
+        google_key = os.getenv("GOOGLE_AI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+
+        # Gemini 2.5 Pro for analytical tasks (trend analysis, performance analysis)
+        self.llm_pro = ChatGoogleGenerativeAI(
+            model="gemini-2.5-pro-latest",
             temperature=0.7,
-            max_tokens=4000
+            max_output_tokens=8192,
+            google_api_key=google_key
         )
+
+        # Gemini 2.5 Flash for faster generation tasks (content creation, publishing)
+        self.llm_flash = ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash-latest",
+            temperature=0.8,
+            max_output_tokens=8192,
+            google_api_key=google_key
+        )
+
+        # Default LLM (Pro for most tasks)
+        self.llm = self.llm_pro
 
     def _setup_knowledge(self) -> List[StringKnowledgeSource]:
         """Load knowledge base files for agent context."""
@@ -129,7 +144,7 @@ class ViralForgeCrew():
         """Viral Content Creator - creates optimized YouTube content."""
         return Agent(
             config=self.agents_config['content_creator'],
-            llm=self.llm,
+            llm=self.llm_flash,  # Use faster Flash model for creative generation
             knowledge_sources=self._setup_knowledge(),
             verbose=True
         )
@@ -139,7 +154,7 @@ class ViralForgeCrew():
         """Publication Manager - optimizes distribution strategy."""
         return Agent(
             config=self.agents_config['publish_manager'],
-            llm=self.llm,
+            llm=self.llm_flash,  # Use faster Flash model for planning tasks
             knowledge_sources=self._setup_knowledge(),
             verbose=True
         )

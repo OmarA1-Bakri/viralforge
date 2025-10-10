@@ -389,7 +389,92 @@ GET  /api/dashboard/activity        // Recent activity
 
 ## 🚢 Production Deployment
 
-### Option 1: Docker (Recommended)
+### Option 1: Firebase (Recommended for Google Cloud)
+
+**Complete Google Cloud deployment with Firebase Hosting + Functions**
+
+#### Prerequisites
+- Firebase CLI installed: `npm install -g firebase-tools`
+- Google Cloud project created
+- PostgreSQL database (Neon, Supabase, or Cloud SQL)
+
+#### One-Command Deployment
+
+```bash
+# Deploy everything to Firebase
+npm run deploy
+```
+
+This will:
+1. Build frontend (Vite) → Firebase Hosting
+2. Build backend (Express) → Firebase Functions
+3. Configure routing: `/api/*` → Functions, `/*` → Hosting
+4. Deploy with caching and CDN
+
+#### Manual Firebase Setup
+
+```bash
+# 1. Login to Firebase
+firebase login
+
+# 2. Build for production
+npm run build:firebase
+
+# 3. Set environment secrets
+firebase functions:secrets:set DATABASE_URL
+firebase functions:secrets:set SESSION_SECRET
+firebase functions:secrets:set GOOGLE_CLIENT_SECRET
+firebase functions:secrets:set STRIPE_SECRET_KEY
+firebase functions:secrets:set OPENAI_API_KEY
+firebase functions:secrets:set YOUTUBE_API_KEY
+firebase functions:secrets:set REDIS_HOST
+firebase functions:secrets:set REDIS_PORT
+
+# 4. Deploy
+firebase deploy --only hosting,functions
+
+# 5. Monitor
+firebase functions:log
+```
+
+#### Firebase Configuration
+
+The app is pre-configured with:
+- **Hosting**: Serves React frontend from `dist/public/`
+- **Functions**: Node.js 20 runtime, 1GiB memory, 540s timeout
+- **Routing**: All `/api/*` requests → Firebase Functions
+- **Caching**: Aggressive caching for static assets (1 year)
+- **Auto-scaling**: 1-10 instances based on traffic
+
+#### Firebase URLs
+- **Frontend**: `https://viralforge-de120.web.app`
+- **Backend API**: `https://us-central1-viralforge-de120.cloudfunctions.net/api`
+
+#### Cost Optimization
+- Functions: 1 min instance to reduce cold starts
+- Hosting: CDN caching reduces bandwidth costs
+- Secrets: Managed securely in Google Secret Manager
+
+#### Monitoring & Logs
+```bash
+# View function logs
+firebase functions:log --only api
+
+# View function metrics
+firebase functions:list
+
+# Check hosting status
+firebase hosting:sites:list
+```
+
+#### Deployment Scripts
+- `npm run deploy` - Full deployment (hosting + functions)
+- `npm run deploy:hosting` - Frontend only
+- `npm run deploy:functions` - Backend only
+
+---
+
+### Option 2: Docker (Self-Hosted)
 
 ```bash
 # Build and deploy all services
@@ -405,7 +490,7 @@ docker-compose logs -f app
 docker-compose up -d --scale app=3
 ```
 
-### Option 2: Manual Deployment
+### Option 3: Manual Deployment
 
 ```bash
 # 1. Setup PostgreSQL & Redis
@@ -421,9 +506,10 @@ npm start
 ```
 
 ### Hosting Recommendations
+- **Full-Stack (Firebase)**: Firebase Hosting + Functions (Recommended)
 - **App**: Railway, Render, Fly.io, AWS ECS
-- **Database**: Neon, Supabase, Railway Postgres
-- **Redis**: Upstash, Railway Redis
+- **Database**: Neon, Supabase, Railway Postgres, Cloud SQL
+- **Redis**: Upstash, Railway Redis, Cloud Memorystore
 - **AI Agents**: Separate container on Railway or Render
 
 ---

@@ -258,6 +258,11 @@ async function handleRevenueCatPurchase(event: RevenueCatEvent): Promise<void> {
   // Map product ID to billing cycle
   const billingCycle = product_id?.includes('yearly') ? 'yearly' : 'monthly';
 
+  // Calculate expiration date (fallback to 1 month if not provided)
+  const expiresAt = expiration_at_ms
+    ? new Date(expiration_at_ms)
+    : new Date(Date.now() + (billingCycle === 'yearly' ? 365 : 30) * 24 * 60 * 60 * 1000);
+
   await db.transaction(async (tx) => {
     // Deactivate any existing active subscriptions
     await tx.execute(sql`
@@ -276,13 +281,13 @@ async function handleRevenueCatPurchase(event: RevenueCatEvent): Promise<void> {
         ${billingCycle},
         ${product_id},
         'active',
-        ${new Date(expiration_at_ms).toISOString()},
+        ${expiresAt.toISOString()},
         true
       )
       ON CONFLICT (user_id, revenuecat_product_id)
       DO UPDATE SET
         status = 'active',
-        expires_at = ${new Date(expiration_at_ms).toISOString()},
+        expires_at = ${expiresAt.toISOString()},
         auto_renew = true,
         updated_at = now()
     `);
@@ -429,31 +434,31 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   }
 
   const status = subscription.status;
-  const currentPeriodEnd = new Date(subscription.current_period_end * 1000);
-  const cancelAtPeriodEnd = subscription.cancel_at_period_end;
+  const currentPeriodEnd = new Date(((subscription as any).current_period_end as number) * 1000);
+  const cancelAtPeriodEnd = (subscription as any).cancel_at_period_end;
 
   console.log(`✅ Subscription updated for user ${userId}: ${status}`);
 
-  await db.transaction(async (tx) => {
-    // Map Stripe status to our status
-    let dbStatus: string;
-    switch (status) {
-      case "active":
-      case "trialing":
-        dbStatus = cancelAtPeriodEnd ? "cancelled" : "active";
-        break;
-      case "past_due":
-      case "unpaid":
-        dbStatus = "past_due";
-        break;
-      case "canceled":
-      case "incomplete_expired":
-        dbStatus = "cancelled";
-        break;
-      default:
-        dbStatus = "active";
-    }
+  // Map Stripe status to our status
+  let dbStatus: string;
+  switch (status) {
+    case "active":
+    case "trialing":
+      dbStatus = cancelAtPeriodEnd ? "cancelled" : "active";
+      break;
+    case "past_due":
+    case "unpaid":
+      dbStatus = "past_due";
+      break;
+    case "canceled":
+    case "incomplete_expired":
+      dbStatus = "cancelled";
+      break;
+    default:
+      dbStatus = "active";
+  }
 
+  await db.transaction(async (tx) => {
     // Update subscription
     await tx.execute(sql`
       UPDATE user_subscriptions
@@ -516,13 +521,14 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
  * Handle successful invoice payment
  */
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
-  const subscriptionId = invoice.subscription as string;
+  const subscriptionId = ((invoice as any).subscription as string | Stripe.Subscription | null);
+  const subscriptionIdStr = typeof subscriptionId === 'string' ? subscriptionId : subscriptionId?.id;
 
-  if (!subscriptionId) {
+  if (!subscriptionIdStr) {
     return; // Not a subscription invoice
   }
 
-  console.log(`✅ Invoice paid for subscription ${subscriptionId}`);
+  console.log(`✅ Invoice paid for subscription ${subscriptionIdStr}`);
 
   // Extend subscription expiry date
   const periodEnd = new Date((invoice.lines.data[0]?.period?.end || 0) * 1000);
@@ -532,32 +538,33 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
     SET expires_at = ${periodEnd.toISOString()},
         status = 'active',
         updated_at = now()
-    WHERE stripe_subscription_id = ${subscriptionId}
+    WHERE stripe_subscription_id = ${subscriptionIdStr}
   `);
 
-  console.log(`✅ Subscription ${subscriptionId} renewed until ${periodEnd.toISOString()}`);
+  console.log(`✅ Subscription ${subscriptionIdStr} renewed until ${periodEnd.toISOString()}`);
 }
 
 /**
  * Handle failed invoice payment
  */
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
-  const subscriptionId = invoice.subscription as string;
+  const subscriptionId = ((invoice as any).subscription as string | Stripe.Subscription | null);
+  const subscriptionIdStr = typeof subscriptionId === 'string' ? subscriptionId : subscriptionId?.id;
 
-  if (!subscriptionId) {
+  if (!subscriptionIdStr) {
     return; // Not a subscription invoice
   }
 
-  console.log(`⚠️  Payment failed for subscription ${subscriptionId}`);
+  console.log(`⚠️  Payment failed for subscription ${subscriptionIdStr}`);
 
   // Mark subscription as past_due
   await db.execute(sql`
     UPDATE user_subscriptions
     SET status = 'past_due',
         updated_at = now()
-    WHERE stripe_subscription_id = ${subscriptionId}
+    WHERE stripe_subscription_id = ${subscriptionIdStr}
   `);
 
   // TODO: Send email notification to user about failed payment
-  console.log(`⚠️  Subscription ${subscriptionId} marked as past_due`);
+  console.log(`⚠️  Subscription ${subscriptionIdStr} marked as past_due`);
 }

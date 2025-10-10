@@ -127,7 +127,8 @@ export class MemStorage implements IStorage {
   private userAnalytics: Map<number, UserAnalytics>;
   private processingJobs: Map<number, ProcessingJob>;
   private userActivity: Map<number, UserActivity>;
-  
+  private automationJobs: Map<number, AutomationJob>;
+
   private nextTrendId = 1;
   private nextContentId = 1;
   private nextAnalysisId = 1;
@@ -135,6 +136,7 @@ export class MemStorage implements IStorage {
   private nextUserAnalyticsId = 1;
   private nextJobId = 1;
   private nextActivityId = 1;
+  private nextAutomationJobId = 1;
 
   constructor() {
     this.users = new Map();
@@ -147,6 +149,7 @@ export class MemStorage implements IStorage {
     this.userAnalytics = new Map();
     this.processingJobs = new Map();
     this.userActivity = new Map();
+    this.automationJobs = new Map();
   }
 
   // User methods
@@ -162,7 +165,7 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
-    const user: User = { ...insertUser, id, createdAt: new Date() };
+    const user: User = { ...insertUser, id, role: 'user', createdAt: new Date() };
     this.users.set(id, user);
     return user;
   }
@@ -175,6 +178,9 @@ export class MemStorage implements IStorage {
       id,
       sound: insertTrend.sound ?? null,
       thumbnailUrl: insertTrend.thumbnailUrl ?? null,
+      targetAudience: insertTrend.targetAudience ?? null,
+      contentStyle: insertTrend.contentStyle ?? null,
+      targetNiche: insertTrend.targetNiche ?? null,
       createdAt: new Date(),
     };
     this.trends.set(id, trend);
@@ -483,6 +489,36 @@ export class MemStorage implements IStorage {
       .filter(ut => ut.userId === userId);
   }
 
+  // User preferences methods
+  private userPreferences: Map<string, UserPreferences> = new Map();
+
+  async saveUserPreferences(userId: string, prefs: InsertUserPreferences): Promise<UserPreferences> {
+    const preferences: UserPreferences = {
+      ...prefs,
+      id: Math.floor(Math.random() * 10000),
+      userId,
+      niche: prefs.niche, // Required field, no default
+      targetAudience: prefs.targetAudience ?? 'gen-z',
+      contentStyle: prefs.contentStyle ?? 'entertainment',
+      bestPerformingPlatforms: prefs.bestPerformingPlatforms ?? ['tiktok'],
+      preferredCategories: prefs.preferredCategories ?? [],
+      bio: prefs.bio ?? '',
+      preferredContentLength: prefs.preferredContentLength ?? 'short',
+      optimizedPostTimes: prefs.optimizedPostTimes ?? ['18:00', '21:00'],
+      goals: prefs.goals ?? 'grow_followers',
+      avgSuccessfulEngagement: prefs.avgSuccessfulEngagement ?? 0.05,
+      successfulHashtags: prefs.successfulHashtags ?? [],
+      createdAt: new Date(),
+      lastUpdated: new Date(),
+    };
+    this.userPreferences.set(userId, preferences);
+    return preferences;
+  }
+
+  async getUserPreferences(userId: string): Promise<UserPreferences | null> {
+    return this.userPreferences.get(userId) ?? null;
+  }
+
   // Viral analysis methods
   private viralAnalyses: Map<number, ViralAnalysis> = new Map();
   private nextViralAnalysisId = 1;
@@ -550,5 +586,24 @@ export class MemStorage implements IStorage {
   async getProcessingJobsByStatus(status: string): Promise<ProcessingJob[]> {
     return Array.from(this.processingJobs.values())
       .filter(job => job.status === status);
+  }
+
+  // Automation job methods
+  async createAutomationJob(insertJob: InsertAutomationJob): Promise<AutomationJob> {
+    const id = this.nextAutomationJobId++;
+    const job: AutomationJob = {
+      ...insertJob,
+      id,
+      status: insertJob.status ?? 'pending',
+      error: insertJob.error ?? null,
+      metadata: insertJob.metadata ?? null,
+      recordsCreated: insertJob.recordsCreated ?? 0,
+      startedAt: insertJob.startedAt ?? null,
+      completedAt: insertJob.completedAt ?? null,
+      costUsd: insertJob.costUsd ?? 0,
+      createdAt: new Date(),
+    };
+    this.automationJobs.set(id, job);
+    return job;
   }
 }

@@ -131,7 +131,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           await revenueCat.loginUser(data.user.id);
           // Sync RevenueCat subscription with backend
-          await revenueCat.syncSubscriptionWithBackend(data.token);
+          await revenueCat.syncSubscriptionWithBackend();
         } catch (error) {
           console.error('[AuthContext] RevenueCat login/sync failed:', error);
         }
@@ -188,7 +188,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           await revenueCat.loginUser(data.user.id);
           // Sync RevenueCat subscription with backend
-          await revenueCat.syncSubscriptionWithBackend(data.token);
+          await revenueCat.syncSubscriptionWithBackend();
         } catch (error) {
           console.error('[AuthContext] RevenueCat login/sync failed:', error);
         }

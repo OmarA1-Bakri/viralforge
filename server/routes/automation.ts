@@ -221,7 +221,6 @@ export function registerAutomationRoutes(app: Express) {
       }
 
       // Enqueue job based on type with circuit breaker for Redis failures
-      let job;
       const jobData = { userId };
       const jobOptions = {
         jobId: `${jobType}-${userId}-${randomUUID()}`, // UUID prevents collisions
@@ -230,6 +229,7 @@ export function registerAutomationRoutes(app: Express) {
       };
 
       try {
+        let job;
         switch (jobType) {
           case 'trend_discovery':
             job = await trendDiscoveryQueue.add('discover-trends', jobData, jobOptions);
@@ -240,6 +240,9 @@ export function registerAutomationRoutes(app: Express) {
           case 'video_processing':
             job = await videoProcessingQueue.add('process-video', jobData, jobOptions);
             break;
+          default:
+            // This should never happen due to validation above, but TypeScript needs it
+            throw new Error(`Invalid job type: ${jobType}`);
         }
 
         logger.info({ userId, jobType, jobId: job.id }, 'Manual job triggered');

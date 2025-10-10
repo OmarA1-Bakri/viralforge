@@ -131,6 +131,7 @@ export interface ContentAnalysisResult {
     gaps: string[];
     opportunities: string[];
   };
+  analysis?: string; // Raw analysis text for viral pattern service
 }
 
 export interface VideoClipSuggestion {

@@ -9,8 +9,8 @@ discover_youtube_trends:
     STEP-BY-STEP PROCESS:
     1. Use YoutubeChannelSearchTool to identify the top 5-10 channels in each niche
        based on subscriber count, recent view performance, and upload consistency
-    2. For each top channel, use YoutubeVideoSearchTool to analyze their last 10 videos
-       that achieved 500K+ views, extracting:
+    2. For each top channel, use YoutubeVideoSearchTool to analyze 10 videos spread across
+       the last 6-12 months (not just recent uploads), extracting:
        - Hook patterns (first 8 seconds): What grabs attention immediately
        - Title formulas: Structure, keywords, emotional triggers, curiosity gaps
        - Thumbnail elements: Visual patterns, faces, text overlays, contrast
@@ -28,8 +28,9 @@ discover_youtube_trends:
     - Cross-reference at least 3 patterns from viral_patterns.md knowledge base
 
     Use the YouTube RAG tools to perform semantic searches within video transcripts
-    and channel content. Focus on patterns that are currently trending (last 30-90 days)
-    but not yet saturated.
+    and channel content. Focus on patterns that have proven successful over the last
+    6-12 months (not just recent weeks) to ensure diverse, time-tested insights rather
+    than only chasing short-term trends.
   expected_output: >
     Comprehensive YouTube Trend Analysis Report containing:
 

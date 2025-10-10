@@ -129,13 +129,11 @@ export function validateUserPreferences(prefs: Partial<UserPreferences>): void {
   }
 
   // Validate other string fields
-  const stringFields = [
-    'niche',
-    'targetAudience',
-    'contentStyle',
-    'platformFocus',
-    'contentGoals'
-  ] as const;
+  const stringFields: Array<keyof Partial<UserPreferences>> = [
+    'bio',
+    'preferredContentLength',
+    'goals'
+  ];
 
   for (const field of stringFields) {
     const value = prefs[field];

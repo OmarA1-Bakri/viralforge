@@ -1,4 +1,4 @@
-import cron from 'node-cron';
+import cron, { ScheduledTask } from 'node-cron';
 import { db } from '../db';
 import { userAutomationSettings } from '@shared/schema';
 import { eq } from 'drizzle-orm';
@@ -10,7 +10,7 @@ import { trendDiscoveryQueue, contentScoringQueue, videoProcessingQueue } from '
  * Runs every hour at :00 minutes
  */
 export class AutomationScheduler {
-  private cronJob: cron.ScheduledTask | null = null;
+  private cronJob: ScheduledTask | null = null;
 
   /**
    * Calculate if interval duration has elapsed since last run

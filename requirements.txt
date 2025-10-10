@@ -5,6 +5,17 @@ fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
 httpx>=0.27.2
 
+# AI Model Dependencies - Google Gemini
+langchain-google-genai>=2.0.10
+google-generativeai>=0.8.0
+
+# Embeddings for YouTube RAG Tools
+langchain-mistralai>=0.2.0  # Mistral embeddings (prioritized)
+# Google embeddings (fallback) already included in langchain-google-genai
+
+# Vector Database for YouTube RAG Tools (IMPORTANT: full package, not chromadb-client)
+chromadb>=0.4.22  # Required by CrewAI YouTube tools (use specific version to avoid conflicts)
+
 # Core Dependencies
 python-dotenv>=1.0.0
 asyncio>=3.4.3

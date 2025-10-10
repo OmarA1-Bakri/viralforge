@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Sparkles, Bookmark, Shuffle, Heart, MessageCircle, Share, TrendingUp } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, BUTTON_GRADIENT_PRIMARY } from "@/lib/utils";
 
 interface TrendCardProps {
   trend: {
@@ -12,7 +12,7 @@ interface TrendCardProps {
     description: string;
     category: string;
     platform?: string;
-    hotness: "hot" | "rising" | "relevant";
+    hotness: "hot" | "rising" | "neutral" | "falling" | "cold";
     engagement: number;
     timeAgo: string;
     suggestion: string;
@@ -54,9 +54,11 @@ export default function TrendCard({ trend, onSave, onRemix, onNavigate }: TrendC
   };
 
   const hotnessConfig = {
-    hot: { label: "Hot", className: "bg-accent text-accent-foreground shadow-lg shadow-accent/30" },
-    rising: { label: "Rising", className: "bg-primary text-primary-foreground shadow-lg shadow-primary/30" },
-    relevant: { label: "For You", className: "bg-gradient-to-r from-primary to-accent text-black shadow-lg shadow-primary/30" }
+    hot: { label: "Hot", className: "text-white shadow-lg", style: { backgroundColor: '#FF073A', boxShadow: '0 10px 15px -3px rgba(255, 7, 58, 0.5)' } },
+    rising: { label: "Rising", className: "bg-red-400 text-white shadow-lg shadow-red-400/30" },
+    neutral: { label: "Neutral", className: "bg-white text-black shadow-lg shadow-white/30" },
+    falling: { label: "Falling", className: "bg-blue-400 text-white shadow-lg shadow-blue-400/30" },
+    cold: { label: "Cold", className: "text-white shadow-lg", style: { backgroundColor: '#B2FFFF', boxShadow: '0 10px 15px -3px rgba(178, 255, 255, 0.5)' } }
   };
 
   const hotness = hotnessConfig[trend.hotness] || hotnessConfig.hot;
@@ -65,7 +67,10 @@ export default function TrendCard({ trend, onSave, onRemix, onNavigate }: TrendC
     <Card className="relative overflow-hidden hover-elevate transition-all duration-300 group border border-border/50 hover:border-primary/30 bg-transparent">
       {/* Hotness indicator */}
       <div className="absolute top-4 right-4 z-10">
-        <Badge className={cn("text-xs font-medium", hotness.className)}>
+        <Badge
+          className={cn("text-xs font-medium", hotness.className)}
+          {...('style' in hotness ? { style: hotness.style } : {})}
+        >
           <TrendingUp className="w-3 h-3 mr-1" />
           {hotness.label}
         </Badge>
@@ -200,7 +205,7 @@ export default function TrendCard({ trend, onSave, onRemix, onNavigate }: TrendC
             <Button
               size="sm"
               onClick={handleRemix}
-              className="gap-1 text-xs h-7 px-3 bg-gradient-to-r from-primary to-accent text-black hover:shadow-lg hover:shadow-primary/20"
+              className={cn("gap-1 text-xs h-6 px-2", BUTTON_GRADIENT_PRIMARY)}
               data-testid={`button-remix-${trend.id}`}
             >
               <Shuffle className="w-3 h-3" />

@@ -19,7 +19,7 @@ export class ViralPatternService {
         logger.info({ trendId }, 'Returning cached viral analysis');
 
         // Track cache hit for monitoring
-        await aiTracer.traceCacheHit('viral_pattern', null, { trendId });
+        await aiTracer.traceCacheHit('viral_pattern', undefined, { trendId });
 
         return existingAnalysis;
       }
@@ -44,10 +44,11 @@ export class ViralPatternService {
       thumbnailUrl: trend.thumbnailUrl || undefined,
       platform: trend.platform,
       roastMode: false
-    }, null); // No userId needed for trend analysis
+    }, undefined); // No userId needed for trend analysis
 
     // Parse the response to extract structured data
-    const parsedAnalysis = this.parseAnalysisResponse(response.analysis, trend);
+    const analysisText = response.analysis || response.feedback.overall || 'No analysis available';
+    const parsedAnalysis = this.parseAnalysisResponse(analysisText, trend);
 
     // Calculate expiration (7 days from now)
     const expiresAt = new Date();
@@ -109,7 +110,7 @@ export class ViralPatternService {
       trendId,
       analysisId: analysis.id,
       userContentConcept: userContentConcept || null,
-      personalizedAdvice: response.analysis
+      personalizedAdvice: response.analysis || response.feedback.overall || 'No personalized advice available'
     });
 
     logger.info({ userId, trendId, applicationId: application.id }, 'Personalized advice generated');

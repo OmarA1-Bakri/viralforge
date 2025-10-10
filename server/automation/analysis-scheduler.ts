@@ -1,4 +1,4 @@
-import cron from 'node-cron';
+import cron, { ScheduledTask } from 'node-cron';
 import { db } from '../db';
 import { analysisSchedules, creatorProfiles } from '@shared/schema';
 import { sql, lte, eq, and } from 'drizzle-orm';
@@ -12,7 +12,7 @@ import { logger } from '../lib/logger';
  * Processes analysis_schedules table where next_run_at has passed
  */
 export class AnalysisScheduler {
-  private cronJob: cron.ScheduledTask | null = null;
+  private cronJob: ScheduledTask | null = null;
   private isProcessing = false;
 
   /**

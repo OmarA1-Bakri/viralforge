@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { cn, BUTTON_GRADIENT_PRIMARY } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -414,6 +415,7 @@ export default function MultiplierProcessor() {
                 <Button
                   onClick={handleProcess}
                   disabled={!isValidYouTubeUrl(youtubeUrl)}
+                  className={cn(BUTTON_GRADIENT_PRIMARY)}
                   data-testid="button-process"
                 >
                   <Scissors className="w-4 h-4 mr-2" />
@@ -458,7 +460,7 @@ export default function MultiplierProcessor() {
                   <Button
                     onClick={handleProcess}
                     disabled={!videoFile || isUploading}
-                    className="w-full"
+                    className={cn("w-full", BUTTON_GRADIENT_PRIMARY)}
                     data-testid="button-process"
                   >
                     <Scissors className="w-4 h-4 mr-2" />

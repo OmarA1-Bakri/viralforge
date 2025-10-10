@@ -7,33 +7,73 @@ for semantic search within YouTube videos and channels.
 
 import os
 import logging
-from typing import Optional, Dict, Any
+from typing import Dict, Any, Tuple, Union
 
 try:
     from crewai_tools import YoutubeVideoSearchTool, YoutubeChannelSearchTool
+    from langchain_mistralai import MistralAIEmbeddings
+    from langchain_google_genai import GoogleGenerativeAIEmbeddings
 except ImportError as e:
     raise ImportError(
-        "CrewAI YouTube tools not available. Install with: pip install 'crewai[tools]'"
+        "CrewAI YouTube tools not available. "
+        "Install with: pip install 'crewai[tools]' "
+        "langchain-mistralai langchain-google-genai"
     ) from e
 
 logger = logging.getLogger(__name__)
+
+
+def _get_embeddings() -> Tuple[Union[MistralAIEmbeddings, GoogleGenerativeAIEmbeddings], str]:
+    """
+    Get embeddings for YouTube RAG tools (Mistral preferred, Google as fallback).
+
+    Mistral is prioritized due to performance. Falls back to Google if Mistral key not available.
+
+    Returns:
+        Tuple of (embeddings_instance, provider_name)
+
+    Raises:
+        EnvironmentError: If no API keys are available
+    """
+    # Try Mistral first (prioritized)
+    mistral_key = os.getenv("MISTRAL_API_KEY")
+    if mistral_key:
+        logger.info("Using Mistral embeddings")
+        return MistralAIEmbeddings(
+            model="mistral-embed",
+            mistral_api_key=mistral_key
+        ), "mistral"
+
+    # Fallback to Google
+    google_key = os.getenv("GOOGLE_AI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if google_key:
+        logger.info("Using Google embeddings (fallback)")
+        return GoogleGenerativeAIEmbeddings(
+            model="models/embedding-001",
+            google_api_key=google_key
+        ), "google"
+
+    # No keys available
+    raise EnvironmentError(
+        "YouTube RAG tools require either Mistral or Google API key for embeddings."
+        "\n\nOptions (in priority order):"
+        "\n1. Add Mistral key: MISTRAL_API_KEY=your_key_here (https://console.mistral.ai/)"
+        "\n2. Use Google key: GOOGLE_AI_API_KEY=AIza... (https://aistudio.google.com/apikey)"
+        "\n3. Disable YouTube tools: FEATURE_FLAGS__USE_CREWAI_YOUTUBE_TOOLS=false"
+    )
 
 
 def _check_api_keys() -> None:
     """
     Verify that required API keys are set for YouTube RAG tools.
 
-    Raises:
-        EnvironmentError: If required API keys are not set
-    """
-    openai_key = os.getenv("OPENAI_API_KEY") or os.getenv("CHROMA_OPENAI_API_KEY")
+    Prioritizes Mistral, falls back to Google.
 
-    if not openai_key:
-        raise EnvironmentError(
-            "YouTube RAG tools require OpenAI API key for embeddings. "
-            "Set either OPENAI_API_KEY or CHROMA_OPENAI_API_KEY environment variable. "
-            "Get your key from: https://platform.openai.com/api-keys"
-        )
+    Raises:
+        EnvironmentError: If no API keys are available
+    """
+    # Just verify an embedding provider is available
+    _get_embeddings()
 
 
 class YouTubeRAGVideoTool:
@@ -52,10 +92,33 @@ class YouTubeRAGVideoTool:
     """
 
     def __init__(self):
-        """Initialize the YouTube video RAG tool."""
+        """
+        Initialize the YouTube video RAG tool.
+
+        Uses Mistral embeddings (preferred) with Google fallback.
+        """
         _check_api_keys()  # Verify API keys before initialization
-        self.tool = YoutubeVideoSearchTool()
-        logger.info("✅ YouTubeRAGVideoTool initialized")
+
+        # Get embeddings (tries Mistral first, falls back to Google)
+        self.embeddings, self.provider = _get_embeddings()
+
+        # Configure CrewAI embedding model structure
+        if self.provider == "mistral":
+            self.embedding_config = {
+                "embedding_model": {
+                    "provider": "mistral",
+                    "config": {"model": "mistral-embed"}
+                }
+            }
+        else:  # google
+            self.embedding_config = {
+                "embedding_model": {
+                    "provider": "google",
+                    "config": {"model": "models/embedding-001"}
+                }
+            }
+
+        logger.info("✅ YouTubeRAGVideoTool initialized with %s embeddings", self.provider.title())
 
     def search(self, video_url: str, query: str) -> Dict[str, Any]:
         """
@@ -83,16 +146,19 @@ class YouTubeRAGVideoTool:
                 print(result["results"])
         """
         try:
-            logger.info(f"🔍 Searching video: {video_url}")
-            logger.debug(f"Query: {query}")
+            logger.info("🔍 Searching video: %s", video_url)
+            logger.debug("Query: %s", query)
 
-            # Initialize tool with specific video
-            video_tool = YoutubeVideoSearchTool(youtube_video_url=video_url)
+            # Initialize tool with specific video and embeddings config
+            video_tool = YoutubeVideoSearchTool(
+                youtube_video_url=video_url,
+                config=self.embedding_config
+            )
 
             # Perform semantic search
             search_result = video_tool.run(query)
 
-            logger.info(f"✅ Video search completed successfully")
+            logger.info("✅ Video search completed successfully")
 
             return {
                 "success": True,
@@ -103,8 +169,8 @@ class YouTubeRAGVideoTool:
             }
 
         except Exception as e:
-            logger.error(f"❌ YouTube video RAG search failed: {e}")
-            logger.debug(f"Video URL: {video_url}, Query: {query}")
+            logger.error("❌ YouTube video RAG search failed: %s", e)
+            logger.debug("Video URL: %s, Query: %s", video_url, query)
 
             return {
                 "success": False,
@@ -131,10 +197,33 @@ class YouTubeRAGChannelTool:
     """
 
     def __init__(self):
-        """Initialize the YouTube channel RAG tool."""
+        """
+        Initialize the YouTube channel RAG tool.
+
+        Uses Mistral embeddings (preferred) with Google fallback.
+        """
         _check_api_keys()  # Verify API keys before initialization
-        self.tool = YoutubeChannelSearchTool()
-        logger.info("✅ YouTubeRAGChannelTool initialized")
+
+        # Get embeddings (tries Mistral first, falls back to Google)
+        self.embeddings, self.provider = _get_embeddings()
+
+        # Configure CrewAI embedding model structure
+        if self.provider == "mistral":
+            self.embedding_config = {
+                "embedding_model": {
+                    "provider": "mistral",
+                    "config": {"model": "mistral-embed"}
+                }
+            }
+        else:  # google
+            self.embedding_config = {
+                "embedding_model": {
+                    "provider": "google",
+                    "config": {"model": "models/embedding-001"}
+                }
+            }
+
+        logger.info("✅ YouTubeRAGChannelTool initialized with %s embeddings", self.provider.title())
 
     def search(self, channel_handle: str, query: str) -> Dict[str, Any]:
         """
@@ -162,18 +251,19 @@ class YouTubeRAGChannelTool:
                 print(result["results"])
         """
         try:
-            logger.info(f"🔍 Searching channel: {channel_handle}")
-            logger.debug(f"Query: {query}")
+            logger.info("🔍 Searching channel: %s", channel_handle)
+            logger.debug("Query: %s", query)
 
-            # Initialize tool with specific channel
+            # Initialize tool with specific channel and embeddings config
             channel_tool = YoutubeChannelSearchTool(
-                youtube_channel_handle=channel_handle
+                youtube_channel_handle=channel_handle,
+                config=self.embedding_config
             )
 
             # Perform semantic search across channel
             search_result = channel_tool.run(query)
 
-            logger.info(f"✅ Channel search completed successfully")
+            logger.info("✅ Channel search completed successfully")
 
             return {
                 "success": True,
@@ -184,8 +274,8 @@ class YouTubeRAGChannelTool:
             }
 
         except Exception as e:
-            logger.error(f"❌ YouTube channel RAG search failed: {e}")
-            logger.debug(f"Channel: {channel_handle}, Query: {query}")
+            logger.error("❌ YouTube channel RAG search failed: %s", e)
+            logger.debug("Channel: %s, Query: %s", channel_handle, query)
 
             return {
                 "success": False,
@@ -198,19 +288,45 @@ class YouTubeRAGChannelTool:
 
 def get_youtube_rag_tools() -> Dict[str, Any]:
     """
-    Get instances of all YouTube RAG tools.
+    Get configured CrewAI YouTube tools for agent use.
+
+    Note: CrewAI YouTube tools only support specific embedding providers.
+    Uses Google Generative AI embeddings (requires GOOGLE_API_KEY).
 
     Returns:
-        Dictionary mapping tool names to initialized tool instances:
-            - "video": YouTubeRAGVideoTool instance
-            - "channel": YouTubeRAGChannelTool instance
+        Dictionary mapping tool names to CrewAI BaseTool instances:
+            - "video": YoutubeVideoSearchTool configured with embeddings
+            - "channel": YoutubeChannelSearchTool configured with embeddings
 
     Example:
         tools = get_youtube_rag_tools()
-        video_tool = tools["video"]
-        channel_tool = tools["channel"]
+        # Use directly with CrewAI agents
+        agent = Agent(tools=[tools["video"], tools["channel"]])
     """
+    # Verify Google API key is available
+    google_key = os.getenv("GOOGLE_AI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    if not google_key:
+        raise EnvironmentError(
+            "YouTube RAG tools require GOOGLE_API_KEY for embeddings."
+            "\n\nGet your API key from: https://aistudio.google.com/apikey"
+            "\nOr disable YouTube tools: FEATURE_FLAGS__USE_CREWAI_YOUTUBE_TOOLS=false"
+        )
+
+    # CrewAI YouTube tools require EMBEDDINGS_GOOGLE_API_KEY environment variable
+    os.environ["EMBEDDINGS_GOOGLE_API_KEY"] = google_key
+
+    # Configure Google embeddings for CrewAI tools
+    embedding_config = {
+        "embedding_model": {
+            "provider": "google-generativeai",
+            "config": {
+                "model": "models/embedding-001"
+            }
+        }
+    }
+
+    # Return configured CrewAI tools (BaseTool instances)
     return {
-        "video": YouTubeRAGVideoTool(),
-        "channel": YouTubeRAGChannelTool()
+        "video": YoutubeVideoSearchTool(config=embedding_config),
+        "channel": YoutubeChannelSearchTool(config=embedding_config)
     }

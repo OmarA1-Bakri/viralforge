@@ -24,14 +24,14 @@ def run():
         'trend_data': 'Data from trend discovery'
     }
 
-    print("=� Starting ViralForge YouTube Viral Content System")
-    print(f"=� Target niches: {inputs['niches']}")
+    print("🚀 Starting ViralForge YouTube Viral Content System")
+    print(f"🎯 Target niches: {inputs['niches']}")
     print()
 
     try:
         result = ViralForgeCrew().crew().kickoff(inputs=inputs)
         print()
-        print(" ViralForge workflow completed successfully!")
+        print("✅ ViralForge workflow completed successfully!")
         print()
         print("=" * 80)
         print("RESULTS:")
@@ -40,7 +40,9 @@ def run():
         return result
 
     except Exception as e:
-        print(f"L Error running ViralForge crew: {e}")
+        print(f"❌ Error running ViralForge crew: {e}")
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 

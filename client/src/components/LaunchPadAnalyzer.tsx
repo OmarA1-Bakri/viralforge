@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { cn, BUTTON_GRADIENT_PRIMARY } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -476,7 +477,7 @@ export default function LaunchPadAnalyzer() {
             <Button
               onClick={handleAnalyze}
               disabled={isAnalyzing || (!title.trim() && !thumbnailFile)}
-              className="flex-1"
+              className={cn("flex-1", BUTTON_GRADIENT_PRIMARY)}
               data-testid="button-analyze"
             >
               {isAnalyzing ? (

@@ -97,7 +97,7 @@ export function ProfileReviewModal({ open, onOpenChange, onAnalysisComplete }: P
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg w-[95vw] sm:w-full fixed top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%]">
+      <DialogContent className="max-w-lg w-[95vw] sm:w-full max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-primary" />
@@ -111,7 +111,7 @@ export function ProfileReviewModal({ open, onOpenChange, onAnalysisComplete }: P
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="flex-1 overflow-y-auto py-4 space-y-4">
           {/* Input Form - Only show when idle */}
           {analysisStatus === 'idle' && (
             <>
@@ -196,37 +196,38 @@ export function ProfileReviewModal({ open, onOpenChange, onAnalysisComplete }: P
             </div>
           )}
 
-          {/* Action Buttons */}
-          {(analysisStatus === 'idle' || analysisStatus === 'error') && (
-            <div className="flex gap-2 pt-2">
-              <Button
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={startAnalysisMutation.isPending}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleStartAnalysis}
-                disabled={!hasAtLeastOneInput || startAnalysisMutation.isPending}
-                className="flex-1 gap-2"
-              >
-                {startAnalysisMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Starting...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    Start Analysis
-                  </>
-                )}
-              </Button>
-            </div>
-          )}
         </div>
+
+        {/* Action Buttons - Fixed at bottom */}
+        {(analysisStatus === 'idle' || analysisStatus === 'error') && (
+          <div className="flex gap-2 pt-4 border-t">
+            <Button
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={startAnalysisMutation.isPending}
+              className="flex-1"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleStartAnalysis}
+              disabled={!hasAtLeastOneInput || startAnalysisMutation.isPending}
+              className="flex-1 gap-2"
+            >
+              {startAnalysisMutation.isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Starting...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Start Analysis
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

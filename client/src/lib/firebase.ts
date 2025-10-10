@@ -1,6 +1,7 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, FirebaseApp } from 'firebase/app';
 import {
   getAuth,
+  Auth,
   GoogleAuthProvider,
   signInWithPopup,
   signOut as firebaseSignOut,
@@ -22,8 +23,8 @@ import { Capacitor } from '@capacitor/core';
 // For now, OAuth is disabled on native (Android/iOS) - web only
 // See: https://github.com/capawesome-team/capacitor-firebase/tree/main/packages/authentication
 
-let app;
-let auth;
+let app: FirebaseApp | { name: string };
+let auth: Auth | null;
 
 if (Capacitor.isNativePlatform()) {
   // Native platforms: OAuth disabled for now
@@ -43,7 +44,7 @@ if (Capacitor.isNativePlatform()) {
     appId: import.meta.env.VITE_FIREBASE_APP_ID,
   };
   app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
+  auth = getAuth(app as FirebaseApp);
 }
 
 export { auth };
@@ -74,7 +75,7 @@ export async function signInWithYouTube() {
   });
 
   try {
-    const result = await signInWithPopup(auth, provider);
+    const result = await signInWithPopup(auth!, provider);
 
     // Verify CSRF token (state parameter) - Firebase handles this automatically
     // but we verify it was set correctly
@@ -117,6 +118,7 @@ export async function signInWithYouTube() {
  * Sign out from Firebase
  */
 export async function signOut() {
+  if (!auth) throw new Error('Auth not initialized');
   try {
     await firebaseSignOut(auth);
   } catch (error: any) {

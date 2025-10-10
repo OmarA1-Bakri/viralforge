@@ -1,3 +1,6 @@
+# YOU MUST READ THIS FILE FROM BEGINING TO END NO SHORTCUTS NO MISTAKES. IF TONIGHT IS 
+# ANYTHING TO GO BY YOU ARE LUCKY TO BE ON THIS PROJECT. ALWAYS READ THE FILE IN FULL 
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 #### 1. **Test-First Mandate**
@@ -20,7 +23,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 #### 4. **Strict Scope Guard**
 
 * The PRD (or the current ticket) is the single source of truth.
-* Ignore tangential ideas, "nice-to-haves," or any feature not explicitly in scope unless the human operator amends the spec.
+* Ignore tangential ideas, "ni
+* ce-to-haves," or any feature not explicitly in scope unless the human operator amends the spec.
 
 #### 5. **Modular, Microservice-Friendly Output**
 
