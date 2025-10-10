@@ -1,6 +1,7 @@
 import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 import { logger } from '../logger';
+import { enhancedYoutubeService } from '../enhancedYoutubeService';
 
 const youtube = google.youtube('v3');
 
@@ -40,64 +41,86 @@ export class YouTubeService {
   async getChannelAnalytics(accessToken: string, channelId: string) {
     oauth2Client.setCredentials({ access_token: accessToken });
 
-    try {
-      const response = await youtube.channels.list({
-        auth: oauth2Client,
-        part: ['statistics', 'snippet'],
-        id: [channelId],
-      });
+    // Use enhanced service with circuit breaker + quota tracking + retry
+    const result = await enhancedYoutubeService.execute({
+      operation: 'channels.list',
+      quotaCost: 1,
+      fn: async () => {
+        const response = await youtube.channels.list({
+          auth: oauth2Client,
+          part: ['statistics', 'snippet'],
+          id: [channelId],
+        });
 
-      const channel = response.data.items?.[0];
-      
-      if (!channel) {
-        return null;
-      }
+        const channel = response.data.items?.[0];
 
-      return {
-        channelId: channel.id,
-        title: channel.snippet?.title,
-        subscribers: parseInt(channel.statistics?.subscriberCount || '0'),
-        totalViews: parseInt(channel.statistics?.viewCount || '0'),
-        videoCount: parseInt(channel.statistics?.videoCount || '0'),
-      };
-    } catch (error) {
-      logger.error({ error, channelId }, 'Failed to fetch YouTube analytics');
+        if (!channel) {
+          throw new Error(`Channel not found: ${channelId}`);
+        }
+
+        return {
+          channelId: channel.id,
+          title: channel.snippet?.title,
+          subscribers: parseInt(channel.statistics?.subscriberCount || '0'),
+          totalViews: parseInt(channel.statistics?.viewCount || '0'),
+          videoCount: parseInt(channel.statistics?.videoCount || '0'),
+        };
+      },
+    });
+
+    if (!result.success) {
+      logger.error({
+        channelId,
+        errorType: result.error?.type,
+        errorMessage: result.error?.message,
+      }, 'Failed to fetch YouTube analytics');
       return null;
     }
+
+    return result.data;
   }
 
   /**
    * Get trending videos
    */
   async getTrendingVideos(regionCode: string = 'US', categoryId?: string, maxResults: number = 10) {
-    try {
-      const response = await youtube.videos.list({
-        part: ['snippet', 'statistics'],
-        chart: 'mostPopular',
-        regionCode,
-        videoCategoryId: categoryId,
-        maxResults,
-        key: process.env.YOUTUBE_API_KEY,
-      });
+    // Use enhanced service with circuit breaker + quota tracking + retry
+    const result = await enhancedYoutubeService.execute({
+      operation: 'videos.list',
+      quotaCost: 1,
+      fn: async () => {
+        const response = await youtube.videos.list({
+          part: ['snippet', 'statistics'],
+          chart: 'mostPopular',
+          regionCode,
+          videoCategoryId: categoryId,
+          maxResults,
+          key: process.env.YOUTUBE_API_KEY,
+        });
 
-      return response.data.items?.map(video => ({
-        title: video.snippet?.title || '',
-        description: video.snippet?.description || '',
-        category: video.snippet?.categoryId || '',
-        platform: 'youtube',
-        hotness: 'hot' as const,
-        engagement: parseInt(video.statistics?.viewCount || '0'),
-        hashtags: video.snippet?.tags || [],
-        suggestion: `Create content similar to: ${video.snippet?.title}`,
-        timeAgo: this.getTimeAgo(video.snippet?.publishedAt || undefined),
-      })) || [];
-    } catch (error: any) {
+        return response.data.items?.map(video => ({
+          title: video.snippet?.title || '',
+          description: video.snippet?.description || '',
+          category: video.snippet?.categoryId || '',
+          platform: 'youtube',
+          hotness: 'hot' as const,
+          engagement: parseInt(video.statistics?.viewCount || '0'),
+          hashtags: video.snippet?.tags || [],
+          suggestion: `Create content similar to: ${video.snippet?.title}`,
+          timeAgo: this.getTimeAgo(video.snippet?.publishedAt || undefined),
+        })) || [];
+      },
+    });
+
+    if (!result.success) {
       logger.error({
-        errorMessage: error?.message || String(error),
-        errorType: error?.constructor?.name
+        errorType: result.error?.type,
+        errorMessage: result.error?.message,
       }, 'Failed to fetch YouTube trending videos');
       return [];
     }
+
+    return result.data || [];
   }
 
   private getTimeAgo(dateString?: string): string {

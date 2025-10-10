@@ -1,5 +1,6 @@
 // YouTube Data API v3 integration for ViralForgeAI
 import { TrendResult } from "../ai/openrouter.js";
+import { enhancedYoutubeService } from "../lib/enhancedYoutubeService";
 
 export interface YouTubeVideo {
   id: string;
@@ -45,37 +46,48 @@ export class YouTubeService {
       return [];
     }
 
-    try {
-      const url = `${this.baseUrl}/videos?part=snippet,statistics&chart=mostPopular&regionCode=${regionCode}&videoCategoryId=${category}&maxResults=${maxResults}&key=${this.apiKey}`;
-      
-      const response = await fetch(url);
-      const data = await response.json();
+    // Use enhanced service with circuit breaker + quota tracking + retry
+    const result = await enhancedYoutubeService.execute({
+      operation: 'videos.list',
+      quotaCost: 1,
+      fn: async () => {
+        const url = `${this.baseUrl}/videos?part=snippet,statistics&chart=mostPopular&regionCode=${regionCode}&videoCategoryId=${category}&maxResults=${maxResults}&key=${this.apiKey}`;
 
-      if (!response.ok) {
-        throw new Error(`YouTube API error: ${data.error?.message || 'Unknown error'}`);
-      }
+        const response = await fetch(url);
+        const data = await response.json();
 
-      const trends: TrendResult[] = data.items.map((video: any) => ({
-        title: this.generateCreatorTitle(video.snippet.title),
-        description: this.generateCreatorDescription(video.snippet.description),
-        category: this.mapCategoryToCreatorNiche(video.snippet.categoryId),
-        platform: 'youtube',
-        hotness: this.calculateHotness(video.statistics),
-        engagement: parseInt(video.statistics.viewCount) || 0,
-        hashtags: this.extractHashtags(video.snippet.title, video.snippet.description, video.snippet.tags),
-        suggestion: this.generateCreatorSuggestion(video),
-        timeAgo: this.calculateTimeAgo(video.snippet.publishedAt),
-        sound: this.suggestAudioForTrend(video.snippet.title)
-      }));
+        if (!response.ok) {
+          const error: any = new Error(`YouTube API error: ${data.error?.message || 'Unknown error'}`);
+          error.status = response.status;
+          error.response = { status: response.status, data };
+          throw error;
+        }
 
-      console.log(`✅ Converted ${trends.length} YouTube trending videos to creator trends`);
-      return trends;
+        const trends: TrendResult[] = data.items.map((video: any) => ({
+          title: this.generateCreatorTitle(video.snippet.title),
+          description: this.generateCreatorDescription(video.snippet.description),
+          category: this.mapCategoryToCreatorNiche(video.snippet.categoryId),
+          platform: 'youtube',
+          hotness: this.calculateHotness(video.statistics),
+          engagement: parseInt(video.statistics.viewCount) || 0,
+          hashtags: this.extractHashtags(video.snippet.title, video.snippet.description, video.snippet.tags),
+          suggestion: this.generateCreatorSuggestion(video),
+          timeAgo: this.calculateTimeAgo(video.snippet.publishedAt),
+          sound: this.suggestAudioForTrend(video.snippet.title)
+        }));
 
-    } catch (error) {
-      console.error('YouTube API error:', error);
+        return trends;
+      },
+    });
+
+    if (!result.success) {
+      console.error('YouTube API error:', result.error);
       console.log('⚠️ YouTube API failed, will use cached AI system');
       return [];
     }
+
+    console.log(`✅ Converted ${result.data?.length || 0} YouTube trending videos to creator trends`);
+    return result.data || [];
   }
 
   async getChannelAnalytics(channelId: string): Promise<YouTubeAnalytics | null> {
@@ -85,24 +97,68 @@ export class YouTubeService {
     }
 
     try {
-      // Get channel details
-      const channelUrl = `${this.baseUrl}/channels?part=snippet,statistics&id=${channelId}&key=${this.apiKey}`;
-      const channelResponse = await fetch(channelUrl);
-      const channelData = await channelResponse.json();
+      // Get channel details using enhanced service
+      const channelResult = await enhancedYoutubeService.execute({
+        operation: 'channels.list',
+        quotaCost: 1,
+        fn: async () => {
+          const channelUrl = `${this.baseUrl}/channels?part=snippet,statistics&id=${channelId}&key=${this.apiKey}`;
+          const channelResponse = await fetch(channelUrl);
+          const channelData = await channelResponse.json();
 
-      if (!channelResponse.ok || !channelData.items?.length) {
-        throw new Error('Channel not found');
+          if (!channelResponse.ok || !channelData.items?.length) {
+            const error: any = new Error('Channel not found');
+            error.status = channelResponse.status;
+            error.response = { status: channelResponse.status, data: channelData };
+            throw error;
+          }
+
+          return channelData.items[0];
+        },
+      });
+
+      if (!channelResult.success) {
+        console.error('YouTube channel fetch error:', channelResult.error);
+        return null;
       }
 
-      const channel = channelData.items[0];
+      const channel = channelResult.data!;
       const stats = channel.statistics;
 
-      // Get recent videos for performance analysis (fetch more to ensure good temporal distribution)
-      const videosUrl = `${this.baseUrl}/search?part=snippet&channelId=${channelId}&order=date&maxResults=50&key=${this.apiKey}`;
-      const videosResponse = await fetch(videosUrl);
-      const videosData = await videosResponse.json();
+      // Get recent videos for performance analysis using enhanced service (EXPENSIVE: 100 quota units)
+      const videosResult = await enhancedYoutubeService.execute({
+        operation: 'search.list',
+        quotaCost: 100, // WARNING: search.list is very expensive!
+        fn: async () => {
+          const videosUrl = `${this.baseUrl}/search?part=snippet&channelId=${channelId}&order=date&maxResults=50&key=${this.apiKey}`;
+          const videosResponse = await fetch(videosUrl);
+          const videosData = await videosResponse.json();
 
-      const allVideos: YouTubeVideo[] = videosData.items?.map((item: any) => ({
+          if (!videosResponse.ok) {
+            const error: any = new Error(`YouTube search error: ${videosData.error?.message || 'Unknown error'}`);
+            error.status = videosResponse.status;
+            error.response = { status: videosResponse.status, data: videosData };
+            throw error;
+          }
+
+          return videosData.items || [];
+        },
+      });
+
+      if (!videosResult.success) {
+        console.error('YouTube videos fetch error:', videosResult.error);
+        // Return channel analytics without video data if search fails
+        return {
+          channelId,
+          totalViews: parseInt(stats.viewCount) || 0,
+          subscriberCount: parseInt(stats.subscriberCount) || 0,
+          videoCount: parseInt(stats.videoCount) || 0,
+          averageViewsPerVideo: Math.floor((parseInt(stats.viewCount) || 0) / (parseInt(stats.videoCount) || 1)),
+          topPerformingVideos: []
+        };
+      }
+
+      const allVideos: YouTubeVideo[] = videosResult.data!.map((item: any) => ({
         id: item.id.videoId,
         title: item.snippet.title,
         description: item.snippet.description,
@@ -111,7 +167,7 @@ export class YouTubeService {
         thumbnails: item.snippet.thumbnails,
         statistics: { viewCount: '0', likeCount: '0', commentCount: '0' }, // Would need separate API call
         tags: []
-      })) || [];
+      }));
 
       // Select 1 video per week for better temporal distribution
       const videosByWeek = new Map<string, YouTubeVideo>();

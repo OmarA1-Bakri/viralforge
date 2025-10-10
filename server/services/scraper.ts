@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { logger } from '../lib/logger';
 import { env } from '../config/env';
+import { enhancedYoutubeService } from '../lib/enhancedYoutubeService';
 
 /**
  * Social Media Scraping Service
@@ -37,8 +38,6 @@ export class SocialMediaScraperService {
   private readonly crewAgentUrl: string;
   private readonly youtubeApiKey: string;
   private readonly httpTimeout = 30000; // 30 second timeout for HTTP requests
-  private readonly maxRetries = 3; // Maximum retry attempts for failed requests
-  private readonly retryDelay = 1000; // Initial retry delay in ms (exponential backoff)
 
   constructor() {
     this.crewAgentUrl = env.CREW_AGENT_URL;
@@ -49,29 +48,7 @@ export class SocialMediaScraperService {
     }
   }
 
-  /**
-   * Retry helper with exponential backoff
-   */
-  private async retryWithBackoff<T>(
-    fn: () => Promise<T>,
-    context: string,
-    attempt = 1
-  ): Promise<T> {
-    try {
-      return await fn();
-    } catch (error: any) {
-      if (attempt >= this.maxRetries) {
-        logger.error({ error, context, attempts: attempt }, 'Max retries reached');
-        throw error;
-      }
 
-      const delay = this.retryDelay * Math.pow(2, attempt - 1); // Exponential backoff
-      logger.warn({ error, context, attempt, nextRetryIn: delay }, 'Retrying after error');
-
-      await new Promise(resolve => setTimeout(resolve, delay));
-      return this.retryWithBackoff(fn, context, attempt + 1);
-    }
-  }
 
   /**
    * Scrape top posts from all available platforms
@@ -81,47 +58,38 @@ export class SocialMediaScraperService {
     const results: ScrapedPost[] = [];
     const errors: { platform: string; error: any }[] = [];
 
-    // Try YouTube with retry
+    // Try YouTube (enhanced service handles retries internally)
     if (socialHandles.youtubeChannelId) {
       try {
-        const youtubePosts = await this.retryWithBackoff(
-          () => this.scrapeYouTube(socialHandles.youtubeChannelId!, postsPerPlatform),
-          `YouTube scraping for ${socialHandles.youtubeChannelId}`
-        );
+        const youtubePosts = await this.scrapeYouTube(socialHandles.youtubeChannelId, postsPerPlatform);
         results.push(...youtubePosts);
         logger.info({ count: youtubePosts.length }, 'YouTube scraping successful');
       } catch (error) {
-        logger.warn({ error, channelId: socialHandles.youtubeChannelId }, 'YouTube scraping failed after retries');
+        logger.warn({ error, channelId: socialHandles.youtubeChannelId }, 'YouTube scraping failed');
         errors.push({ platform: 'youtube', error });
       }
     }
 
-    // Try Instagram with retry
+    // Try Instagram
     if (socialHandles.instagramUsername) {
       try {
-        const instagramPosts = await this.retryWithBackoff(
-          () => this.scrapeInstagram(socialHandles.instagramUsername!, postsPerPlatform),
-          `Instagram scraping for @${socialHandles.instagramUsername}`
-        );
+        const instagramPosts = await this.scrapeInstagram(socialHandles.instagramUsername, postsPerPlatform);
         results.push(...instagramPosts);
         logger.info({ count: instagramPosts.length }, 'Instagram scraping successful');
       } catch (error) {
-        logger.warn({ error, username: socialHandles.instagramUsername }, 'Instagram scraping failed after retries');
+        logger.warn({ error, username: socialHandles.instagramUsername }, 'Instagram scraping failed');
         errors.push({ platform: 'instagram', error });
       }
     }
 
-    // Try TikTok with retry
+    // Try TikTok
     if (socialHandles.tiktokUsername) {
       try {
-        const tiktokPosts = await this.retryWithBackoff(
-          () => this.scrapeTikTok(socialHandles.tiktokUsername!, postsPerPlatform),
-          `TikTok scraping for @${socialHandles.tiktokUsername}`
-        );
+        const tiktokPosts = await this.scrapeTikTok(socialHandles.tiktokUsername, postsPerPlatform);
         results.push(...tiktokPosts);
         logger.info({ count: tiktokPosts.length }, 'TikTok scraping successful');
       } catch (error) {
-        logger.warn({ error, username: socialHandles.tiktokUsername }, 'TikTok scraping failed after retries');
+        logger.warn({ error, username: socialHandles.tiktokUsername }, 'TikTok scraping failed');
         errors.push({ platform: 'tiktok', error });
       }
     }
@@ -153,7 +121,7 @@ export class SocialMediaScraperService {
     }
 
     try {
-      // Step 1: Get uploads playlist ID
+      // Step 1: Get uploads playlist ID using enhanced service
       // Detect if input is a handle (@username) or channel ID (UC...)
       const isHandle = channelIdOrHandle.startsWith('@') || !channelIdOrHandle.startsWith('UC');
 
@@ -170,27 +138,53 @@ export class SocialMediaScraperService {
         channelParams.id = channelIdOrHandle;
       }
 
-      const channelResponse = await axios.get('https://www.googleapis.com/youtube/v3/channels', {
-        params: channelParams,
-        timeout: this.httpTimeout,
+      const channelResult = await enhancedYoutubeService.execute({
+        operation: 'channels.list',
+        quotaCost: 1,
+        fn: async () => {
+          const response = await axios.get('https://www.googleapis.com/youtube/v3/channels', {
+            params: channelParams,
+            timeout: this.httpTimeout,
+          });
+          return response.data;
+        },
       });
+
+      if (!channelResult.success || !channelResult.data) {
+        throw new Error(`Failed to fetch channel data: ${channelResult.error?.message || 'Unknown error'}`);
+      }
+
+      const channelResponse = { data: channelResult.data };
 
       const uploadsPlaylistId = channelResponse.data.items?.[0]?.contentDetails?.relatedPlaylists?.uploads;
       if (!uploadsPlaylistId) {
         throw new Error(`Could not find uploads playlist for ${isHandle ? 'handle' : 'channel ID'}: ${channelIdOrHandle}`);
       }
 
-      // Step 2: Get recent videos from uploads playlist
-      const playlistResponse = await axios.get('https://www.googleapis.com/youtube/v3/playlistItems', {
-        params: {
-          key: this.youtubeApiKey,
-          playlistId: uploadsPlaylistId,
-          part: 'snippet',
-          maxResults: limit,
-          order: 'date',
+      // Step 2: Get recent videos from uploads playlist using enhanced service
+      const playlistResult = await enhancedYoutubeService.execute({
+        operation: 'playlistItems.list',
+        quotaCost: 1,
+        fn: async () => {
+          const response = await axios.get('https://www.googleapis.com/youtube/v3/playlistItems', {
+            params: {
+              key: this.youtubeApiKey,
+              playlistId: uploadsPlaylistId,
+              part: 'snippet',
+              maxResults: limit,
+              order: 'date',
+            },
+            timeout: this.httpTimeout,
+          });
+          return response.data;
         },
-        timeout: this.httpTimeout,
       });
+
+      if (!playlistResult.success || !playlistResult.data) {
+        throw new Error(`Failed to fetch playlist items: ${playlistResult.error?.message || 'Unknown error'}`);
+      }
+
+      const playlistResponse = { data: playlistResult.data };
 
       const videoIds = playlistResponse.data.items?.map((item: any) => item.snippet.resourceId.videoId) || [];
 
@@ -198,15 +192,28 @@ export class SocialMediaScraperService {
         return [];
       }
 
-      // Step 3: Get detailed stats for videos
-      const videosResponse = await axios.get('https://www.googleapis.com/youtube/v3/videos', {
-        params: {
-          key: this.youtubeApiKey,
-          id: videoIds.join(','),
-          part: 'snippet,statistics',
+      // Step 3: Get detailed stats for videos using enhanced service
+      const videosResult = await enhancedYoutubeService.execute({
+        operation: 'videos.list',
+        quotaCost: 1,
+        fn: async () => {
+          const response = await axios.get('https://www.googleapis.com/youtube/v3/videos', {
+            params: {
+              key: this.youtubeApiKey,
+              id: videoIds.join(','),
+              part: 'snippet,statistics',
+            },
+            timeout: this.httpTimeout,
+          });
+          return response.data;
         },
-        timeout: this.httpTimeout,
       });
+
+      if (!videosResult.success || !videosResult.data) {
+        throw new Error(`Failed to fetch video details: ${videosResult.error?.message || 'Unknown error'}`);
+      }
+
+      const videosResponse = { data: videosResult.data };
 
       // Transform to our format
       const posts: ScrapedPost[] = videosResponse.data.items?.map((video: any) => ({

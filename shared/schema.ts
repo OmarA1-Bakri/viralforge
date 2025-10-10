@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, serial, integer, timestamp, real, boolean, json, unique } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, serial, integer, timestamp, real, boolean, json, unique, index } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -729,3 +729,94 @@ export type InsertUserSubscription = z.infer<typeof insertUserSubscriptionSchema
 export type InsertUserUsage = z.infer<typeof insertUserUsageSchema>;
 export type InsertUserPreferences = z.infer<typeof insertUserPreferencesSchema>;
 export type InsertAnalysisSchedule = z.infer<typeof insertAnalysisScheduleSchema>;
+
+// ============================================================================
+// YOUTUBE API RESILIENCE TABLES (Added 2025-10-10)
+// ============================================================================
+
+// YouTube API quota tracking (10,000 units/day free tier)
+export const youtubeQuotaUsage = pgTable("youtube_quota_usage", {
+  id: serial("id").primaryKey(),
+  date: text("date").notNull(), // YYYY-MM-DD format
+  operation: text("operation").notNull(), // 'channels.list', 'videos.list', 'playlistItems.list'
+  unitsUsed: integer("units_used").notNull(), // Cost in quota units
+  userId: varchar("user_id").references(() => users.id),
+  endpoint: text("endpoint"), // Full endpoint called
+  success: boolean("success").default(true).notNull(),
+  errorCode: text("error_code"), // '403', '429', '404', etc.
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  // Index for fast quota aggregation by date
+  dateIdx: index("idx_youtube_quota_date").on(table.date),
+  dateSuccessIdx: index("idx_youtube_quota_date_success").on(table.date, table.success),
+}));
+
+// YouTube API performance metrics
+export const youtubeApiMetrics = pgTable("youtube_api_metrics", {
+  id: serial("id").primaryKey(),
+  operation: text("operation").notNull(), // 'getTrendingVideos', 'getChannelAnalytics', 'scrapeYouTube'
+  durationMs: integer("duration_ms").notNull(), // Response time in milliseconds
+  success: boolean("success").notNull(),
+  statusCode: integer("status_code"), // HTTP status code
+  errorType: text("error_type"), // 'quota_exceeded', 'rate_limit', 'network_error', 'timeout'
+  retryCount: integer("retry_count").default(0).notNull(),
+  userId: varchar("user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Circuit breaker state tracking
+export const circuitBreakerStates = pgTable("circuit_breaker_states", {
+  id: serial("id").primaryKey(),
+  service: text("service").notNull().unique(), // 'youtube_api', 'stripe_api', etc.
+  state: text("state").notNull(), // 'CLOSED', 'OPEN', 'HALF_OPEN'
+  failureCount: integer("failure_count").default(0).notNull(),
+  lastFailureAt: timestamp("last_failure_at"),
+  lastSuccessAt: timestamp("last_success_at"),
+  openedAt: timestamp("opened_at"),
+  halfOpenAt: timestamp("half_open_at"),
+  metadata: json("metadata"), // Additional context
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Processed webhook events (for idempotency/replay prevention)
+export const processedWebhookEvents = pgTable("processed_webhook_events", {
+  id: serial("id").primaryKey(),
+  eventId: text("event_id").notNull().unique(), // Stripe event ID, RevenueCat webhook ID, etc.
+  source: text("source").notNull(), // 'stripe', 'revenuecat'
+  eventType: text("event_type").notNull(),
+  processedAt: timestamp("processed_at").defaultNow().notNull(),
+  success: boolean("success").default(true).notNull(),
+  error: text("error"),
+});
+
+// Zod schemas for YouTube API tables
+export const insertYoutubeQuotaUsageSchema = createInsertSchema(youtubeQuotaUsage).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertYoutubeApiMetricsSchema = createInsertSchema(youtubeApiMetrics).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertCircuitBreakerStateSchema = createInsertSchema(circuitBreakerStates).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export const insertProcessedWebhookEventSchema = createInsertSchema(processedWebhookEvents).omit({
+  id: true,
+  processedAt: true,
+});
+
+// Types for YouTube API tables
+export type YoutubeQuotaUsage = typeof youtubeQuotaUsage.$inferSelect;
+export type YoutubeApiMetrics = typeof youtubeApiMetrics.$inferSelect;
+export type CircuitBreakerState = typeof circuitBreakerStates.$inferSelect;
+export type ProcessedWebhookEvent = typeof processedWebhookEvents.$inferSelect;
+
+export type InsertYoutubeQuotaUsage = z.infer<typeof insertYoutubeQuotaUsageSchema>;
+export type InsertYoutubeApiMetrics = z.infer<typeof insertYoutubeApiMetricsSchema>;
+export type InsertCircuitBreakerState = z.infer<typeof insertCircuitBreakerStateSchema>;
+export type InsertProcessedWebhookEvent = z.infer<typeof insertProcessedWebhookEventSchema>;
