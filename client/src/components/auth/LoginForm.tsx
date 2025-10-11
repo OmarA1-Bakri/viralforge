@@ -24,10 +24,9 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 interface LoginFormProps {
   onSwitchToRegister: () => void;
-  onTitleTap?: () => void;
 }
 
-export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onTitleTap }) => {
+export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
   const { login, isLoading } = useAuth();
   const [error, setError] = useState<string>('');
 
@@ -52,11 +51,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister, onTitl
     <div className="flex items-center justify-center min-h-screen p-4" style={{ paddingTop: '72px' }}>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle
-            className="text-2xl font-bold cursor-pointer select-none"
-            onClick={onTitleTap}
-            style={{ userSelect: 'none', WebkitTapHighlightColor: 'transparent' }}
-          >
+          <CardTitle className="text-2xl font-bold">
             Welcome Back
           </CardTitle>
           <CardDescription>

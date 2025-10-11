@@ -38,30 +38,6 @@ router.post('/register', registerLimiter, async (req, res: Response) => {
       });
     }
 
-    // Validate tester tier requirements
-    if (subscriptionTier === 'tester') {
-      if (!email || !fullName) {
-        return res.status(400).json({
-          error: 'Tester tier requires email and full name'
-        });
-      }
-
-      // Email whitelist for approved testers
-      const APPROVED_TESTER_EMAILS = [
-        'omar@viralforgeai.co.uk',
-        'info@viralforgeai.co.uk',
-        // Add more approved tester emails here
-      ];
-
-      if (!APPROVED_TESTER_EMAILS.includes(email.toLowerCase())) {
-        return res.status(403).json({
-          error: 'Tester access requires approval. Please contact info@viralforgeai.co.uk for access.'
-        });
-      }
-
-      console.log(`📋 Approved tester registration: ${email}`);
-    }
-
     console.log(`📝 Registration attempt for: ${username} (tier: ${subscriptionTier})`);
 
     // Register user with subscription tier and optional email/fullName

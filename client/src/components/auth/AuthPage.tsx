@@ -17,15 +17,6 @@ export const AuthPage: React.FC = () => {
   });
   const [selectedPlan, setSelectedPlan] = useState<string>('starter');
 
-  // Tester mode state - persisted in localStorage
-  const [testerModeEnabled, setTesterModeEnabled] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('viralforge_tester_mode') === 'true';
-    } catch {
-      return false;
-    }
-  });
-
   // Save auth step to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('authStep', currentStep);
@@ -47,35 +38,6 @@ export const AuthPage: React.FC = () => {
     setCurrentStep('register');
   };
 
-  // Tap counter for enabling tester mode (7 taps within 3 seconds)
-  const [tapCount, setTapCount] = useState(0);
-  const [lastTapTime, setLastTapTime] = useState(0);
-
-  const handleTesterModeTap = () => {
-    const now = Date.now();
-
-    // Reset counter if more than 3 seconds since last tap
-    if (now - lastTapTime > 3000) {
-      setTapCount(1);
-      console.log('[AuthPage] Tester tap counter reset: 1/7');
-    } else {
-      const newCount = tapCount + 1;
-      setTapCount(newCount);
-      console.log(`[AuthPage] Tester tap counter: ${newCount}/7`);
-
-      // 7 taps enables tester mode
-      if (newCount === 7) {
-        localStorage.setItem('viralforge_tester_mode', 'true');
-        setTesterModeEnabled(true);
-        setTapCount(0);
-        console.log('[AuthPage] 🎉 Tester mode ENABLED!');
-        alert('🎉 Tester mode enabled! You can now select the Tester Crew tier.');
-      }
-    }
-
-    setLastTapTime(now);
-  };
-
   // Clear auth step when component unmounts (user logged in)
   useEffect(() => {
     return () => {
@@ -85,11 +47,11 @@ export const AuthPage: React.FC = () => {
   }, []);
 
   if (currentStep === 'login') {
-    return <LoginForm onSwitchToRegister={switchToRegister} onTitleTap={handleTesterModeTap} />;
+    return <LoginForm onSwitchToRegister={switchToRegister} />;
   }
 
   if (currentStep === 'planSelection') {
-    return <PlanSelection onSelectPlan={handlePlanSelected} onBack={switchToLogin} showTester={testerModeEnabled} />;
+    return <PlanSelection onSelectPlan={handlePlanSelected} onBack={switchToLogin} />;
   }
 
   return <RegisterForm onSwitchToLogin={switchToLogin} selectedPlan={selectedPlan} />;

@@ -10,7 +10,6 @@ import { useToast } from '@/hooks/use-toast';
 interface PlanSelectionProps {
   onSelectPlan: (planId: string) => void;
   onBack?: () => void;
-  showTester?: boolean;
 }
 
 interface SubscriptionTier {
@@ -37,7 +36,7 @@ const PRODUCT_ID_MAP: Record<string, string | null> = {
   studio: PRODUCT_IDS.studio_monthly
 };
 
-export const PlanSelection: React.FC<PlanSelectionProps> = ({ onSelectPlan, onBack, showTester = false }) => {
+export const PlanSelection: React.FC<PlanSelectionProps> = ({ onSelectPlan, onBack }) => {
   const [selectedPlan, setSelectedPlan] = useState<string>('pro');
   const [isPurchasing, setIsPurchasing] = useState(false);
   const { toast } = useToast();
@@ -81,13 +80,8 @@ export const PlanSelection: React.FC<PlanSelectionProps> = ({ onSelectPlan, onBa
     );
   }
 
-  // Filter tiers - exclude tester tier unless query param is present
-  const tiers = (tiersData?.tiers || []).filter(tier => {
-    if (tier.id === 'tester') {
-      return showTester;
-    }
-    return true;
-  });
+  // Filter tiers - exclude tester tier
+  const tiers = (tiersData?.tiers || []).filter(tier => tier.id !== 'tester');
 
   return (
     <div className="flex items-center justify-center min-h-screen p-4 bg-background" style={{ paddingTop: '72px' }}>
