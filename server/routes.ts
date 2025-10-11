@@ -1068,9 +1068,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const options = {
         niches: [
-          'fitness', 'food', 'tech', 'lifestyle', 'comedy', 'education',
-          'gaming', 'fashion', 'travel', 'music', 'dance', 'art',
-          'business', 'motivation', 'beauty', 'pets', 'sports', 'diy'
+          'gaming', 'tech', 'vlogging', 'comedy', 'beauty-fashion',
+          'food', 'fitness', 'education', 'diy', 'commentary'
         ],
         audiences: [
           'gen-z', 'millennials', 'gen-x', 'boomers', 'teens', 'young-adults', 'professionals'
