@@ -18,6 +18,7 @@ import LaunchPadAnalyzer from "@/components/LaunchPadAnalyzer";
 import MultiplierProcessor from "@/components/MultiplierProcessor";
 import LoadingPage from "@/components/LoadingPage";
 import UserPreferences from "@/pages/UserPreferences";
+import PrivacyPolicy from "@/pages/PrivacyPolicy";
 import NotFound from "@/pages/not-found";
 import StatusBarTest from "@/components/StatusBarTest";
 import { ColorSystemTest } from "@/components/ColorSystemTest";
@@ -82,6 +83,9 @@ function Router() {
       </Route>
       <Route path="/test-colors">
         <ColorSystemTest />
+      </Route>
+      <Route path="/privacy-policy">
+        <PrivacyPolicy />
       </Route>
       <Route path="/">
         <ProtectedRoute>
