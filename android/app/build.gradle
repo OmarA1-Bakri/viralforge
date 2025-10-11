@@ -1,4 +1,7 @@
-apply plugin: 'com.android.application'
+plugins {
+    id 'com.android.application'
+    id 'com.google.gms.google-services'
+}
 
 // Load keystore properties
 def keystorePropertiesFile = rootProject.file("keystore.properties")
@@ -8,7 +11,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.viralforge.ai"
+    namespace = "com.viralforge.android"
     compileSdk = rootProject.ext.compileSdkVersion
 
     // Signing configuration
@@ -24,7 +27,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "android.viral.forge"
+        applicationId = "com.viralforge.android"
         minSdkVersion = rootProject.ext.minSdkVersion
         targetSdkVersion = rootProject.ext.targetSdkVersion
         versionCode = 3
@@ -46,7 +49,7 @@ android {
             minifyEnabled = true
             shrinkResources = true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
+            signingConfig = signingConfigs.release
         }
     }
 }
@@ -78,11 +81,4 @@ dependencies {
 
 apply from: 'capacitor.build.gradle'
 
-try {
-    def servicesJSON = file('google-services.json')
-    if (servicesJSON.text) {
-        apply plugin: 'com.google.gms.google-services'
-    }
-} catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
-}
+// Google services plugin is now applied via plugins block at the top

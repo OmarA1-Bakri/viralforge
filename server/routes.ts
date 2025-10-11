@@ -24,7 +24,7 @@ import { checkSubscriptionLimit, trackFeatureUsage } from './middleware/subscrip
 import { logger, logError, logAICall } from './lib/logger';
 import { storageService } from './lib/storage';
 import { uploadImage, uploadVideo } from './middleware/upload';
-import { videoProcessingQueue } from './lib/queue';
+import { videoProcessingQueue, safeQueueAdd, safeQueueGetJob, type VideoProcessingJobData } from './queue/index';
 import { db } from './db';
 import { creatorProfiles, analyzedPosts as analyzedPostsTable, profileAnalysisReports } from '@shared/schema';
 import { eq } from 'drizzle-orm';
@@ -582,14 +582,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'processing'
       });
 
-      // Queue video processing job
-      const job = await videoProcessingQueue.add('process-video', {
+      // ✅ Use type-safe queue helper that handles undefined queues gracefully
+      const jobData: VideoProcessingJobData = {
         userId,
         contentId: videoContent.id,
         videoKey: videoUrl.replace(/^.*\//, ''), // Extract key from URL
         platform: platform || 'youtube',
         videoDuration,
-      });
+      };
+
+      const job = await safeQueueAdd(
+        videoProcessingQueue,
+        'video-processing',
+        'process-video',
+        jobData
+      );
+
+      if (!job) {
+        logger.warn('Video processing queue not available - Redis not configured');
+        return res.status(503).json({
+          error: 'Video processing is temporarily unavailable',
+          message: 'Background job system requires Redis configuration'
+        });
+      }
 
       logger.info({ jobId: job.id, contentId: videoContent.id }, 'Video processing job queued');
 
@@ -710,11 +725,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/jobs/:jobId', authenticateToken, async (req: AuthRequest, res) => {
     try {
       const { jobId } = req.params;
-      
-      const job = await videoProcessingQueue.getJob(jobId);
-      
+
+      // ✅ Use type-safe queue helper that handles undefined queues gracefully
+      const job = await safeQueueGetJob(
+        videoProcessingQueue,
+        'video-processing',
+        jobId
+      );
+
       if (!job) {
-        return res.status(404).json({ error: 'Job not found' });
+        // Could be either queue unavailable or job not found
+        return res.status(503).json({
+          error: 'Job status unavailable',
+          message: 'Either job not found or Redis not configured'
+        });
       }
 
       const state = await job.getState();

@@ -71,13 +71,13 @@ class BackgroundJobService {
       const now = new Date();
       const lastAnalyzed = new Date(profile.lastAnalyzedAt);
 
-      if (tier === 'free') {
-        // Free tier: 1 analysis per month
+      if (tier === 'starter') {
+        // Starter tier: 1 analysis per month
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         if (lastAnalyzed > thirtyDaysAgo) {
           const nextAvailable = new Date(lastAnalyzed.getTime() + 30 * 24 * 60 * 60 * 1000);
           throw new Error(
-            `Free tier allows 1 analysis per month. Next analysis available on ${nextAvailable.toLocaleDateString()}. Upgrade to Pro for weekly analyses.`
+            `Starter tier allows 1 analysis per month. Next analysis available on ${nextAvailable.toLocaleDateString()}. Upgrade to Pro for weekly analyses.`
           );
         }
       } else if (tier === 'pro') {
@@ -126,11 +126,11 @@ class BackgroundJobService {
       logger.error({ error, jobId }, 'Analysis job failed');
     });
 
-    logger.info({ 
-      jobId, 
-      userId, 
+    logger.info({
+      jobId,
+      userId,
       tier,
-      estimatedCost: tier === 'free' ? 0.15 : tier === 'pro' ? 0.30 : 0.45,
+      estimatedCost: tier === 'starter' ? 0.15 : tier === 'pro' ? 0.30 : 0.45,
       postsToAnalyze: tierConfig.postsAnalyzed
     }, 'Created analysis job');
 
@@ -146,44 +146,44 @@ class BackgroundJobService {
 
   /**
    * Get user's subscription tier
-   * Defaults to 'free' if no active subscription found
+   * Defaults to 'starter' if no active subscription found
    */
   private async getUserTier(userId: string): Promise<SubscriptionTier> {
     try {
-      const VALID_TIERS: SubscriptionTier[] = ['free', 'pro', 'creator'];
-      
+      const VALID_TIERS: SubscriptionTier[] = ['starter', 'pro', 'creator', 'studio'];
+
       const subscription = await db.query.userSubscriptions.findFirst({
         where: eq(userSubscriptions.userId, userId),
       });
 
       if (!subscription) {
-        logger.debug({ userId }, 'No subscription found, using free tier');
-        return 'free';
+        logger.debug({ userId }, 'No subscription found, using starter tier');
+        return 'starter';
       }
 
       if (subscription.status !== 'active') {
-        logger.info({ userId, status: subscription.status }, 'Inactive subscription, using free tier');
-        return 'free';
+        logger.info({ userId, status: subscription.status }, 'Inactive subscription, using starter tier');
+        return 'starter';
       }
 
       // Validate and sanitize tier ID
       const normalizedTier = subscription.tierId.trim().toLowerCase();
-      
+
       if (VALID_TIERS.includes(normalizedTier as SubscriptionTier)) {
         return normalizedTier as SubscriptionTier;
       }
-      
+
       // Log suspicious tier IDs for security monitoring
-      logger.warn({ 
-        userId, 
+      logger.warn({
+        userId,
         suspiciousTierId: subscription.tierId,
-        subscriptionId: subscription.id 
-      }, 'Invalid tier ID detected, defaulting to free');
-      
-      return 'free';
+        subscriptionId: subscription.id
+      }, 'Invalid tier ID detected, defaulting to starter');
+
+      return 'starter';
     } catch (error) {
-      logger.error({ error, userId }, 'Failed to get user tier, defaulting to free');
-      return 'free';
+      logger.error({ error, userId }, 'Failed to get user tier, defaulting to starter');
+      return 'starter';
     }
   }
 

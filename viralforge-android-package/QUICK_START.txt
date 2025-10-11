@@ -1,0 +1,57 @@
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ViralForge - Android App
+  Quick Start Guide (1 Minute Install)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📱 INSTALL IN 3 STEPS:
+
+1. ENABLE UNKNOWN SOURCES
+   Settings → Security → Enable "Unknown Sources"
+   (or Settings → Apps → Install Unknown Apps → Enable)
+
+2. OPEN APK FILE
+   Transfer ViralForge.apk to your phone
+   Open it from Downloads folder
+   Tap "Install"
+
+3. CREATE ACCOUNT
+   Open app
+   Tap "Register"
+   Enter username & password
+   Start testing!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️  IMPORTANT:
+- Android will warn about "Unknown Sources" - this is normal
+- Not from Google Play Store - this is a test build
+- Safe to install - official test version
+- Need Android 7.0 or higher
+- Need internet connection
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ WHAT TO TEST:
+□ Registration & Login
+□ Trends feed loads
+□ YouTube channel analysis
+□ App doesn't crash
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🐛 TROUBLESHOOTING:
+
+"App not installed" → Uninstall old version first
+"Unknown Sources" → Check Settings → Apps → Special Access
+Crashes → Restart phone, reinstall, check internet
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📧 REPORT BUGS:
+Include: Phone model, Android version, what you did, error message
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+For detailed instructions, see INSTALLATION_INSTRUCTIONS.md
+
+Version: 1.0 (Build 3) | Oct 10, 2025

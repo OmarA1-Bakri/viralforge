@@ -105,6 +105,8 @@ export async function mobileRequest(
         url,
         headers,
         data: requestData,
+        connectTimeout: 15000, // 15 seconds to establish connection (handles slow networks)
+        readTimeout: 30000, // 30 seconds to receive response (handles cold starts + slow networks)
       });
 
       // Convert CapacitorHttp response to fetch Response

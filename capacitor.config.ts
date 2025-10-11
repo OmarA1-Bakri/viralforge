@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'android.viral.forge',
+  appId: 'com.viralforge.android',
   appName: 'ViralForgeAI',
   webDir: 'dist/public',
   server: {

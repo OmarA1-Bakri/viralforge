@@ -13,13 +13,13 @@ export const SUPPORTED_PLATFORMS = ['tiktok', 'instagram', 'youtube'] as const;
 /**
  * Subscription tiers for profile analysis
  */
-export type SubscriptionTier = 'free' | 'pro' | 'creator';
+export type SubscriptionTier = 'starter' | 'pro' | 'creator' | 'studio';
 
 /**
  * Analysis depth configuration per tier
  */
 export const TIER_LIMITS = {
-  free: {
+  starter: {
     bullets: 3,
     postsAnalyzed: 5,
     monthlyAnalyses: 1,
@@ -33,6 +33,12 @@ export const TIER_LIMITS = {
     bullets: 10, // Deep analysis
     postsAnalyzed: 15,
     dailyAnalyses: 5, // User-controlled, up to 5 per day to prevent abuse
+    autoAnalysis: true,
+  },
+  studio: {
+    bullets: 15, // Maximum depth analysis
+    postsAnalyzed: 20,
+    dailyAnalyses: 10, // Enterprise-level usage
     autoAnalysis: true,
   },
 };
@@ -160,7 +166,7 @@ export class ProfileAnalyzerService {
    */
   async analyzeProfile(
     posts: ScrapedPost[],
-    tier: SubscriptionTier = 'free',
+    tier: SubscriptionTier = 'starter',
     preferences: UserPreferences | null = null
   ): Promise<{
     analyzedPosts: AnalyzedPost[];
@@ -364,7 +370,7 @@ Provide detailed analysis in JSON format:
    */
   private async generateReport(
     analyzedPosts: AnalyzedPost[],
-    tier: SubscriptionTier = 'free',
+    tier: SubscriptionTier = 'starter',
     preferences: UserPreferences | null = null
   ): Promise<ViralScoreReport> {
     // Calculate overall viral score
@@ -470,7 +476,7 @@ Provide detailed analysis in JSON format:
    */
   private async generateAggregatedInsights(
     posts: AnalyzedPost[],
-    tier: SubscriptionTier = 'free',
+    tier: SubscriptionTier = 'starter',
     preferences: UserPreferences | null = null
   ): Promise<{
     overallStrengths: string[];
@@ -488,11 +494,13 @@ Provide detailed analysis in JSON format:
     const bulletCount = tierConfig.bullets;
     
     // Tier-specific analysis depth instructions
-    const depthInstructions = tier === 'free' 
+    const depthInstructions = tier === 'starter'
       ? 'Each bullet must be 1 sentence (max 20 words). Focus on surface-level observations only.'
       : tier === 'pro'
       ? 'Each bullet must be 2-3 sentences (max 50 words). Include specific examples from their posts and concrete action steps.'
-      : 'Each bullet must be 3-5 sentences (max 100 words). Provide strategic reasoning, competitive context, and implementation roadmap for each recommendation.';
+      : tier === 'creator'
+      ? 'Each bullet must be 3-5 sentences (max 100 words). Provide strategic reasoning, competitive context, and implementation roadmap for each recommendation.'
+      : 'Each bullet must be 5-7 sentences (max 150 words). Provide comprehensive strategic analysis, competitive positioning, market trends, detailed implementation plans, and ROI projections for each recommendation.';
 
     // Sanitize and limit viral elements to prevent prompt injection
     const sanitizedPosts = posts.map(p => ({
@@ -602,7 +610,7 @@ Format:
       };
 
       // Limit string field lengths by tier to prevent tier bypass
-      const maxStringLength = tier === 'free' ? 200 : tier === 'pro' ? 400 : 800;
+      const maxStringLength = tier === 'starter' ? 200 : tier === 'pro' ? 400 : tier === 'creator' ? 800 : 1200;
       const truncateString = (str: string | undefined): string => {
         return (str || '').slice(0, maxStringLength);
       };

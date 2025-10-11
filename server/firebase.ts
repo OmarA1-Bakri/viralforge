@@ -67,56 +67,63 @@ app.use((req, res, next) => {
   next();
 });
 
-// Initialize the app (async wrapper)
-(async () => {
-  // Validate environment variables
-  try {
-    // Verify database connection on startup
-    await db.execute(sql`SELECT 1`);
-    logger.info('✅ Database connection verified');
-  } catch (dbError) {
-    logger.error({ dbError }, '❌ Database connection failed');
-    throw dbError;
-  }
+// ✅ CRITICAL FIX: Block all requests until app is fully initialized
+// This middleware MUST be registered BEFORE async initialization starts
+let appReady = false;
+let readyPromise: Promise<void>;
 
+app.use(async (req, res, next) => {
+  if (!appReady) {
+    await readyPromise;
+  }
+  next();
+});
+
+// ✅ CRITICAL FIX: Validate environment and verify database BEFORE registering routes
+// This prevents accepting requests with a broken database connection
+readyPromise = (async () => {
   try {
+    // Step 1: Validate auth environment
     validateAuthEnvironment();
     logger.info('✅ Environment validation passed');
+
+    // Step 2: Verify database connection BEFORE registering routes
+    await db.execute(sql`SELECT 1`);
+    logger.info('✅ Database connection verified');
+
+    // Step 3: Register all routes (now safe - DB is verified)
+    registerRoutes(app);
+
+    // Register schedule routes
+    app.use(scheduleRoutes);
+
+    // Register Sentry error handler BEFORE custom error handler
+    if (process.env.SENTRY_DSN) {
+      Sentry.setupExpressErrorHandler(app);
+    }
+
+    // Custom error handler (runs after Sentry captures the error)
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+
+      logger.error({
+        err,
+        status,
+        url: _req.url,
+        method: _req.method,
+        requestId: _req.id
+      }, 'Express error handler');
+
+      res.status(status).json({ message });
+    });
+
+    appReady = true;
+    logger.info('🔥 Express app initialized for Firebase Functions');
   } catch (error) {
-    logger.error({ error }, '❌ Environment validation failed');
+    logger.error({ error }, '❌ Initialization failed');
     throw error;
   }
-
-  const server = await registerRoutes(app);
-
-  // Register schedule routes
-  app.use(scheduleRoutes);
-
-  // Register Sentry error handler BEFORE custom error handler
-  if (process.env.SENTRY_DSN) {
-    Sentry.setupExpressErrorHandler(app);
-  }
-
-  // Custom error handler (runs after Sentry captures the error)
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    logger.error({
-      err,
-      status,
-      url: _req.url,
-      method: _req.method,
-      requestId: _req.id
-    }, 'Express error handler');
-
-    res.status(status).json({ message });
-  });
-
-  // Firebase Functions doesn't serve static files - that's handled by Firebase Hosting
-  // No need to call serveStatic() here
-
-  logger.info('🔥 Express app initialized for Firebase Functions');
 })();
 
 // Export the Express app for Firebase Functions

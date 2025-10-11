@@ -13,9 +13,13 @@ const getApiBaseUrl = () => {
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
-  // For Capacitor apps on Android emulator, use 10.0.2.2 instead of localhost
-  if (typeof window !== 'undefined' && (window as any).Capacitor?.getPlatform() === 'android') {
+  // For Capacitor apps on Android emulator IN DEVELOPMENT ONLY
+  if (import.meta.env.DEV && typeof window !== 'undefined' && (window as any).Capacitor?.getPlatform() === 'android') {
     return 'http://10.0.2.2:5000';
+  }
+  // Production fallback - fail loudly if VITE_API_BASE_URL not set
+  if (import.meta.env.PROD) {
+    throw new Error('VITE_API_BASE_URL is required in production but not configured');
   }
   // For web deployment, use current origin
   return window.location.origin;

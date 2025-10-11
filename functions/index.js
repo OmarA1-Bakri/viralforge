@@ -1,6 +1,7 @@
 import { onRequest } from 'firebase-functions/v2/https';
 import { setGlobalOptions } from 'firebase-functions/v2/options';
 
+// Deployment version: 2025-10-10-redis-fix-complete
 // Set global options for all functions
 setGlobalOptions({
   region: 'us-central1',
@@ -23,8 +24,16 @@ export const api = onRequest({
   timeoutSeconds: 540,
   minInstances: 1, // Keep at least 1 instance warm to avoid cold starts
   maxInstances: 10,
-  // Set environment variables for production
-  secrets: [],
+  secrets: [
+    'DATABASE_URL',
+    'SESSION_SECRET',
+    'JWT_SECRET',
+    'ENCRYPTION_KEY',
+    'OPENROUTER_API_KEY',
+    'YOUTUBE_API_KEY',
+    'GOOGLE_CLIENT_ID',
+    'CREW_AGENT_URL'
+  ],
 }, async (req, res) => {
   try {
     // Dynamically import the Express app (copied during deployment)

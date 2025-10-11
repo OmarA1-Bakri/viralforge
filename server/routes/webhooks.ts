@@ -292,12 +292,7 @@ async function handleRevenueCatPurchase(event: RevenueCatEvent): Promise<void> {
         updated_at = now()
     `);
 
-    // Update user's subscription tier
-    await tx.execute(sql`
-      UPDATE users
-      SET subscription_tier_id = ${tierId}
-      WHERE id = ${app_user_id}
-    `);
+    // User subscription tier is now managed via user_subscriptions table
   });
 
   webhookLogger.success('Subscription updated', { source: 'revenuecat', userId: app_user_id, tierId, billingCycle });
@@ -339,12 +334,7 @@ async function handleRevenueCatExpiration(event: RevenueCatEvent): Promise<void>
       WHERE user_id = ${app_user_id} AND status = 'active'
     `);
 
-    // Downgrade user to starter tier
-    await tx.execute(sql`
-      UPDATE users
-      SET subscription_tier_id = 'starter'
-      WHERE id = ${app_user_id}
-    `);
+    // User subscription status is now managed via user_subscriptions table
   });
 
   webhookLogger.success('User downgraded to starter tier', { source: 'revenuecat', userId: app_user_id, reason: 'expiration' });
@@ -410,12 +400,7 @@ async function handleCheckoutSessionCompleted(session: Stripe.Checkout.Session) 
       VALUES (${userId}, ${tierId}, ${billingCycle}, ${customerId}, ${subscriptionId}, 'active', ${expiresAt.toISOString()}, true)
     `);
 
-    // Update user's subscription tier
-    await tx.execute(sql`
-      UPDATE users
-      SET subscription_tier_id = ${tierId}
-      WHERE id = ${userId}
-    `);
+    // User subscription tier is now managed via user_subscriptions table
   });
 
   console.log(`✅ Subscription created in database for user ${userId}`);
@@ -469,14 +454,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
       WHERE stripe_subscription_id = ${subscription.id}
     `);
 
-    // If subscription is no longer active, downgrade user to free tier
-    if (dbStatus === "cancelled" && !cancelAtPeriodEnd) {
-      await tx.execute(sql`
-        UPDATE users
-        SET subscription_tier_id = 'free'
-        WHERE id = ${userId}
-      `);
-    }
+    // User subscription status is now managed via user_subscriptions table
   });
 
   console.log(`✅ Subscription status updated to ${dbStatus} for user ${userId}`);
@@ -506,15 +484,10 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
       WHERE stripe_subscription_id = ${subscription.id}
     `);
 
-    // Downgrade user to free tier
-    await tx.execute(sql`
-      UPDATE users
-      SET subscription_tier_id = 'free'
-      WHERE id = ${userId}
-    `);
+    // User subscription status is now managed via user_subscriptions table
   });
 
-  console.log(`✅ User ${userId} downgraded to free tier`);
+  console.log(`✅ User ${userId} downgraded to starter tier`);
 }
 
 /**

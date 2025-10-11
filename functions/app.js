@@ -6848,6 +6848,9 @@ try {
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
     credential = admin.credential.cert(serviceAccount);
     logger.info("Using Firebase service account from environment variable");
+  } else if (process.env.FUNCTION_TARGET) {
+    credential = admin.credential.applicationDefault();
+    logger.info("Using Firebase Application Default Credentials (Firebase Functions)");
   } else {
     logger.warn("\u26A0\uFE0F  Using Firebase service account from file - NOT SAFE FOR PRODUCTION");
     const serviceAccountPath = path.resolve(__dirname, "../../firebase-service-account.json");
@@ -8719,27 +8722,155 @@ var uploadMultipleImages = multer({
   fileFilter: imageFilter
 }).array("images", 5);
 
-// server/lib/queue.ts
+// server/queue/index.ts
 init_logger();
 import { Queue, QueueEvents } from "bullmq";
-var connection = process.env.REDIS_URL ? { url: process.env.REDIS_URL } : { host: "localhost", port: 6379 };
-var videoProcessingQueue = new Queue("video-processing", { connection });
-var clipGenerationQueue = new Queue("clip-generation", { connection });
-var thumbnailQueue = new Queue("thumbnail-generation", { connection });
-var videoQueueEvents = new QueueEvents("video-processing", { connection });
-var clipQueueEvents = new QueueEvents("clip-generation", { connection });
-videoQueueEvents.on("completed", ({ jobId }) => {
-  logger.info({ jobId }, "Video processing completed");
+import { Redis } from "ioredis";
+var REDIS_ENABLED = !!(process.env.REDIS_HOST || process.env.REDIS_URL);
+var redisConnection;
+if (REDIS_ENABLED) {
+  redisConnection = new Redis({
+    host: process.env.REDIS_HOST || "localhost",
+    port: parseInt(process.env.REDIS_PORT || "6379"),
+    maxRetriesPerRequest: null,
+    // Required for BullMQ
+    enableReadyCheck: false,
+    retryStrategy: (times) => {
+      if (times > 10) {
+        logger.error("Redis max retries exceeded, giving up");
+        return null;
+      }
+      const delay = Math.min(times * 200, 5e3);
+      logger.warn({ attempt: times, delayMs: delay }, "Redis reconnection attempt");
+      return delay;
+    },
+    reconnectOnError: (err) => {
+      const targetErrors = ["READONLY", "ECONNREFUSED", "ETIMEDOUT"];
+      if (targetErrors.some((e) => err.message.includes(e))) {
+        logger.warn({ error: err.message }, "Redis error, attempting reconnect");
+        return true;
+      }
+      return false;
+    }
+  });
+  redisConnection.on("error", (err) => {
+    logger.error({ err }, "Redis connection error - automation may be degraded");
+  });
+  redisConnection.on("connect", () => {
+    logger.info("\u2705 Redis connected for BullMQ");
+  });
+  redisConnection.on("close", () => {
+    logger.warn("\u26A0\uFE0F  Redis connection closed - automation paused");
+  });
+  redisConnection.on("reconnecting", () => {
+    logger.info("\u{1F504} Redis reconnecting...");
+  });
+  logger.info("\u2705 BullMQ queue system enabled with Redis");
+} else {
+  logger.warn("\u26A0\uFE0F  Redis not configured - background job queues disabled");
+  logger.warn("\u26A0\uFE0F  Set REDIS_HOST or REDIS_URL environment variable to enable automation");
+}
+var queueOptions = void 0;
+if (REDIS_ENABLED && redisConnection) {
+  queueOptions = {
+    connection: redisConnection,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: {
+        type: "exponential",
+        delay: 2e3
+      },
+      removeOnComplete: {
+        age: 24 * 3600,
+        // Keep completed jobs for 24 hours
+        count: 1e3
+      },
+      removeOnFail: {
+        age: 7 * 24 * 3600
+        // Keep failed jobs for 7 days
+      }
+    }
+  };
+}
+var trendDiscoveryQueue = queueOptions ? new Queue("trend-discovery", queueOptions) : void 0;
+var contentScoringQueue = queueOptions ? new Queue("content-scoring", queueOptions) : void 0;
+var videoProcessingQueue = queueOptions ? new Queue("video-processing", queueOptions) : void 0;
+var schedulerQueue = queueOptions ? new Queue("automation-scheduler", queueOptions) : void 0;
+var trendDiscoveryEvents = REDIS_ENABLED && redisConnection ? new QueueEvents("trend-discovery", { connection: redisConnection }) : void 0;
+var contentScoringEvents = REDIS_ENABLED && redisConnection ? new QueueEvents("content-scoring", { connection: redisConnection }) : void 0;
+var videoProcessingEvents = REDIS_ENABLED && redisConnection ? new QueueEvents("video-processing", { connection: redisConnection }) : void 0;
+var schedulerEvents = REDIS_ENABLED && redisConnection ? new QueueEvents("automation-scheduler", { connection: redisConnection }) : void 0;
+if (REDIS_ENABLED) {
+  [trendDiscoveryEvents, contentScoringEvents, videoProcessingEvents, schedulerEvents].forEach((events, index2) => {
+    const queueNames = ["trend-discovery", "content-scoring", "video-processing", "automation-scheduler"];
+    const queueName = queueNames[index2];
+    if (events) {
+      events.on("completed", ({ jobId }) => {
+        logger.info({ jobId, queue: queueName }, "Job completed");
+      });
+      events.on("failed", ({ jobId, failedReason }) => {
+        logger.error({ jobId, queue: queueName, failedReason }, "Job failed");
+      });
+    }
+  });
+}
+process.on("SIGTERM", async () => {
+  logger.info("SIGTERM received, starting graceful shutdown...");
+  if (!REDIS_ENABLED || !redisConnection) {
+    logger.info("\u2705 No Redis connection to close - shutdown complete");
+    return;
+  }
+  try {
+    logger.info("Closing queues (no new jobs)...");
+    const closeTasks = [];
+    if (trendDiscoveryQueue) closeTasks.push(trendDiscoveryQueue.close());
+    if (contentScoringQueue) closeTasks.push(contentScoringQueue.close());
+    if (videoProcessingQueue) closeTasks.push(videoProcessingQueue.close());
+    if (schedulerQueue) closeTasks.push(schedulerQueue.close());
+    if (closeTasks.length > 0) {
+      await Promise.all(closeTasks);
+    }
+    logger.info("Queues closed, waiting for workers to finish...");
+    await redisConnection.quit();
+    logger.info("\u2705 BullMQ graceful shutdown complete");
+  } catch (error) {
+    logger.error({ error }, "Error during graceful shutdown");
+    process.exit(1);
+  }
 });
-videoQueueEvents.on("failed", ({ jobId, failedReason }) => {
-  logger.error({ jobId, failedReason }, "Video processing failed");
+process.on("SIGINT", async () => {
+  logger.info("SIGINT received, forcing shutdown...");
+  if (REDIS_ENABLED && redisConnection) {
+    await redisConnection.quit();
+  }
+  process.exit(0);
 });
-clipQueueEvents.on("completed", ({ jobId }) => {
-  logger.info({ jobId }, "Clip generation completed");
-});
-clipQueueEvents.on("failed", ({ jobId, failedReason }) => {
-  logger.error({ jobId, failedReason }, "Clip generation failed");
-});
+async function safeQueueAdd(queue, queueName, jobName, data, options) {
+  if (!queue) {
+    logger.warn({ queueName, jobName }, "Queue unavailable - Redis not configured");
+    return null;
+  }
+  try {
+    const job = await queue.add(jobName, data, options);
+    logger.info({ queueName, jobName, jobId: job.id }, "Job added to queue");
+    return job;
+  } catch (error) {
+    logger.error({ queueName, jobName, error }, "Failed to add job to queue");
+    return null;
+  }
+}
+async function safeQueueGetJob(queue, queueName, jobId) {
+  if (!queue) {
+    logger.warn({ queueName, jobId }, "Queue unavailable - cannot get job");
+    return null;
+  }
+  try {
+    return await queue.getJob(jobId);
+  } catch (error) {
+    logger.error({ queueName, jobId, error }, "Failed to get job from queue");
+    return null;
+  }
+}
 
 // server/routes.ts
 init_db();
@@ -9180,14 +9311,27 @@ async function registerRoutes(app2) {
           videoUrl,
           status: "processing"
         });
-        const job = await videoProcessingQueue.add("process-video", {
+        const jobData = {
           userId,
           contentId: videoContent.id,
           videoKey: videoUrl.replace(/^.*\//, ""),
           // Extract key from URL
           platform: platform || "youtube",
           videoDuration
-        });
+        };
+        const job = await safeQueueAdd(
+          videoProcessingQueue,
+          "video-processing",
+          "process-video",
+          jobData
+        );
+        if (!job) {
+          logger.warn("Video processing queue not available - Redis not configured");
+          return res.status(503).json({
+            error: "Video processing is temporarily unavailable",
+            message: "Background job system requires Redis configuration"
+          });
+        }
         logger.info({ jobId: job.id, contentId: videoContent.id }, "Video processing job queued");
         res.json({
           success: true,
@@ -9285,9 +9429,16 @@ async function registerRoutes(app2) {
   app2.get("/api/jobs/:jobId", authenticateToken, async (req, res) => {
     try {
       const { jobId } = req.params;
-      const job = await videoProcessingQueue.getJob(jobId);
+      const job = await safeQueueGetJob(
+        videoProcessingQueue,
+        "video-processing",
+        jobId
+      );
       if (!job) {
-        return res.status(404).json({ error: "Job not found" });
+        return res.status(503).json({
+          error: "Job status unavailable",
+          message: "Either job not found or Redis not configured"
+        });
       }
       const state = await job.getState();
       const progress = job.progress;
@@ -10707,39 +10858,43 @@ app.use((req, res, next) => {
   });
   next();
 });
-(async () => {
-  try {
-    await db.execute(sql10`SELECT 1`);
-    logger.info("\u2705 Database connection verified");
-  } catch (dbError) {
-    logger.error({ dbError }, "\u274C Database connection failed");
-    throw dbError;
+var appReady = false;
+var readyPromise;
+app.use(async (req, res, next) => {
+  if (!appReady) {
+    await readyPromise;
   }
+  next();
+});
+readyPromise = (async () => {
   try {
     validateAuthEnvironment();
     logger.info("\u2705 Environment validation passed");
+    await db.execute(sql10`SELECT 1`);
+    logger.info("\u2705 Database connection verified");
+    registerRoutes(app);
+    app.use(schedule_default);
+    if (process.env.SENTRY_DSN) {
+      Sentry.setupExpressErrorHandler(app);
+    }
+    app.use((err, _req, res, _next) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+      logger.error({
+        err,
+        status,
+        url: _req.url,
+        method: _req.method,
+        requestId: _req.id
+      }, "Express error handler");
+      res.status(status).json({ message });
+    });
+    appReady = true;
+    logger.info("\u{1F525} Express app initialized for Firebase Functions");
   } catch (error) {
-    logger.error({ error }, "\u274C Environment validation failed");
+    logger.error({ error }, "\u274C Initialization failed");
     throw error;
   }
-  const server = await registerRoutes(app);
-  app.use(schedule_default);
-  if (process.env.SENTRY_DSN) {
-    Sentry.setupExpressErrorHandler(app);
-  }
-  app.use((err, _req, res, _next) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    logger.error({
-      err,
-      status,
-      url: _req.url,
-      method: _req.method,
-      requestId: _req.id
-    }, "Express error handler");
-    res.status(status).json({ message });
-  });
-  logger.info("\u{1F525} Express app initialized for Firebase Functions");
 })();
 var firebase_default = app;
 export {

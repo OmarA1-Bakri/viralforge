@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 interface PlanSelectionProps {
   onSelectPlan: (planId: string) => void;
   onBack?: () => void;
+  showTester?: boolean;
 }
 
 interface SubscriptionTier {
@@ -36,13 +37,14 @@ const PRODUCT_ID_MAP: Record<string, string | null> = {
   studio: PRODUCT_IDS.studio_monthly
 };
 
-export const PlanSelection: React.FC<PlanSelectionProps> = ({ onSelectPlan, onBack }) => {
-  const [selectedPlan, setSelectedPlan] = useState<string>('starter');
+export const PlanSelection: React.FC<PlanSelectionProps> = ({ onSelectPlan, onBack, showTester = false }) => {
+  const [selectedPlan, setSelectedPlan] = useState<string>('pro');
   const [isPurchasing, setIsPurchasing] = useState(false);
   const { toast } = useToast();
 
   // Fetch tiers from API (same endpoint as settings)
-  const { data: tiersData, isLoading } = useQuery<{ success: boolean; tiers: SubscriptionTier[] }>({
+  // Uses global queryFn from queryClient which handles auth, mobileRequest, and timeouts
+  const { data: tiersData, isLoading, error } = useQuery<{ success: boolean; tiers: SubscriptionTier[] }>({
     queryKey: ['/api/subscriptions/tiers'],
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
@@ -51,48 +53,10 @@ export const PlanSelection: React.FC<PlanSelectionProps> = ({ onSelectPlan, onBa
     return `$${(cents / 100).toFixed(2)}`;
   };
 
-  const handleContinue = async () => {
-    const plan = tiersData?.tiers.find(p => p.id === selectedPlan);
-    if (!plan) return;
-
-    const productId = PRODUCT_ID_MAP[plan.id];
-
-    // Free tier - no purchase needed, just continue to registration
-    if (productId === null) {
-      onSelectPlan(selectedPlan);
-      return;
-    }
-
-    // Paid tier - initiate RevenueCat purchase
-    setIsPurchasing(true);
-    try {
-      const result = await revenueCat.purchasePackage(productId);
-
-      if (result.success) {
-        toast({
-          title: "Purchase successful!",
-          description: `You've subscribed to ${plan.display_name}`,
-        });
-
-        // Continue to registration with the selected plan
-        onSelectPlan(selectedPlan);
-      } else {
-        toast({
-          title: "Purchase failed",
-          description: "Please try again or choose a different plan",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error('[PlanSelection] Purchase error:', error);
-      toast({
-        title: "Purchase error",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
-        variant: "destructive",
-      });
-    } finally {
-      setIsPurchasing(false);
-    }
+  const handleContinue = () => {
+    // ✅ SIMPLIFIED: Just call onSelectPlan immediately
+    // The parent (AuthPage) will handle the plan selection and navigate to registration
+    onSelectPlan(selectedPlan);
   };
 
   if (isLoading) {
@@ -103,15 +67,35 @@ export const PlanSelection: React.FC<PlanSelectionProps> = ({ onSelectPlan, onBa
     );
   }
 
-  const tiers = tiersData?.tiers || [];
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+        <div className="text-center mb-4">
+          <h2 className="text-xl font-semibold mb-2">Unable to Load Plans</h2>
+          <p className="text-muted-foreground">Please check your internet connection and try again.</p>
+        </div>
+        {onBack && (
+          <Button onClick={onBack}>Back to Login</Button>
+        )}
+      </div>
+    );
+  }
+
+  // Filter tiers - exclude tester tier unless query param is present
+  const tiers = (tiersData?.tiers || []).filter(tier => {
+    if (tier.id === 'tester') {
+      return showTester;
+    }
+    return true;
+  });
 
   return (
-    <div className="flex items-center justify-center min-h-screen p-4 bg-background">
+    <div className="flex items-center justify-center min-h-screen p-4 bg-background" style={{ paddingTop: '72px' }}>
       <div className="w-full max-w-4xl">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Choose Your Plan</h1>
+          <h1 className="text-3xl font-bold mb-2">Explore Our Plans</h1>
           <p className="text-muted-foreground">
-            Select the perfect plan for your content creation needs
+            Start free - upgrade anytime to unlock premium features
           </p>
         </div>
 
@@ -193,7 +177,7 @@ export const PlanSelection: React.FC<PlanSelectionProps> = ({ onSelectPlan, onBa
               </>
             ) : (
               <>
-                Continue with {tiers.find(p => p.id === selectedPlan)?.display_name}
+                Start Free Trial
                 <ArrowRight className="ml-2 h-4 w-4" />
               </>
             )}

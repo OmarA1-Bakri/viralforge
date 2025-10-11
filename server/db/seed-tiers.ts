@@ -1,5 +1,6 @@
 import { db } from "../db.js";
 import { subscriptionTiers } from "../../shared/schema.js";
+import { eq } from "drizzle-orm";
 
 const tiers = [
   {
@@ -15,7 +16,7 @@ const tiers = [
       'Basic viral score history',
       'Your content creation intern'
     ],
-    limits: { 
+    limits: {
       videoAnalysis: 5,
       contentGeneration: 10,
       trendBookmarks: 15,
@@ -24,7 +25,7 @@ const tiers = [
       roastMode: false,
       advancedAnalytics: false
     },
-    sortOrder: 1
+    sortOrder: 0
   },
   {
     id: 'creator',
@@ -40,7 +41,7 @@ const tiers = [
       'Your AI content team',
       'Standard email support'
     ],
-    limits: { 
+    limits: {
       videoAnalysis: -1,
       contentGeneration: -1,
       trendBookmarks: -1,
@@ -49,7 +50,7 @@ const tiers = [
       roastMode: false,
       advancedAnalytics: true
     },
-    sortOrder: 2
+    sortOrder: 1
   },
   {
     id: 'pro',
@@ -66,7 +67,7 @@ const tiers = [
       'Roast Mode enabled',
       'Priority support'
     ],
-    limits: { 
+    limits: {
       videoAnalysis: -1,
       contentGeneration: -1,
       trendBookmarks: -1,
@@ -76,7 +77,7 @@ const tiers = [
       advancedAnalytics: true,
       audienceInsights: true
     },
-    sortOrder: 3
+    sortOrder: 2
   },
   {
     id: 'studio',
@@ -93,7 +94,7 @@ const tiers = [
       'API access for programmatic goals',
       'Dedicated account manager'
     ],
-    limits: { 
+    limits: {
       videoAnalysis: -1,
       contentGeneration: -1,
       trendBookmarks: -1,
@@ -105,14 +106,31 @@ const tiers = [
       teamSeats: 3,
       apiAccess: true
     },
-    sortOrder: 4
+    sortOrder: 3
   }
 ];
 
 async function seed() {
   try {
+    // Delete the old "free" tier if it exists
+    await db.delete(subscriptionTiers).where(eq(subscriptionTiers.id, 'free'));
+
     for (const tier of tiers) {
-      await db.insert(subscriptionTiers).values(tier).onConflictDoNothing();
+      await db.insert(subscriptionTiers)
+        .values(tier)
+        .onConflictDoUpdate({
+          target: subscriptionTiers.id,
+          set: {
+            name: tier.name,
+            displayName: tier.displayName,
+            description: tier.description,
+            priceMonthly: tier.priceMonthly,
+            priceYearly: tier.priceYearly,
+            features: tier.features,
+            limits: tier.limits,
+            sortOrder: tier.sortOrder
+          }
+        });
     }
     console.log('✅ Subscription tiers seeded successfully');
     process.exit(0);

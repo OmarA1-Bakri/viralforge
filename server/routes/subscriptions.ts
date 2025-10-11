@@ -46,22 +46,22 @@ export function registerSubscriptionRoutes(app: Express) {
         ) as table_exists
       `);
 
-      // If tables don't exist yet, return free tier
+      // If tables don't exist yet, return starter tier
       if (!tableCheck.rows[0]?.table_exists) {
-        console.log('📋 Subscription tables not yet created, returning free tier');
+        console.log('📋 Subscription tables not yet created, returning starter tier');
         return res.json({
           success: true,
           subscription: {
-            tier_id: 'free',
-            tier_name: 'free',
-            tier_display_name: 'Free',
+            tier_id: 'starter',
+            tier_name: 'starter',
+            tier_display_name: 'Starter Crew',
             status: 'active',
             billing_cycle: 'monthly',
-            features: ['3 video analyses per month', '5 AI-generated content ideas', '10 trend bookmarks'],
+            features: ['5 analyses per month', '10 AI-generated ideas', 'Basic viral score history'],
             limits: {
-              videoAnalysis: 3,
-              contentGeneration: 5,
-              trendBookmarks: 10,
+              videoAnalysis: 5,
+              contentGeneration: 10,
+              trendBookmarks: 15,
               videoClips: 0
             }
           }
@@ -88,26 +88,26 @@ export function registerSubscriptionRoutes(app: Express) {
       `);
 
       if (subscription.rows.length === 0) {
-        // Return free tier as default
-        const freeTier = await db.execute(sql`
-          SELECT * FROM subscription_tiers WHERE name = 'free'
+        // Return starter tier as default
+        const starterTier = await db.execute(sql`
+          SELECT * FROM subscription_tiers WHERE name = 'starter'
         `);
 
-        if (freeTier.rows.length === 0) {
-          // Fallback if free tier not in database
+        if (starterTier.rows.length === 0) {
+          // Fallback if starter tier not in database
           return res.json({
             success: true,
             subscription: {
-              tier_id: 'free',
-              tier_name: 'free',
-              tier_display_name: 'Free',
+              tier_id: 'starter',
+              tier_name: 'starter',
+              tier_display_name: 'Starter Crew',
               status: 'active',
               billing_cycle: 'monthly',
-              features: ['3 video analyses per month', '5 AI-generated content ideas', '10 trend bookmarks'],
+              features: ['5 analyses per month', '10 AI-generated ideas', 'Basic viral score history'],
               limits: {
-                videoAnalysis: 3,
-                contentGeneration: 5,
-                trendBookmarks: 10,
+                videoAnalysis: 5,
+                contentGeneration: 10,
+                trendBookmarks: 15,
                 videoClips: 0
               }
             }
@@ -117,10 +117,10 @@ export function registerSubscriptionRoutes(app: Express) {
         return res.json({
           success: true,
           subscription: {
-            tier_id: 'free',
+            tier_id: 'starter',
             status: 'active',
             billing_cycle: 'monthly',
-            ...freeTier.rows[0]
+            ...starterTier.rows[0]
           }
         });
       }
@@ -258,10 +258,10 @@ export function registerSubscriptionRoutes(app: Express) {
       }
 
       // Only allow paid tiers through Stripe
-      if (tierId === 'free') {
+      if (tierId === 'starter') {
         return res.status(400).json({
           success: false,
-          error: "Free tier does not require checkout"
+          error: "Starter tier does not require checkout"
         });
       }
 
@@ -635,12 +635,7 @@ export function registerRevenueCatSyncRoute(app: Express) {
           `);
         }
 
-        // Update user's subscription tier
-        await tx.execute(sql`
-          UPDATE users
-          SET subscription_tier_id = ${tierId}
-          WHERE id = ${userId}
-        `);
+        // User subscription tier is now managed via user_subscriptions table
       });
 
       console.log(`✅ Synced subscription for user ${userId} to tier ${tierId} (SERVER-VALIDATED)`);

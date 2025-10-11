@@ -50,6 +50,12 @@ export class AutomationScheduler {
     try {
       const now = new Date();
 
+      // ✅ CRITICAL FIX: Check if queues are available before scheduling
+      if (!trendDiscoveryQueue && !contentScoringQueue && !videoProcessingQueue) {
+        logger.warn('All queues unavailable - Redis not configured. Skipping scheduler run.');
+        return;
+      }
+
       // Get only users with at least one automation enabled
       // This filters in database instead of fetching all and filtering in app
       const allSettings = await db
@@ -71,6 +77,12 @@ export class AutomationScheduler {
           settings.trendDiscoveryEnabled &&
           this.shouldRunJob(settings.lastTrendDiscoveryRun, settings.trendDiscoveryInterval, now)
         ) {
+          // ✅ CRITICAL FIX: Skip if queue unavailable
+          if (!trendDiscoveryQueue) {
+            logger.warn({ userId: settings.userId }, 'Trend discovery queue unavailable - skipping');
+            continue;
+          }
+
           try {
             // Update timestamp FIRST (pessimistic - prevents duplicates even if enqueue fails)
             await db.update(userAutomationSettings)
@@ -103,6 +115,12 @@ export class AutomationScheduler {
           settings.contentScoringEnabled &&
           this.shouldRunJob(settings.lastContentScoringRun, settings.contentScoringInterval, now)
         ) {
+          // ✅ CRITICAL FIX: Skip if queue unavailable
+          if (!contentScoringQueue) {
+            logger.warn({ userId: settings.userId }, 'Content scoring queue unavailable - skipping');
+            continue;
+          }
+
           try {
             // Update timestamp FIRST (pessimistic - prevents duplicates even if enqueue fails)
             await db.update(userAutomationSettings)
@@ -135,6 +153,12 @@ export class AutomationScheduler {
           settings.videoProcessingEnabled &&
           this.shouldRunJob(settings.lastVideoProcessingRun, settings.videoProcessingInterval, now)
         ) {
+          // ✅ CRITICAL FIX: Skip if queue unavailable
+          if (!videoProcessingQueue) {
+            logger.warn({ userId: settings.userId }, 'Video processing queue unavailable - skipping');
+            continue;
+          }
+
           try {
             // Update timestamp FIRST (pessimistic - prevents duplicates even if enqueue fails)
             await db.update(userAutomationSettings)

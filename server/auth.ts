@@ -4,6 +4,11 @@ import { Request, Response, NextFunction } from 'express';
 import rateLimit from 'express-rate-limit';
 import { env } from './config/env';
 import { logger } from './lib/logger';
+import { storage } from './storage';
+import { db } from './db';
+import { eq } from 'drizzle-orm';
+import { normalizeTier } from '@shared/subscription-constants';
+import { users, userSubscriptions, subscriptionTiers } from '@shared/schema';
 
 // Use centralized environment configuration
 const JWT_SECRET = env.JWT_SECRET;
@@ -152,42 +157,99 @@ export const getUserId = (req: AuthRequest): string => {
 // Auth integration helpers (now using PostgreSQL storage)
 export const neonAuthHelpers = {
   // Register user
-  async registerUser(username: string, password: string, subscriptionTier: string = 'free'): Promise<{ user: AuthUser; token: string }> {
+  async registerUser(username: string, password: string, subscriptionTier: string = 'starter', email?: string, fullName?: string): Promise<{ user: AuthUser; token: string }> {
     try {
-      const { storage } = await import('./storage');
-      const { db } = await import('./db');
-      const { sql } = await import('drizzle-orm');
+      // SECURITY: Normalize and validate subscription tier
+      const normalizedTier = normalizeTier(subscriptionTier, 'starter');
 
-      // Check if user already exists
-      const existingUser = await storage.getUserByUsername(username);
-      if (existingUser) {
-        throw new Error('User already exists');
+      // SECURITY: Validate that tester tier includes required fields
+      if (normalizedTier === 'tester' && (!email || !fullName)) {
+        throw new Error('Tester tier requires email and full name');
       }
 
-      // Hash password and create user
+      // Hash password before transaction (expensive operation)
       const hashedPassword = await hashPassword(password);
-      const newUser = await storage.createUser({
-        username,
-        password: hashedPassword,
+
+      // SECURITY: Use transaction for atomicity
+      // All validations and inserts happen within transaction to prevent race conditions
+      const result = await db.transaction(async (tx) => {
+        // SECURITY: Verify tier exists in database (FK constraint validation)
+        // Must be inside transaction to prevent TOCTOU race condition
+        const tierExists = await tx.query.subscriptionTiers.findFirst({
+          where: eq(subscriptionTiers.id, normalizedTier),
+        });
+
+        if (!tierExists) {
+          logger.error({ tier: normalizedTier }, 'Tier not found in database during registration');
+          throw new Error('Invalid subscription tier configuration. Please contact support.');
+        }
+
+        // Check if user already exists (inside transaction for consistency)
+        const existingUser = await tx.query.users.findFirst({
+          where: eq(users.username, username),
+        });
+
+        if (existingUser) {
+          throw new Error('User already exists');
+        }
+
+        // Create user within transaction
+        const [newUser] = await tx.insert(users).values({
+          username,
+          password: hashedPassword,
+          email: email || null,
+          fullName: fullName || null,
+          role: 'user',
+          createdAt: new Date(),
+        }).returning();
+
+        // Create subscription record atomically with user
+        await tx.insert(userSubscriptions).values({
+          userId: newUser.id,
+          tierId: normalizedTier,
+          status: 'active',
+          billingCycle: 'monthly',
+        });
+
+        return newUser;
       });
 
-      // Note: Subscription management is handled separately
-      // Basic user registration doesn't require subscription tables
-      console.log(`📋 User registered with tier: ${subscriptionTier} (subscription management not yet implemented)`);
+      logger.info({
+        userId: result.id,
+        username: result.username,
+        tier: normalizedTier
+      }, 'User registered successfully with subscription');
 
       const authUser: AuthUser = {
-        id: newUser.id,
-        username: newUser.username,
+        id: result.id,
+        username: result.username,
       };
 
       const token = generateToken(authUser);
 
       return { user: authUser, token };
     } catch (error) {
-      console.error('Registration error:', error);
-      if (error instanceof Error && error.message.includes('already exists')) {
-        throw error;
+      // Enhanced error handling with specific error types
+      const errorId = crypto.randomUUID();
+
+      if (error instanceof Error) {
+        // Pass through user-facing errors
+        if (error.message.includes('already exists') ||
+            error.message.includes('Invalid subscription tier') ||
+            error.message.includes('Tester tier requires')) {
+          throw error;
+        }
+
+        // Log database/system errors with tracking ID
+        logger.error({
+          errorId,
+          errorMessage: error.message,
+          errorType: error.constructor.name
+        }, 'Registration system error');
+
+        throw new Error(`Registration failed (ref: ${errorId}). Please try again or contact support.`);
       }
+
       throw new Error('Registration failed');
     }
   },
@@ -195,8 +257,6 @@ export const neonAuthHelpers = {
   // Login user
   async loginUser(username: string, password: string): Promise<{ user: AuthUser; token: string }> {
     try {
-      const { storage } = await import('./storage');
-
       // Find user by username
       const user = await storage.getUserByUsername(username);
       if (!user) {

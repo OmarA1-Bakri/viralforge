@@ -7,8 +7,10 @@ import "./styles/main.scss"; // Sass color system (parallel with Tailwind)
 import { revenueCat } from "./lib/revenueCat";
 import { applyStatusBarHeightCSS, setupStatusBarHeightListener } from "./lib/statusBarHeight";
 
-// Initialize RevenueCat on app startup
-revenueCat.initialize().catch(console.error);
+// ⚠️ RevenueCat initialization DISABLED for testing
+// RevenueCat requires Google Play billing which doesn't work on emulators
+// and requires app to be published. Will be enabled after Play Store submission.
+// revenueCat.initialize().catch(console.error);
 
 // Initialize status bar height detection for Android
 applyStatusBarHeightCSS().then(() => {

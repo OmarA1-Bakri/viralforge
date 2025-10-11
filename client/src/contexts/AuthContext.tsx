@@ -13,7 +13,7 @@ export interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (username: string, password: string, subscriptionTier?: string) => Promise<{ success: boolean; error?: string }>;
+  register: (username: string, password: string, subscriptionTier?: string, email?: string, fullName?: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   isLoading: boolean;
   isAuthenticated: boolean;
@@ -38,9 +38,13 @@ const getApiBaseUrl = () => {
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
-  // For Capacitor apps on Android emulator, use 10.0.2.2 instead of localhost
-  if (typeof window !== 'undefined' && (window as any).Capacitor?.getPlatform() === 'android') {
+  // For Capacitor apps on Android emulator IN DEVELOPMENT ONLY
+  if (import.meta.env.DEV && typeof window !== 'undefined' && (window as any).Capacitor?.getPlatform() === 'android') {
     return 'http://10.0.2.2:5000';
+  }
+  // Production fallback - fail loudly if VITE_API_BASE_URL not set
+  if (import.meta.env.PROD) {
+    throw new Error('VITE_API_BASE_URL is required in production but not configured');
   }
   return window.location.origin;
 };
@@ -127,13 +131,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(data.user);
         await secureStorage.setAuthToken(data.token);
 
-        // Login to RevenueCat with user ID
-        try {
-          await revenueCat.loginUser(data.user.id);
-          // Sync RevenueCat subscription with backend
-          await revenueCat.syncSubscriptionWithBackend();
-        } catch (error) {
-          console.error('[AuthContext] RevenueCat login/sync failed:', error);
+        // ✅ CRITICAL FIX: Only call RevenueCat if it's actually initialized
+        // RevenueCat is currently disabled for testing and requires Play Store setup
+        // This prevents blocking the auth flow with RevenueCat errors
+        // Remove this check once RevenueCat is properly configured
+        const isRevenueCatReady = false; // TODO: Check revenueCat.initialized when re-enabling
+        if (isRevenueCatReady) {
+          try {
+            await revenueCat.loginUser(data.user.id);
+            await revenueCat.syncSubscriptionWithBackend();
+          } catch (error) {
+            console.error('[AuthContext] RevenueCat optional feature failed:', error);
+          }
         }
 
         // Track login event
@@ -149,13 +158,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         return { success: true };
       } else {
-        return { success: false, error: data.message || 'Login failed' };
+        // ✅ CRITICAL FIX: Check data.error first (backend returns 'error' field, not 'message')
+        return { success: false, error: data.error || data.message || 'Login failed' };
       }
     } catch (error) {
       console.error('[AuthContext] Login error:', error);
       console.error('[AuthContext] Error details:', {
         message: error instanceof Error ? error.message : 'Unknown error',
-        url: `${API_BASE_URL}/auth/login`
+        url: loginUrl // ✅ CRITICAL FIX: Use actual variable name, not hardcoded wrong URL
       });
       return { success: false, error: 'Network error. Please check your connection and try again.' };
     } finally {
@@ -163,7 +173,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const register = async (username: string, password: string, subscriptionTier: string = 'free'): Promise<{ success: boolean; error?: string }> => {
+  const register = async (username: string, password: string, subscriptionTier: string = 'free', email?: string, fullName?: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     try {
       const registerUrl = `${API_BASE_URL}/api/auth/register`;
@@ -174,7 +184,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password, subscriptionTier }),
+        body: JSON.stringify({ username, password, subscriptionTier, email, fullName }),
       });
 
       const data = await response.json();
@@ -184,13 +194,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(data.user);
         await secureStorage.setAuthToken(data.token);
 
-        // Login to RevenueCat with user ID
-        try {
-          await revenueCat.loginUser(data.user.id);
-          // Sync RevenueCat subscription with backend
-          await revenueCat.syncSubscriptionWithBackend();
-        } catch (error) {
-          console.error('[AuthContext] RevenueCat login/sync failed:', error);
+        // ✅ CRITICAL FIX: Only call RevenueCat if it's actually initialized
+        const isRevenueCatReady = false; // TODO: Check revenueCat.initialized when re-enabling
+        if (isRevenueCatReady) {
+          try {
+            await revenueCat.loginUser(data.user.id);
+            await revenueCat.syncSubscriptionWithBackend();
+          } catch (error) {
+            console.error('[AuthContext] RevenueCat optional feature failed:', error);
+          }
         }
 
         // Track signup event
@@ -206,13 +218,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         return { success: true };
       } else {
-        return { success: false, error: data.message || 'Registration failed' };
+        // ✅ CRITICAL FIX: Check data.error first (backend returns 'error' field, not 'message')
+        return { success: false, error: data.error || data.message || 'Registration failed' };
       }
     } catch (error) {
       console.error('[AuthContext] Registration error:', error);
       console.error('[AuthContext] Error details:', {
         message: error instanceof Error ? error.message : 'Unknown error',
-        url: `${API_BASE_URL}/auth/register`
+        url: registerUrl // ✅ CRITICAL FIX: Use actual variable name, not hardcoded wrong URL
       });
       return { success: false, error: 'Network error. Please check your connection and try again.' };
     } finally {

@@ -228,22 +228,45 @@ export function registerAutomationRoutes(app: Express) {
         removeOnFail: 5000,
       };
 
+      // ✅ CRITICAL FIX: Check if queues are available before using them
+      let job;
+      switch (jobType) {
+        case 'trend_discovery':
+          if (!trendDiscoveryQueue) {
+            logger.warn({ userId, jobType }, 'Trend discovery queue unavailable - Redis not configured');
+            return res.status(503).json({
+              error: 'Automation requires Redis. Please contact support.',
+              code: 'REDIS_UNAVAILABLE'
+            });
+          }
+          job = await trendDiscoveryQueue.add('discover-trends', jobData, jobOptions);
+          break;
+        case 'content_scoring':
+          if (!contentScoringQueue) {
+            logger.warn({ userId, jobType }, 'Content scoring queue unavailable - Redis not configured');
+            return res.status(503).json({
+              error: 'Automation requires Redis. Please contact support.',
+              code: 'REDIS_UNAVAILABLE'
+            });
+          }
+          job = await contentScoringQueue.add('score-content', jobData, jobOptions);
+          break;
+        case 'video_processing':
+          if (!videoProcessingQueue) {
+            logger.warn({ userId, jobType }, 'Video processing queue unavailable - Redis not configured');
+            return res.status(503).json({
+              error: 'Automation requires Redis. Please contact support.',
+              code: 'REDIS_UNAVAILABLE'
+            });
+          }
+          job = await videoProcessingQueue.add('process-video', jobData, jobOptions);
+          break;
+        default:
+          // This should never happen due to validation above, but TypeScript needs it
+          throw new Error(`Invalid job type: ${jobType}`);
+      }
+
       try {
-        let job;
-        switch (jobType) {
-          case 'trend_discovery':
-            job = await trendDiscoveryQueue.add('discover-trends', jobData, jobOptions);
-            break;
-          case 'content_scoring':
-            job = await contentScoringQueue.add('score-content', jobData, jobOptions);
-            break;
-          case 'video_processing':
-            job = await videoProcessingQueue.add('process-video', jobData, jobOptions);
-            break;
-          default:
-            // This should never happen due to validation above, but TypeScript needs it
-            throw new Error(`Invalid job type: ${jobType}`);
-        }
 
         logger.info({ userId, jobType, jobId: job.id }, 'Manual job triggered');
         res.json({

@@ -20,7 +20,7 @@ let firebaseApp: admin.app.App;
 
 try {
   // Use environment variable for service account (production)
-  // Falls back to file path (development only)
+  // Falls back to Application Default Credentials (Firebase Functions)
   let credential;
 
   if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
@@ -28,6 +28,10 @@ try {
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
     credential = admin.credential.cert(serviceAccount);
     logger.info('Using Firebase service account from environment variable');
+  } else if (process.env.FUNCTION_TARGET) {
+    // Running in Firebase Functions - use Application Default Credentials
+    credential = admin.credential.applicationDefault();
+    logger.info('Using Firebase Application Default Credentials (Firebase Functions)');
   } else {
     // Development: Use file (but warn about security)
     logger.warn('⚠️  Using Firebase service account from file - NOT SAFE FOR PRODUCTION');

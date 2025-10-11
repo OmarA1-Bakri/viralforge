@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:355579691551:android:2d7b64b02a8910f3184b2a",
+        "mobilesdk_app_id": "1:355579691551:android:8f75e7fc7e8a252f184b2a",
         "android_client_info": {
-          "package_name": "android.viral.forge"
+          "package_name": "com.viralforge.android"
         }
       },
       "oauth_client": [
@@ -29,6 +29,13 @@
             {
               "client_id": "355579691551-4blgbc5ohr4k4us78jdn2cjlm975lpu2.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "355579691551-3tcc2qs84sjr034v72igr0jnap0lf474.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.viralapps.viralforge"
+              }
             }
           ]
         }

@@ -17,7 +17,7 @@ router.use(authLimiter);
 // Register endpoint
 router.post('/register', registerLimiter, async (req, res: Response) => {
   try {
-    const { username, password, subscriptionTier = 'free' } = req.body;
+    const { username, password, subscriptionTier = 'starter', email, fullName } = req.body;
 
     // Validation
     if (!username || !password) {
@@ -38,18 +38,34 @@ router.post('/register', registerLimiter, async (req, res: Response) => {
       });
     }
 
-    // Validate subscription tier - only free tier allowed on registration
-    const allowedRegistrationTiers = ['free'];
-    if (!allowedRegistrationTiers.includes(subscriptionTier)) {
-      return res.status(400).json({
-        error: 'Invalid subscription tier. Only free tier is available during registration.'
-      });
+    // Validate tester tier requirements
+    if (subscriptionTier === 'tester') {
+      if (!email || !fullName) {
+        return res.status(400).json({
+          error: 'Tester tier requires email and full name'
+        });
+      }
+
+      // Email whitelist for approved testers
+      const APPROVED_TESTER_EMAILS = [
+        'omar@viralforgeai.co.uk',
+        'info@viralforgeai.co.uk',
+        // Add more approved tester emails here
+      ];
+
+      if (!APPROVED_TESTER_EMAILS.includes(email.toLowerCase())) {
+        return res.status(403).json({
+          error: 'Tester access requires approval. Please contact info@viralforgeai.co.uk for access.'
+        });
+      }
+
+      console.log(`📋 Approved tester registration: ${email}`);
     }
 
     console.log(`📝 Registration attempt for: ${username} (tier: ${subscriptionTier})`);
 
-    // Register user with subscription tier
-    const { user, token } = await neonAuthHelpers.registerUser(username, password, subscriptionTier);
+    // Register user with subscription tier and optional email/fullName
+    const { user, token } = await neonAuthHelpers.registerUser(username, password, subscriptionTier, email, fullName);
 
     console.log(`✅ User registered successfully: ${user.id}`);
 
