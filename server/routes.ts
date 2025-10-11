@@ -1067,10 +1067,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/preferences/options', async (req, res) => {
     try {
       const options = {
-        niches: [
-          'gaming', 'tech', 'vlogging', 'comedy', 'beauty-fashion',
-          'food', 'fitness', 'education', 'diy', 'commentary'
-        ],
         audiences: [
           'gen-z', 'millennials', 'gen-x', 'boomers', 'teens', 'young-adults', 'professionals'
         ],
@@ -1151,8 +1147,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         niche,
         targetAudience: targetAudience || 'gen-z',
         contentStyle: contentStyle || 'entertainment',
-        bestPerformingPlatforms: preferredPlatforms || ['tiktok'],
-        preferredCategories: preferredCategories || [niche],
+        bestPerformingPlatforms: preferredPlatforms || ['youtube'],
+        preferredCategories: [niche], // AI uses niche directly - no predefined categories needed
         bio: bio || '',
         preferredContentLength: contentLength || 'short',
         optimizedPostTimes: postingSchedule || ['18:00', '21:00'],

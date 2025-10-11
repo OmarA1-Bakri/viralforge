@@ -22,11 +22,11 @@ import { ScheduledAnalysisSettings } from "@/components/ScheduledAnalysisSetting
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const preferencesSchema = z.object({
-  niche: z.string().min(1, "Please select your niche"),
+  niche: z.string().min(1, "Please enter your niche"),
   targetAudience: z.string().min(1, "Please select your target audience"),
   contentStyle: z.string().min(1, "Please select your content style"),
-  preferredPlatforms: z.array(z.string()).min(1, "Please select at least one platform"),
-  preferredCategories: z.array(z.string()).min(1, "Please select at least one category"),
+  // Platform selection disabled for YouTube-only phase - will be enabled when multi-platform support is added
+  preferredPlatforms: z.array(z.string()).default(['youtube']).optional(),
   bio: z.string().max(500, "Bio must be 500 characters or less"),
   contentLength: z.string().min(1, "Please select preferred content length"),
   goals: z.string().min(1, "Please select your primary goal"),
@@ -80,8 +80,7 @@ export default function UserPreferences() {
       niche: "",
       targetAudience: "",
       contentStyle: "",
-      preferredPlatforms: [],
-      preferredCategories: [],
+      preferredPlatforms: ['youtube'], // YouTube-only for now - multi-platform coming soon
       bio: "",
       contentLength: "",
       goals: "",
@@ -97,8 +96,7 @@ export default function UserPreferences() {
         niche: prefs.niche || "",
         targetAudience: prefs.targetAudience || "",
         contentStyle: prefs.contentStyle || "",
-        preferredPlatforms: prefs.bestPerformingPlatforms || [],
-        preferredCategories: prefs.preferredCategories || [],
+        preferredPlatforms: ['youtube'], // Always YouTube for now - multi-platform coming soon
         bio: prefs.bio || "",
         contentLength: prefs.preferredContentLength || "",
         goals: prefs.goals || "",
@@ -123,8 +121,7 @@ export default function UserPreferences() {
         niche: form.getValues('niche'),
         target_audience: form.getValues('targetAudience'),
         content_style: form.getValues('contentStyle'),
-        platforms: form.getValues('preferredPlatforms')?.length || 0,
-        categories: form.getValues('preferredCategories')?.length || 0
+        platform: 'youtube' // YouTube-only for now
       });
 
       // Invalidate and refetch to update the "Current Preferences" section
@@ -238,13 +235,13 @@ export default function UserPreferences() {
                       <FormLabel>Content Niche *</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="e.g., fitness, cooking, tech reviews"
+                          placeholder="e.g., ASMR wellness, pet training, true crime analysis"
                           data-testid="input-niche"
                           {...field}
                         />
                       </FormControl>
                       <FormDescription>
-                        Enter your primary content category
+                        Describe your niche in your own words - our AI understands any content type
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -346,69 +343,25 @@ export default function UserPreferences() {
                   )}
                 />
               </div>
-
-              <FormField
-                control={form.control}
-                name="preferredCategories"
-                render={() => (
-                  <FormItem>
-                    <FormLabel>Content Categories *</FormLabel>
-                    <FormDescription>
-                      Select all categories you create content for
-                    </FormDescription>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {options?.options?.niches?.map((category: string) => (
-                        <FormField
-                          key={category}
-                          control={form.control}
-                          name="preferredCategories"
-                          render={({ field }) => {
-                            return (
-                              <FormItem
-                                key={category}
-                                className="flex flex-row items-start space-x-3 space-y-0"
-                              >
-                                <FormControl>
-                                  <Checkbox
-                                    checked={field.value?.includes(category)}
-                                    onCheckedChange={(checked) => {
-                                      return checked
-                                        ? field.onChange([...field.value, category])
-                                        : field.onChange(
-                                            field.value?.filter((value) => value !== category)
-                                          );
-                                    }}
-                                    data-testid={`checkbox-category-${category}`}
-                                  />
-                                </FormControl>
-                                <Badge variant="outline" className="text-xs">
-                                  {category.charAt(0).toUpperCase() + category.slice(1)}
-                                </Badge>
-                              </FormItem>
-                            );
-                          }}
-                        />
-                      ))}
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </CardContent>
           </Card>
 
-          {/* Platform & Goals Section */}
+          {/* Goals Section */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Monitor className="h-5 w-5" />
-                Platforms & Goals
+                <Trophy className="h-5 w-5" />
+                Content Goals
               </CardTitle>
               <CardDescription>
-                Choose your preferred platforms and content goals
+                Define your primary objectives for content creation
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Platform Selection - DISABLED FOR YOUTUBE-ONLY PHASE
+                  Code preserved for future multi-platform support (TikTok, Instagram, etc.)
+                  To re-enable: Remove this comment block and restore the FormField below
+
               <FormField
                 control={form.control}
                 name="preferredPlatforms"
@@ -419,7 +372,7 @@ export default function UserPreferences() {
                       Select the platforms you create content for
                     </FormDescription>
                     <div className="grid grid-cols-2 gap-3 mt-2">
-                      {options?.options?.platforms?.filter((p: string) => p === 'youtube')?.map((platform: string) => (
+                      {options?.options?.platforms?.map((platform: string) => (
                         <FormField
                           key={platform}
                           control={form.control}
@@ -456,6 +409,18 @@ export default function UserPreferences() {
                   </FormItem>
                 )}
               />
+              */}
+
+              {/* YouTube-Only Notice */}
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Monitor className="h-5 w-5 text-primary" />
+                  <p className="font-semibold text-sm">Currently YouTube Only</p>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  ViralForge is currently optimized for YouTube creators. Multi-platform support for TikTok, Instagram, and other platforms is coming soon!
+                </p>
+              </div>
 
               <FormField
                 control={form.control}
