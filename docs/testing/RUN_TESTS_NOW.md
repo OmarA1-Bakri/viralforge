@@ -40,7 +40,7 @@ The test suite starts automatically in 2 seconds and tests:
 
 If fetch fails, manually copy-paste the script:
 
-1. Open: `/home/omar/viralforge/android-autotest.js`
+1. Open: `/home/omar/viralforge/scripts/android/android-autotest.js`
 2. Copy **entire contents**
 3. Paste into DevTools Console
 4. Press Enter
@@ -130,7 +130,7 @@ Try manually:
 
 **Solution**: Manually copy-paste script contents:
 ```bash
-cat /home/omar/viralforge/android-autotest.js
+cat /home/omar/viralforge/scripts/android/android-autotest.js
 ```
 Copy output → Paste in Console → Press Enter
 

@@ -21,13 +21,13 @@
 In the DevTools Console tab, paste and run:
 
 ```javascript
-fetch('file:///home/omar/viralforge/android-autotest.js')
+fetch('file:///home/omar/viralforge/scripts/android/android-autotest.js')
   .then(r => r.text())
   .then(eval)
   .catch(err => console.error('Failed to load script:', err));
 ```
 
-**OR** manually copy-paste the entire contents of `android-autotest.js` into the console.
+**OR** manually copy-paste the entire contents of `scripts/android/android-autotest.js` into the console.
 
 ### Step 3: Tests Auto-Run
 
@@ -150,7 +150,7 @@ adb forward tcp:9222 localabstract:chrome_devtools_remote
 Then refresh `chrome://inspect`
 
 ### If Script Fails to Load
-Manually copy-paste the script contents from `android-autotest.js`
+Manually copy-paste the script contents from `scripts/android/android-autotest.js`
 
 ### If Tests Don't Auto-Run
 Manually run:
