@@ -10,7 +10,7 @@
 - User ID: `c2bf1254-69ac-40eb-9efe-94dcdfb50cae`
 
 ### 2. Created Comprehensive Automated Test Suite
-**File**: `/home/omar/viralforge/android-autotest.js`
+**File**: `/home/omar/viralforge/scripts/android/android-autotest.js`
 
 **Tests 10 Critical Workflows**:
 1. ✅ Login Flow - Fills credentials and signs in
@@ -45,7 +45,7 @@ Step-by-step guide for:
 
 2. **Load Test Script** (paste in Console):
    ```javascript
-   fetch('file:///home/omar/viralforge/android-autotest.js')
+   fetch('file:///home/omar/viralforge/scripts/android/android-autotest.js')
      .then(r => r.text())
      .then(eval);
    ```
@@ -121,7 +121,7 @@ window.testReport = {
 1. **App Deployed**: Running on emulator-5554
 2. **Server Running**: http://localhost:5000
 3. **Test User Created**: androidtest/Testpass123
-4. **Test Script Ready**: `/home/omar/viralforge/android-autotest.js`
+4. **Test Script Ready**: `/home/omar/viralforge/scripts/android/android-autotest.js`
 5. **Instructions Ready**: `/home/omar/viralforge/AUTOMATED_TEST_INSTRUCTIONS.md`
 
 ### 📝 All Code Fixes Deployed
@@ -136,7 +136,7 @@ Previous fixes are in the APK:
 ## 🚀 Next Steps
 
 1. **Run Automated Tests**:
-   - Follow `/home/omar/viralforge/AUTOMATED_TEST_INSTRUCTIONS.md`
+   - Follow `/home/omar/viralforge/docs/testing/AUTOMATED_TEST_INSTRUCTIONS.md`
    - Review console output
    - Check `window.testReport` for details
 
@@ -160,12 +160,12 @@ Previous fixes are in the APK:
 
 ## 📁 Files Created
 
-1. **Test Script**: `/home/omar/viralforge/android-autotest.js`
+1. **Test Script**: `/home/omar/viralforge/scripts/android/android-autotest.js`
    - Comprehensive automated test suite
    - 10 test scenarios
    - 400+ lines of test logic
 
-2. **Instructions**: `/home/omar/viralforge/AUTOMATED_TEST_INSTRUCTIONS.md`
+2. **Instructions**: `/home/omar/viralforge/docs/testing/AUTOMATED_TEST_INSTRUCTIONS.md`
    - Step-by-step guide
    - Troubleshooting tips
    - Expected output examples
@@ -176,8 +176,8 @@ Previous fixes are in the APK:
    - Ready for testing
 
 4. **Reports**:
-   - `/home/omar/viralforge/ANDROID_TEST_REPORT_OCT4.md` - Initial test findings
-   - `/home/omar/viralforge/PHASE_1_BLOCKER_INVESTIGATION.md` - ADB investigation
+   - `/home/omar/viralforge/docs/mobile/ANDROID_TEST_REPORT_OCT4.md` - Initial test findings
+   - `/home/omar/viralforge/docs/testing/PHASE_1_BLOCKER_INVESTIGATION.md` - ADB investigation
 
 ## ⚠️  Important Notes
 
@@ -216,6 +216,6 @@ If automated script doesn't work:
 ---
 
 **Test Credentials**: `androidtest / Testpass123`
-**Test Script**: `/home/omar/viralforge/android-autotest.js`
-**Instructions**: `/home/omar/viralforge/AUTOMATED_TEST_INSTRUCTIONS.md`
+**Test Script**: `/home/omar/viralforge/scripts/android/android-autotest.js`
+**Instructions**: `/home/omar/viralforge/docs/testing/AUTOMATED_TEST_INSTRUCTIONS.md`
 **Status**: ✅ Ready for testing
