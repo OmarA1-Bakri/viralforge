@@ -418,14 +418,86 @@ class ViralForgeAgentSystem:
                 "timestamp": datetime.now().isoformat()
             }
     
+    async def analyze_performance(self, analysis_period: str = "24h", metrics: List[str] = None) -> Dict[str, Any]:
+        """
+        Run performance analysis on content to identify optimization opportunities.
+
+        Args:
+            analysis_period: Time period for analysis (e.g., "24h", "7d", "30d")
+            metrics: List of metrics to analyze (e.g., ['views', 'engagement', 'retention'])
+
+        Returns:
+            Dictionary containing performance analysis and recommendations
+        """
+
+        metrics = metrics or ['views', 'engagement', 'retention']
+
+        # Create performance analysis tasks
+        analysis_task = Task(
+            description=f"""
+            Analyze content performance for the last {analysis_period} focusing on: {', '.join(metrics)}.
+
+            Your analysis should include:
+            1. Performance metrics breakdown and trends
+            2. Comparison against platform benchmarks
+            3. Identification of top-performing vs underperforming content
+            4. Root cause analysis for performance variations
+            5. Audience behavior and engagement patterns
+
+            Provide data-driven insights that can inform content strategy improvements.
+            """,
+            agent=self.agents["content_analyzer"],
+            expected_output="Comprehensive performance breakdown with root cause analysis"
+        )
+
+        recommendation_task = Task(
+            description="""
+            Based on the performance analysis, provide actionable optimization recommendations:
+            1. Specific content improvements (hooks, thumbnails, titles)
+            2. Timing and posting frequency adjustments
+            3. Platform-specific optimization opportunities
+            4. Audience targeting refinements
+            5. A/B testing suggestions for improvement
+
+            Prioritize recommendations by expected impact.
+            """,
+            agent=self.agents["performance_tracker"],
+            expected_output="Prioritized optimization checklist with implementation guidance",
+            context=[analysis_task]
+        )
+
+        # Set up publication crew with performance-focused agents
+        self.crews["publication"].agents = [
+            self.agents["content_analyzer"],
+            self.agents["performance_tracker"]
+        ]
+        self.crews["publication"].tasks = [analysis_task, recommendation_task]
+
+        try:
+            result = await self.crews["publication"].kickoff_async()
+            return {
+                "status": "success",
+                "report": result.raw,
+                "period": analysis_period,
+                "metrics_analyzed": metrics,
+                "timestamp": datetime.now().isoformat()
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "error": str(e),
+                "period": analysis_period,
+                "timestamp": datetime.now().isoformat()
+            }
+
     async def run_full_pipeline(self, user_id: str, campaign_config: Dict[str, Any]) -> Dict[str, Any]:
         """
         Execute the complete viral content pipeline from discovery to publication.
-        
+
         Args:
             user_id: User ID for personalization
             campaign_config: Configuration for the campaign
-            
+
         Returns:
             Complete pipeline execution results
         """

@@ -50,7 +50,7 @@ class PerformanceRequest(BaseModel):
 class PerformanceResponse(BaseModel):
     success: bool
     content_analyzed: int
-    report: Dict[str, Any]
+    report: Any
 
 
 class FullPipelineRequest(BaseModel):
@@ -140,17 +140,23 @@ async def content_creation(request: ContentCreationRequest) -> ContentCreationRe
 
 @app.post("/agents/performance-analysis", response_model=PerformanceResponse)
 async def performance_analysis(request: PerformanceRequest) -> PerformanceResponse:
-    """Placeholder endpoint to surface structured errors to callers."""
+    """Analyze content performance and provide optimization recommendations."""
+    agent_system = get_agent_system()
 
-    # Performance analysis workflow has not been implemented in CrewAI layer yet.
-    # Fail fast with a clear error so callers can fall back to TypeScript routines.
-    raise HTTPException(
-        status_code=501,
-        detail={
-            "message": "Performance analysis via CrewAI not implemented",
-            "analysis_period": request.analysis_period,
-            "metrics": request.metrics,
-        },
+    result = await agent_system.analyze_performance(
+        analysis_period=request.analysis_period,
+        metrics=request.metrics,
+    )
+
+    if result.get("status") != "success":
+        raise HTTPException(status_code=500, detail=result.get("error", "Agent execution failed"))
+
+    report = _parse_payload(result.get("report"))
+
+    return PerformanceResponse(
+        success=True,
+        content_analyzed=1,  # Single comprehensive analysis report
+        report=report,
     )
 
 
